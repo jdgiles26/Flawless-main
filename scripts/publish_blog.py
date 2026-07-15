@@ -53,7 +53,7 @@ def publish_to_dev(api_key: str, base_url: str, draft: bool) -> None:
         if not post.get("publish_to_dev", False):
             continue
         body = (
-            f"> Written in Shanghai by {AUTHOR} ({AUTHOR_EN}).  \n"
+            f"> Written by {AUTHOR} ({AUTHOR_EN}).  \n"
             f"> Canonical edition: {post['url']}  \n"
             f"> Source code: {REPOSITORY_URL}\n\n"
             f"{post['body_markdown']}"

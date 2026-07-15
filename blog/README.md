@@ -1,10 +1,10 @@
 # Flawless Field Notes
 
-This directory is the canonical source for the bilingual Flawless blog.
+This directory is the canonical source for the Flawless blog.
 
 ## Publishing model
 
-- GitHub Pages hosts the canonical edition at `https://william-lu-stack.github.io/Flawless/`.
+- GitHub Pages hosts the canonical edition at `https://jdgiles26.github.io/Flawless-main/`.
 - Every post includes a canonical URL, Open Graph metadata, and `BlogPosting` structured data.
 - The build produces `feed.xml`, `sitemap.xml`, `robots.txt`, `llms.txt`, and `content-index.json`.
 - IndexNow is notified after a successful Pages deployment.
@@ -15,7 +15,7 @@ Search engines and AI services decide independently whether and when to crawl or
 
 ## Add an article
 
-Create a Markdown file in `blog/posts/` with YAML front matter. Use English first, then a horizontal rule and a `## 中文版` section. Set `published: true` when the canonical edition is ready to go live.
+Create a Markdown file in `blog/posts/` with YAML front matter. Posts are English-only. Set `published: true` when the canonical edition is ready to go live.
 
 Build locally:
 

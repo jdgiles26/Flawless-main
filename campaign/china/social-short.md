@@ -1,35 +1,35 @@
-# 即刻 / 微博
+# Jike / Weibo
 
-我不想再做一个“会解释告警的聊天框”。
+I didn't want to build just another "chat box that explains alerts."
 
-我在上海做了 Flawless：一个把告警、证据、拓扑、人工审批、受控修复和恢复验证连成闭环的 AI SRE 控制平面。
+I built Flawless: an AI SRE control plane that connects alerts, evidence, topology, human approval, controlled remediation, and recovery verification into one closed loop.
 
-核心原则只有一句：AI 不是因为说得像专家就获得行动权，它必须靠证据赢得行动权。
+The core principle fits in one sentence: AI doesn't earn the right to act by sounding like an expert — it has to earn that right through evidence.
 
-目前 GitHub 400+ Stars，代码可以本地跑。欢迎 Kubernetes / SRE / 平台工程师来挑刺：
+Currently at 400+ Stars on GitHub, and the code runs locally. Kubernetes / SRE / platform engineers, I'd genuinely welcome you poking holes in it:
 
-https://github.com/William-Lu-stack/Flawless
+https://github.com/jdgiles26/Flawless-main
 
 #AIOps #Kubernetes #SRE #AgenticOps
 
 ---
 
-# 朋友圈
+# WeChat Moments
 
-这段时间一直在做的 Flawless 正式公开了。
+Flawless, which I've been building for a while, is now officially public.
 
-它不是给运维系统加一个聊天框，而是想解决更难的问题：AI 如何带着证据诊断、在人的审批下安全执行，并在最后证明系统真的恢复。
+It's not about adding a chat box to an ops system — it's aimed at a harder problem: how AI can diagnose with evidence, execute safely under human approval, and ultimately prove the system actually recovered.
 
-项目已经获得 400+ GitHub Stars。我会继续在上海把它做下去，也开始公开写一组中英文 AgenticOps 实战手记。
+The project has already reached 400+ GitHub Stars. I'll keep building it and have also started publicly writing a set of AgenticOps field notes.
 
-项目： https://github.com/William-Lu-stack/Flawless
+Project: https://github.com/jdgiles26/Flawless-main
 
-文章： https://william-lu-stack.github.io/Flawless/
+Articles: https://jdgiles26.github.io/Flawless-main/
 
-做 Kubernetes、SRE、平台工程的朋友，欢迎直接来提最难的问题。
+If you work in Kubernetes, SRE, or platform engineering, feel free to bring me your hardest questions directly.
 
 ---
 
-# 评论区置顶
+# Pinned comment
 
-Flawless 当前提供本地启动、Docker 和 Helm 路径。源代码与文档使用 PolyForm Noncommercial 许可证公开，支持学习、检查、实验和非商业使用。真实生产环境请务必按自己的安全策略收敛 RBAC、凭证、工具和审批范围。
+Flawless currently offers local startup, Docker, and Helm paths. The source code and documentation are published under the PolyForm Noncommercial license, supporting learning, inspection, experimentation, and noncommercial use. For real production environments, make sure to constrain RBAC, credentials, tools, and approval scope according to your own security policy.

@@ -1,17 +1,20 @@
 # ============================================================
-# Control Plane API + Web Service — SRE 智能运维控制台
+# Control Plane API + Web Service — AI SRE Ops Console
 #
-# 前置: 只构建一个后端一体化镜像，镜像内已经包含 frontend/dist
+# Prerequisite: build a single integrated backend image only; the image already includes
+#   frontend/dist.
 #   docker build --target backend-runtime -t <repo>/luxyai:<tag> .
 #   docker push <repo>/luxyai:<tag>
 #
-# 部署:
+# Deploy:
 #   kubectl apply -f manifests/rbac.yaml
-#   kubectl apply -f manifests/deployment.yaml   # 提供统一 ConfigMap: k8s-agent-config
+#   kubectl apply -f manifests/deployment.yaml   # provides the unified ConfigMap: k8s-agent-config
 #   kubectl apply -f manifests/frontend.yaml
 #
-# 如果要拆成独立 Nginx Web 镜像，才需要另行构建 frontend-runtime。
-# 当前清单默认单镜像部署，不再引用 k8s-agent-web。
+# You only need to build frontend-runtime separately if you want to split out an independent
+# Nginx web image.
+# The current manifest defaults to a single-image deployment and no longer references
+# k8s-agent-web.
 # ============================================================
 
 ---
@@ -77,13 +80,15 @@ spec:
               name: http
           envFrom:
             - configMapRef:
-                # 统一使用 deployment.yaml 中的 k8s-agent-config，避免 CMDB/Prometheus 配置两处维护。
+                # Uniformly uses k8s-agent-config from deployment.yaml, avoiding duplicate
+                # CMDB/Prometheus configuration maintenance.
                 name: k8s-agent-config
             - secretRef:
                 name: k8s-agent-oauth
                 optional: true
             - secretRef:
-                # 仅包含 CONSOLE_BASIC_AUTH_USERNAME/PASSWORD；由组织 Secret 管理系统创建。
+                # Contains only CONSOLE_BASIC_AUTH_USERNAME/PASSWORD; created by your
+                # organization's Secret management system.
                 name: luxyai-console-auth
                 optional: true
           env:
@@ -209,8 +214,9 @@ spec:
       targetPort: 8080
       nodePort: 30080
 
-# 生产环境通过组织 Ingress/Gateway 暴露，并强制 TLS + OIDC；不默认创建明文 NodePort。
-# 可选: Ingress（根据集群 Ingress Controller 调整）
+# In production, expose this through your organization's Ingress/Gateway and enforce
+# TLS + OIDC; a plaintext NodePort is not created by default.
+# Optional: Ingress (adjust according to your cluster's Ingress Controller)
 # apiVersion: networking.k8s.io/v1
 # kind: Ingress
 # metadata:

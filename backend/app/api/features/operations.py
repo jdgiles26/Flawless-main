@@ -1,4 +1,4 @@
-"""告警扫描、AI 巡检、MCP 调用和受控运维任务接口。"""
+"""Endpoints for alert scanning, AI inspections, MCP calls, and controlled operations tasks."""
 
 from ._registry import build_feature_router
 
@@ -26,4 +26,4 @@ def build_router(runtime):
         ("GET", "/api/ops/jobs/{job_id}", "get_ops_job"),
         ("POST", "/api/ops/jobs/{job_id}/approve-step", "approve_ops_job_step"),
         ("POST", "/api/ops/jobs/{job_id}/cancel", "cancel_ops_job"),
-    ], tag="AI 运维执行")
+    ], tag="AI Operations Execution")

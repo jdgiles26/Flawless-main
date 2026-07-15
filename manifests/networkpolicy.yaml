@@ -1,7 +1,10 @@
-# 可选网络策略：不在应用清单中猜测或限制私有网络 CIDR。
-# NodePort 30080 暴露在集群节点私网地址上，公网隔离由组织路由、防火墙和安全设备负责。
-# NetworkPolicy 仅显式允许本 namespace 内 Pod 的全部入站和出站通信，避免历史
-# default-deny 策略导致控制台、后台服务、CMDB、Prometheus 或模型网关不可达。
+# Optional network policy: this manifest does not guess or restrict private-network CIDRs.
+# NodePort 30080 is exposed on the cluster nodes' private network addresses; public network
+# isolation is the responsibility of your organization's routing, firewalls, and security
+# appliances.
+# This NetworkPolicy only explicitly allows all ingress and egress traffic for Pods within
+# this namespace, avoiding legacy default-deny policies that make the console, backend
+# services, CMDB, Prometheus, or the model gateway unreachable.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

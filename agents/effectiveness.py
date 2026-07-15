@@ -1,4 +1,4 @@
-"""AI 巡检与运维成效记录，默认持久化到运行时 PVC。"""
+"""AI inspection and operations effectiveness records, persisted to the runtime PVC by default."""
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict, field

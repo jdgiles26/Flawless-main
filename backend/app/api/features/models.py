@@ -1,4 +1,4 @@
-"""可插拔模型注册、连接测试与运维能力测评接口。"""
+"""Endpoints for pluggable model registration, connection testing, and operations capability evaluation."""
 
 from ._registry import build_feature_router
 
@@ -12,5 +12,5 @@ def build_router(runtime):
         ("POST", "/api/model-registry/{profile_id}/test", "test_model_profile"),
         ("POST", "/api/model-benchmark/run", "run_model_benchmark"),
         ("GET", "/api/model-benchmark", "model_benchmark"),
-    ], tag="模型实验室")
+    ], tag="Model Lab")
 

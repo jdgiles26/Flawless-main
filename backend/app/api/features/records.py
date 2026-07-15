@@ -1,4 +1,4 @@
-"""事件、告警、复盘和 Agent 调用记录接口。"""
+"""Endpoints for events, alerts, postmortems, and agent invocation records."""
 
 from ._registry import build_feature_router
 
@@ -10,5 +10,5 @@ def build_router(runtime):
         ("GET", "/api/postmortems", "list_postmortems"),
         ("GET", "/api/alerts", "list_alerts"),
         ("GET", "/api/traces", "list_traces"),
-    ], tag="事件与复盘")
+    ], tag="Events and Postmortems")
 

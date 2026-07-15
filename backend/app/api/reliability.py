@@ -1,4 +1,4 @@
-"""SLO、错误预算和应用发布治理接口。"""
+"""SLO, error budget, and application release governance APIs."""
 
 from __future__ import annotations
 
@@ -47,48 +47,48 @@ def _validate_release_manifest(raw_yaml: str, request: dict[str, Any]) -> tuple[
     try:
         documents = [item for item in yaml.safe_load_all(raw_yaml) if item is not None]
     except yaml.YAMLError as exc:
-        raise HTTPException(status_code=422, detail=f"YAML 解析失败：{exc}") from exc
+        raise HTTPException(status_code=422, detail=f"Failed to parse YAML: {exc}") from exc
     if len(documents) != 1 or not isinstance(documents[0], dict):
-        raise HTTPException(status_code=422, detail="每次发布必须提交且只提交一个 Kubernetes Workload YAML。")
+        raise HTTPException(status_code=422, detail="Each release submission must include exactly one Kubernetes workload YAML.")
     manifest = documents[0]
     kind = str(manifest.get("kind") or "")
     api_version = str(manifest.get("apiVersion") or "")
     metadata = manifest.get("metadata") or {}
     spec = manifest.get("spec") or {}
     if kind not in ALLOWED_RELEASE_KINDS or api_version != "apps/v1":
-        raise HTTPException(status_code=422, detail="发布治理当前只接受 apps/v1 Deployment、StatefulSet、DaemonSet。")
+        raise HTTPException(status_code=422, detail="Release governance currently accepts only apps/v1 Deployment, StatefulSet, or DaemonSet resources.")
     name = str(metadata.get("name") or "")
     namespace = str(metadata.get("namespace") or request.get("namespace") or "default")
     if not re.fullmatch(r"[a-z0-9]([-a-z0-9.]*[a-z0-9])?", name or ""):
-        raise HTTPException(status_code=422, detail="YAML metadata.name 不是合法的 Kubernetes 名称。")
+        raise HTTPException(status_code=422, detail="YAML metadata.name is not a valid Kubernetes resource name.")
     if namespace != request.get("namespace"):
-        raise HTTPException(status_code=422, detail="YAML namespace 必须与发布范围选择一致。")
+        raise HTTPException(status_code=422, detail="The YAML namespace must match the selected release scope.")
     if request.get("release_mode") == "existing":
         if kind != request.get("workload_kind") or name != request.get("workload_name"):
-            raise HTTPException(status_code=422, detail="YAML kind/name 必须与已选择的 Workload 完全一致。")
+            raise HTTPException(status_code=422, detail="The YAML kind and name must exactly match the selected workload.")
     pod_spec = (((spec.get("template") or {}).get("spec")) or {})
     forbidden = [key for key in ("hostNetwork", "hostPID", "hostIPC") if pod_spec.get(key)]
     if forbidden:
-        raise HTTPException(status_code=422, detail=f"生产发布禁止启用：{', '.join(forbidden)}")
+        raise HTTPException(status_code=422, detail=f"Production releases may not enable: {', '.join(forbidden)}")
     if pod_spec.get("serviceAccountName") and pod_spec.get("automountServiceAccountToken", True):
-        raise HTTPException(status_code=422, detail="Workload 使用 ServiceAccount 时必须显式设置 automountServiceAccountToken=false，或走安全例外审批。")
+        raise HTTPException(status_code=422, detail="When a workload uses a ServiceAccount, it must explicitly set automountServiceAccountToken=false or go through a security exception approval.")
     for volume in pod_spec.get("volumes") or []:
         if isinstance(volume, dict) and volume.get("hostPath"):
-            raise HTTPException(status_code=422, detail="生产发布禁止 hostPath volume。")
+            raise HTTPException(status_code=422, detail="hostPath volumes are not allowed in production releases.")
     containers = list(pod_spec.get("containers") or []) + list(pod_spec.get("initContainers") or [])
     if not containers:
-        raise HTTPException(status_code=422, detail="YAML 至少需要一个 container。")
+        raise HTTPException(status_code=422, detail="The YAML must define at least one container.")
     for container in containers:
         if not isinstance(container, dict) or not container.get("name") or not container.get("image"):
-            raise HTTPException(status_code=422, detail="每个 container 必须包含 name 和 image。")
+            raise HTTPException(status_code=422, detail="Each container must include both name and image.")
         if not _image_is_immutable(str(container.get("image"))):
-            raise HTTPException(status_code=422, detail=f"容器 {container.get('name')} 必须使用不可变镜像 tag 或 sha256 digest。")
+            raise HTTPException(status_code=422, detail=f"Container {container.get('name')} must use an immutable image tag or sha256 digest.")
         security = container.get("securityContext") or {}
         if security.get("privileged") or security.get("allowPrivilegeEscalation") is True:
-            raise HTTPException(status_code=422, detail=f"容器 {container.get('name')} 禁止 privileged/allowPrivilegeEscalation。")
+            raise HTTPException(status_code=422, detail=f"Container {container.get('name')} may not enable privileged or allowPrivilegeEscalation.")
         add_caps = set(((security.get("capabilities") or {}).get("add")) or [])
         if add_caps & {"SYS_ADMIN", "NET_ADMIN", "SYS_PTRACE", "ALL"}:
-            raise HTTPException(status_code=422, detail=f"容器 {container.get('name')} 请求了禁止的 Linux capability。")
+            raise HTTPException(status_code=422, detail=f"Container {container.get('name')} requests a prohibited Linux capability.")
     safe_manifest = {
         "apiVersion": "apps/v1",
         "kind": kind,
@@ -128,27 +128,27 @@ def _percent(value: Any, digits: int = 1) -> str:
 def _risk_label(score: Any) -> str:
     value = _safe_float(score)
     if value >= 0.82:
-        return "极高"
+        return "Very high"
     if value >= 0.62:
-        return "高"
+        return "High"
     if value >= 0.38:
-        return "中"
-    return "低"
+        return "Medium"
+    return "Low"
 
 
 def _release_strategy_text(gate: dict[str, Any]) -> str:
     strategy = gate.get("selected_strategy") or {}
     if strategy:
         return (
-            f"建议灰度首批 {_percent(strategy.get('first_ratio'))}，每批最多增加 {_percent(strategy.get('step_ratio'))}，"
-            f"最高不超过 {_percent(strategy.get('max_ratio'))}；每批观察 {strategy.get('observation_window_min', 20)} 分钟，"
-            f"预计 {strategy.get('batches', 1)} 批完成。"
+            f"Recommended canary rollout: start with {_percent(strategy.get('first_ratio'))}, increase by at most {_percent(strategy.get('step_ratio'))} per batch, "
+            f"and do not exceed {_percent(strategy.get('max_ratio'))}; observe each batch for {strategy.get('observation_window_min', 20)} minutes, "
+            f"with an estimated {strategy.get('batches', 1)} batches to complete."
         )
     envelope = gate.get("safety_envelope") or {}
     return (
-        "当前没有候选灰度策略落入安全包络。建议先只做 1% 以内人工灰度或影子验证，"
-        f"并把首批比例压到 {_percent(envelope.get('first_ratio_limit', 0.01))} 以下，"
-        "待错误率、P99、重启和下游错误稳定后再重新判定。"
+        "No candidate canary strategy currently falls within the safety envelope. Start with a manually controlled canary or shadow validation under 1%, "
+        f"keep the initial ratio below {_percent(envelope.get('first_ratio_limit', 0.01))}, "
+        "and re-evaluate only after error rate, P99 latency, restarts, and downstream errors have stabilized."
     )
 
 
@@ -160,8 +160,8 @@ def _blast_text(gate: dict[str, Any]) -> str:
     dependencies = len(radius.get("related_dependencies") or [])
     paths = len(radius.get("critical_paths") or [])
     return (
-        f"影响等级 {blast.get('impact_level', 'unknown')}，放大系数 {blast.get('amplification_factor', 0)}，"
-        f"关键路径 {paths} 条；预计影响服务 {services} 个、Pod {pods} 个、共享依赖 {dependencies} 个。"
+        f"Impact level {blast.get('impact_level', 'unknown')}, amplification factor {blast.get('amplification_factor', 0)}, "
+        f"and {paths} critical paths; estimated impact includes {services} services, {pods} pods, and {dependencies} shared dependencies."
     )
 
 
@@ -189,12 +189,12 @@ def _scanner_risk_level(scan: dict[str, Any]) -> str:
 
 async def _scan_release_images(images: list[str]) -> dict[str, Any]:
     if not images:
-        return {"status": "not_applicable", "summary": "本次未发现镜像变更。", "images": []}
+        return {"status": "not_applicable", "summary": "No image changes were detected for this release.", "images": []}
     scanner_url = os.getenv("IMAGE_SECURITY_SCAN_URL", "").strip()
     if not scanner_url:
         return {
             "status": "not_configured",
-            "summary": "未配置镜像扫描服务；已完成不可变 tag/digest 与 Workload 安全策略检查，但未做漏洞库扫描。",
+            "summary": "No image scanning service is configured; immutable tag/digest and workload security policy checks were completed, but no vulnerability database scan was performed.",
             "images": images,
             "risk_level": "unknown",
         }
@@ -207,7 +207,7 @@ async def _scan_release_images(images: list[str]) -> dict[str, Any]:
     except Exception as exc:
         return {
             "status": "degraded",
-            "summary": f"镜像扫描服务暂时不可用：{type(exc).__name__}: {exc}。本次只保留离线安全校验结果。",
+            "summary": f"The image scanning service is temporarily unavailable: {type(exc).__name__}: {exc}. Only offline security validation results are available for this release.",
             "images": images,
             "risk_level": "unknown",
         }
@@ -215,35 +215,35 @@ async def _scan_release_images(images: list[str]) -> dict[str, Any]:
         risk_level = _scanner_risk_level(data)
         return {
             "status": str(data.get("status") or "ok"),
-            "summary": str(data.get("summary") or data.get("message") or f"镜像扫描完成，风险等级 {risk_level}。"),
+            "summary": str(data.get("summary") or data.get("message") or f"Image scan completed with risk level {risk_level}."),
             "images": data.get("images") or images,
             "risk_level": risk_level,
             "critical": data.get("critical") or data.get("critical_count") or 0,
             "high": data.get("high") or data.get("high_count") or 0,
             "raw": data,
         }
-    return {"status": "ok", "summary": "镜像扫描完成。", "images": images, "risk_level": "unknown", "raw": data}
+    return {"status": "ok", "summary": "Image scan completed.", "images": images, "risk_level": "unknown", "raw": data}
 
 
 def _image_report(payload: dict[str, Any], manifest_validation: dict[str, Any] | None, image_scan: dict[str, Any] | None) -> str:
     scan = image_scan or {}
     scan_summary = scan.get("summary")
     if payload.get("change_channel") == "emergency_recovery" and payload.get("emergency_action") == "restart_component":
-        return "本次是受控重启，不变更镜像；执行前会记录当前镜像和 generation。"
+        return "This is a controlled restart with no image change; the current image and generation will be recorded before execution."
     image = payload.get("image")
     if manifest_validation:
         return (
-            f"YAML 已通过生产安全校验，包含 {manifest_validation.get('containers', 0)} 个容器，"
-            f"镜像均为不可变版本，未发现 privileged、hostPath 或高危 capability；校验指纹 {manifest_validation.get('digest')}。"
+            f"The YAML passed production security validation and includes {manifest_validation.get('containers', 0)} containers; "
+            f"all images are immutable, and no privileged mode, hostPath, or high-risk capabilities were detected; validation fingerprint {manifest_validation.get('digest')}."
             f"{' ' + scan_summary if scan_summary else ''}"
         )
     if image:
         return (
-            f"镜像 {image} 已通过不可变版本检查。未提交完整 YAML 时，平台只能校验镜像格式，"
-            "建议补充期望状态 YAML 以检查探针、资源限制、ServiceAccount 和安全上下文。"
+            f"Image {image} passed the immutability check. Without a complete YAML submission, the platform can validate only the image format; "
+            "submit the desired-state YAML as well to validate probes, resource limits, ServiceAccount usage, and security context."
             f"{' ' + scan_summary if scan_summary else ''}"
         )
-    return "未发现镜像变更；本次以配置或 Workload 期望状态变更为主。"
+    return "No image changes were detected; this release primarily changes configuration or the workload's desired state."
 
 
 def _build_release_report(
@@ -253,7 +253,7 @@ def _build_release_report(
     manifest_validation: dict[str, Any] | None,
     image_scan: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """生成给运维人员阅读的发布风险摘要，不输出代码片段。"""
+    """Generate a release risk summary for operators without including code snippets."""
     risk = gate.get("risk") or {}
     envelope = gate.get("safety_envelope") or {}
     verdict = str(gate.get("verdict") or "manual_review")
@@ -262,50 +262,50 @@ def _build_release_report(
     diff_risk = _safe_float(risk.get("diff_risk"))
     amp = _safe_float(risk.get("amplification_factor"))
     decision_map = {
-        "pass": "允许按建议灰度推进",
-        "hold": "暂停扩大灰度，继续观察",
-        "rollback": "触发回滚边界",
-        "blocked": "阻断常规发布",
-        "manual_approval": "需要人工复核后极小比例灰度",
-        "manual_review": "需要人工复核",
-        "emergency_review": "紧急修复需人工复核后执行",
+        "pass": "Proceed with the recommended canary rollout",
+        "hold": "Pause further canary expansion and continue observing",
+        "rollback": "Rollback threshold reached",
+        "blocked": "Regular release blocked",
+        "manual_approval": "Manual review required before a very small canary rollout",
+        "manual_review": "Manual review required",
+        "emergency_review": "Emergency recovery requires manual review before execution",
     }
     short_risks = [
-        f"短期可能出现 rollout 卡住、Ready 副本不足、错误率上升或 P99 延迟抬升；当前差分风险 {_risk_label(diff_risk)}（{diff_risk:.2f}）。",
-        f"拓扑放大系数 {amp:.2f}，若关键路径上存在共享中间件或上游流量，故障会被放大到依赖链路。",
+        f"In the short term, rollout stalls, insufficient Ready replicas, rising error rates, or increased P99 latency may occur; current diff risk is {_risk_label(diff_risk)} ({diff_risk:.2f}).",
+        f"The topology amplification factor is {amp:.2f}; if shared middleware or upstream traffic exists on critical paths, failures can propagate through dependent chains.",
     ]
     if budget.get("freeze_changes") and not is_emergency:
-        short_risks.insert(0, "错误预算已耗尽，常规发布会被直接冻结。")
+        short_risks.insert(0, "The error budget is exhausted, so regular releases are immediately frozen.")
     if is_emergency:
-        short_risks.insert(0, "紧急修复只用于恢复稳定性；若修复失败，应立即停止并进入回退或人工接管。")
+        short_risks.insert(0, "Emergency recovery is only for restoring stability; if it fails, stop immediately and switch to rollback or manual intervention.")
     long_risks = [
-        "如果不补充完整 YAML、观测窗口和回滚证据，后续很难复盘是哪一项配置导致风险变化。",
-        "如果持续使用可变镜像 tag、缺少资源边界或缺少 readinessProbe，未来发布会更容易出现不可预测故障。",
+        "Without a complete YAML, observation window, and rollback evidence, it will be difficult to determine later which configuration change altered the risk profile.",
+        "If mutable image tags continue to be used, or resource boundaries or readinessProbe remain missing, future releases will be more likely to fail unpredictably.",
     ]
     recommendations = [
         _release_strategy_text(gate),
-        "推进期间重点观察：错误率、P95/P99、Pod 重启、Ready 副本、CPU throttling、下游错误和 Kafka/DB 等共享依赖。",
-        "若任一核心指标越过暂停阈值，停止扩大灰度；若越过回滚阈值，执行回滚或紧急修复通道。",
+        "During rollout, closely monitor error rate, P95/P99 latency, pod restarts, Ready replicas, CPU throttling, downstream errors, and shared dependencies such as Kafka or databases.",
+        "If any core metric crosses the pause threshold, stop expanding the canary; if it crosses the rollback threshold, execute rollback or use the emergency recovery path.",
     ]
     if verdict in {"blocked", "manual_approval", "manual_review"}:
-        recommendations.insert(0, "不要直接全量发布；先补齐证据或只做人工确认的小流量验证。")
+        recommendations.insert(0, "Do not proceed directly to a full rollout; first complete the supporting evidence or run only a small manually verified traffic test.")
     if is_emergency:
-        recommendations.insert(0, "执行前确认影响范围、回退条件和验证口径；执行后必须核对恢复判据。")
+        recommendations.insert(0, "Before execution, confirm the impact scope, rollback conditions, and validation criteria; after execution, verify the recovery criteria.")
     evidence = [
-        f"SLO 目标 {budget.get('target_percent', 99.9)}%，错误预算状态 {budget_state}，剩余预算 {_percent(budget.get('remaining_ratio'))}，燃烧率 {budget.get('burn_rate', 0)}x。",
-        f"门禁算法 {((gate.get('algorithm') or {}).get('name') or 'SemanticGrayReleaseGate')}，候选灰度策略 {len(gate.get('candidate_strategies') or [])} 个，安全包络预算上限 {_percent(envelope.get('budget_cost_limit'))}。",
+        f"SLO target {budget.get('target_percent', 99.9)}%, error budget state {budget_state}, remaining budget {_percent(budget.get('remaining_ratio'))}, burn rate {budget.get('burn_rate', 0)}x.",
+        f"Gate algorithm {((gate.get('algorithm') or {}).get('name') or 'SemanticGrayReleaseGate')}, {len(gate.get('candidate_strategies') or [])} candidate canary strategies, safety-envelope budget limit {_percent(envelope.get('budget_cost_limit'))}.",
         _blast_text(gate),
         _image_report(payload, manifest_validation, image_scan),
-        gate.get("reason") or "门禁未返回详细原因，已按人工复核处理。",
+        gate.get("reason") or "The gate did not return a detailed reason and has been handled as a manual review.",
     ]
     return {
         "headline": (
-            f"{decision_map.get(verdict, '需要人工复核')}：{payload.get('service')} "
+            f"{decision_map.get(verdict, 'Manual review required')}: {payload.get('service')} "
             f"{payload.get('workload_kind')}/{payload.get('workload_name')}"
         ),
         "risk_decision": (
-            f"{decision_map.get(verdict, '需要人工复核')}。风险等级 {_risk_label(max(diff_risk, amp / 3.0))}；"
-            f"依据是错误预算、灰度候选策略、拓扑爆炸半径、历史风险和当前观测差分。"
+            f"{decision_map.get(verdict, 'Manual review required')}. Risk level {_risk_label(max(diff_risk, amp / 3.0))}; "
+            f"this is based on error budget, candidate canary strategies, blast radius, historical risk, and current observed diff."
         ),
         "allowed_scope": _release_strategy_text(gate),
         "blast_radius": _blast_text(gate),
@@ -339,7 +339,7 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
                 "exhausted": sum(1 for item in budgets if item["state"] == "exhausted"),
                 "changes_frozen": sum(1 for item in budgets if item["freeze_changes"]),
             },
-            "policy": "预算耗尽即冻结新功能和常规发布，只允许恢复稳定性的紧急变更。",
+            "policy": "When the error budget is exhausted, new features and regular releases are frozen; only emergency changes that restore stability are allowed.",
             "audit_storage": deps.store.storage_status(),
         }
 
@@ -360,11 +360,11 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
         is_emergency = payload["change_channel"] == "emergency_recovery"
         if is_emergency:
             if payload["release_mode"] != "existing":
-                raise HTTPException(status_code=422, detail="紧急修复通道只能操作现有 Workload，不能用于发布新应用。")
+                raise HTTPException(status_code=422, detail="The emergency recovery path can only operate on an existing workload and cannot be used to release a new application.")
             if payload["emergency_action"] not in {"rollback", "restore_config", "restart_component"}:
-                raise HTTPException(status_code=422, detail="请选择回滚稳定版本、恢复配置或重启故障组件。")
+                raise HTTPException(status_code=422, detail="Choose rollback to a stable version, restore configuration, or restart the failed component.")
             if len(payload["emergency_reason"].strip()) < 8:
-                raise HTTPException(status_code=422, detail="紧急修复必须填写故障现象、业务影响或恢复理由，至少 8 个字符。")
+                raise HTTPException(status_code=422, detail="Emergency recovery requires a description of the failure symptoms, business impact, or recovery reason with at least 8 characters.")
         manifest = None
         manifest_validation = None
         if payload["manifest_yaml"].strip():
@@ -375,23 +375,23 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
             if payload["release_mode"] == "existing":
                 payload["patch"] = {"spec": manifest["spec"]}
         elif payload["release_mode"] == "new":
-            raise HTTPException(status_code=422, detail="新建 Workload 必须提交完整 YAML。")
+            raise HTTPException(status_code=422, detail="Creating a new workload requires a complete YAML submission.")
         elif not payload["workload_name"]:
-            raise HTTPException(status_code=422, detail="请选择现有 Workload，或切换为新建并提交 YAML。")
+            raise HTTPException(status_code=422, detail="Select an existing workload, or switch to new and submit YAML.")
         elif not payload["image"] and not payload["patch"] and not (is_emergency and payload["emergency_action"] == "restart_component"):
-            raise HTTPException(status_code=422, detail="现有 Workload 发布必须填写不可变镜像，或提交完整期望状态 YAML 形成可审计变更。")
+            raise HTTPException(status_code=422, detail="Releasing an existing workload requires an immutable image or a complete desired-state YAML submission to create an auditable change.")
         if is_emergency and payload["emergency_action"] == "rollback" and not payload["image"]:
-            raise HTTPException(status_code=422, detail="回滚必须填写已验证的上一稳定镜像版本或 digest。")
+            raise HTTPException(status_code=422, detail="Rollback requires the previously verified stable image version or digest.")
         if is_emergency and payload["emergency_action"] == "restore_config" and not (manifest or payload["patch"]):
-            raise HTTPException(status_code=422, detail="恢复误删配置必须提交经过校验的期望状态 YAML。")
+            raise HTTPException(status_code=422, detail="Restoring accidentally deleted configuration requires a validated desired-state YAML submission.")
         if is_emergency and payload["emergency_action"] == "restart_component":
             payload["image"] = ""
             payload["patch"] = {}
         if payload["image"]:
             if not _image_is_immutable(payload["image"]):
-                raise HTTPException(status_code=422, detail="生产发布必须使用不可变镜像版本，禁止 latest/main/master/dev。")
+                raise HTTPException(status_code=422, detail="Production releases must use immutable image versions; latest/main/master/dev are not allowed.")
             if not payload["container_name"]:
-                raise HTTPException(status_code=422, detail="镜像发布必须指定 container_name。")
+                raise HTTPException(status_code=422, detail="Image-based releases must specify container_name.")
         image_scan = await _scan_release_images(_release_images(payload, manifest))
         objective = deps.store.objective_for(payload["service"], payload["cluster"], payload["namespace"])
         budget = evaluate_error_budget(objective)
@@ -424,7 +424,7 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
                 "status": "degraded",
                 "verdict": "manual_review",
                 "action": "human_approval",
-                "reason": f"风险门禁降级：{type(exc).__name__}: {exc}。请人工核对拓扑、SLO 预算和回滚方案后再批准。",
+                "reason": f"Risk gate degraded: {type(exc).__name__}: {exc}. Manually verify topology, SLO budget, and the rollback plan before approving.",
                 "risk": {"risk_score": 0.62, "risk_level": "medium"},
                 "algorithm": {"name": "SemanticGrayReleaseGate", "fallback": True},
             }
@@ -440,7 +440,7 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
                 **gate,
                 "verdict": "blocked",
                 "action": "block_image_risk",
-                "reason": f"镜像安全扫描未通过：{image_scan.get('summary') or image_scan.get('risk_level')}",
+                "reason": f"Image security scan failed: {image_scan.get('summary') or image_scan.get('risk_level')}",
             }
         elif is_emergency:
             gate = {
@@ -448,8 +448,8 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
                 "verdict": "emergency_review",
                 "action": "break_glass_approval",
                 "reason": (
-                    "紧急修复通道仅豁免错误预算冻结，不豁免 YAML 安全校验、人工审批、审计和恢复验证。"
-                    f" 动作：{payload['emergency_action']}；理由：{payload['emergency_reason'].strip()}"
+                    "The emergency recovery path exempts only the error-budget freeze; it does not exempt YAML security validation, manual approval, auditing, or recovery verification."
+                    f" Action: {payload['emergency_action']}; reason: {payload['emergency_reason'].strip()}"
                 ),
                 "emergency": True,
             }
@@ -476,8 +476,8 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
             raise HTTPException(
                 status_code=503,
                 detail=(
-                    "发布审计状态无法写入。请检查 RELIABILITY_STORE_PATH 是否挂载为可写目录，"
-                    f"当前错误：{type(exc).__name__}: {exc}"
+                    "Unable to write release audit state. Check whether RELIABILITY_STORE_PATH is mounted as a writable directory. "
+                    f"Current error: {type(exc).__name__}: {exc}"
                 ),
             ) from exc
         return {"status": "ok", "release": release}
@@ -486,16 +486,16 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
     async def approve_release(release_id: str, req: ApprovalRequest, request: Request):
         release = deps.store.release(release_id)
         if not release:
-            raise HTTPException(status_code=404, detail="发布申请不存在")
+            raise HTTPException(status_code=404, detail="Release request does not exist.")
         if not req.confirm:
-            raise HTTPException(status_code=409, detail="必须明确确认风险后才能批准")
+            raise HTTPException(status_code=409, detail="Approval requires explicit confirmation of the risk.")
         is_emergency = release.get("change_channel") == "emergency_recovery"
         if (release.get("error_budget") or {}).get("freeze_changes") and not is_emergency:
-            raise HTTPException(status_code=409, detail="错误预算已耗尽，发布冻结；请先恢复稳定性或走独立紧急变更流程。")
+            raise HTTPException(status_code=409, detail="The error budget is exhausted and releases are frozen; restore stability first or use a separate emergency change process.")
         if (release.get("gate") or {}).get("verdict") in {"blocked", "rollback"} and not is_emergency:
-            raise HTTPException(status_code=409, detail="发布门禁已阻断，不能批准")
+            raise HTTPException(status_code=409, detail="The release gate has blocked this release and it cannot be approved.")
         if is_emergency and len(req.comment.strip()) < 8:
-            raise HTTPException(status_code=422, detail="紧急修复审批必须填写至少 8 个字符的复核意见。")
+            raise HTTPException(status_code=422, detail="Emergency recovery approval requires a review comment of at least 8 characters.")
         updated = deps.store.update_release(
             release_id,
             status="approved",
@@ -509,11 +509,11 @@ def build_reliability_router(deps: ReliabilityDependencies) -> APIRouter:
     async def execute_release(release_id: str, request: Request):
         release = deps.store.release(release_id)
         if not release:
-            raise HTTPException(status_code=404, detail="发布申请不存在")
+            raise HTTPException(status_code=404, detail="Release request does not exist.")
         if release.get("status") != "approved":
-            raise HTTPException(status_code=409, detail="发布必须先通过门禁并由人工批准")
+            raise HTTPException(status_code=409, detail="A release must first pass the gate and be manually approved.")
         if (release.get("error_budget") or {}).get("freeze_changes") and release.get("change_channel") != "emergency_recovery":
-            raise HTTPException(status_code=409, detail="错误预算已耗尽，禁止执行发布")
+            raise HTTPException(status_code=409, detail="The error budget is exhausted, so release execution is not allowed.")
         job = await deps.submit_release(release, _actor(request))
         updated = deps.store.update_release(release_id, status="executing", ops_job_id=job.get("id"), execution=job)
         return {"status": "accepted", "release": updated, "job": job}

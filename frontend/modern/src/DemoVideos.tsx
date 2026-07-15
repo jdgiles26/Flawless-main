@@ -28,36 +28,36 @@ import {
 type DemoMode = "inspection" | "skills" | "topology";
 
 const navItems = [
-  { key: "chat", label: "SRE 对话", group: "核心", icon: MessageSquareText },
-  { key: "inspection", label: "AI 巡检", group: "核心", icon: Search },
-  { key: "topology", label: "拓扑影响", group: "核心", icon: Network },
-  { key: "dashboard", label: "运行总览", group: "运维闭环", icon: LayoutDashboard },
-  { key: "opsHub", label: "资源事件", group: "运维闭环", icon: PackageSearch },
-  { key: "skills", label: "Skill 库", group: "运维闭环", icon: BrainCircuit },
-  { key: "reliability", label: "发布治理", group: "运维", icon: ShieldCheck },
-  { key: "effectiveness", label: "运维成效", group: "运维", icon: Activity },
-  { key: "platform", label: "平台能力", group: "平台", icon: Settings2 },
+  { key: "chat", label: "SRE Chat", group: "Core", icon: MessageSquareText },
+  { key: "inspection", label: "AI Inspection", group: "Core", icon: Search },
+  { key: "topology", label: "Topology Impact", group: "Core", icon: Network },
+  { key: "dashboard", label: "Runtime Overview", group: "Operations Loop", icon: LayoutDashboard },
+  { key: "opsHub", label: "Resource Events", group: "Operations Loop", icon: PackageSearch },
+  { key: "skills", label: "Skill Library", group: "Operations Loop", icon: BrainCircuit },
+  { key: "reliability", label: "Release Governance", group: "Operations", icon: ShieldCheck },
+  { key: "effectiveness", label: "Operations Effectiveness", group: "Operations", icon: Activity },
+  { key: "platform", label: "Platform Capabilities", group: "Platform", icon: Settings2 },
 ] as const;
 
 const skills = [
-  ["PVC/PV 静态供给", "storage", "Pending PVC、未绑定 PV、StorageClass 不匹配", "create_pv · bind_pvc"],
-  ["Volume Permission 修复", "runtime", "mkdir permission denied、挂载目录不可写", "patch_security_context"],
-  ["CrashLoop 根因深挖", "runtime", "容器反复退出、previous log 有异常", "collect_logs · patch_workload"],
-  ["镜像架构检测", "supply-chain", "exec format error、arm/amd64 架构不匹配", "inspect_image_manifest"],
-  ["ImagePullBackOff 凭据修复", "registry", "私有仓库拉取失败、Secret 缺失", "patch_pull_secret"],
-  ["Service Endpoint 空路由", "network", "Service 无后端、selector 漂移", "patch_service_selector"],
-  ["NetworkPolicy 出站诊断", "network", "跨集群调用失败、外部依赖不可达", "trace_egress_flow"],
-  ["Ingress TLS 证书轮换", "edge", "证书过期、SNI 不匹配", "rotate_tls_secret"],
-  ["Node DiskPressure 隔离", "node", "节点磁盘压力、驱逐风险", "cordon_node · cleanup_image"],
-  ["OOMKill 资源画像", "capacity", "内存不足、Limit 配置过低", "resize_resources"],
-  ["HPA 抖动稳定", "capacity", "副本频繁扩缩、指标毛刺", "patch_hpa_behavior"],
-  ["ConfigMap 漂移恢复", "config", "配置误删、环境变量变更未发布", "restore_configmap"],
-  ["Kafka Lag 快速收敛", "middleware", "消费堆积、分区不均衡", "rebalance_consumer"],
-  ["数据库连接风暴", "database", "连接池打满、慢 SQL 放大", "throttle_connections"],
-  ["VM 高 I/O 定位", "virtual-machine", "虚拟机磁盘延迟、业务 I/O 抖动", "inspect_vm_io"],
-  ["灰度发布门禁", "release", "发布前风险判定、错误预算保护", "release_gate"],
-  ["跨集群数据流溯源", "ebpf", "东西向/南北向流量异常", "trace_flow_topology"],
-  ["Emergency Rollback", "release", "紧急回滚、配置误删恢复", "rollback_workload"],
+  ["PVC/PV Static Provisioning", "storage", "Pending PVC, unbound PV, or StorageClass mismatch", "create_pv · bind_pvc"],
+  ["Volume Permission Repair", "runtime", "mkdir permission denied or mount directory not writable", "patch_security_context"],
+  ["CrashLoop Root Cause Deep Dive", "runtime", "Container exits repeatedly or previous logs show errors", "collect_logs · patch_workload"],
+  ["Image Architecture Check", "supply-chain", "exec format error or arm/amd64 architecture mismatch", "inspect_image_manifest"],
+  ["ImagePullBackOff Credential Repair", "registry", "Private registry pull failure or missing Secret", "patch_pull_secret"],
+  ["Empty Service Endpoint Routing", "network", "Service has no backends or selector drift", "patch_service_selector"],
+  ["NetworkPolicy Egress Diagnosis", "network", "Cross-cluster calls fail or external dependencies are unreachable", "trace_egress_flow"],
+  ["Ingress TLS Certificate Rotation", "edge", "Certificate expired or SNI mismatch", "rotate_tls_secret"],
+  ["Node DiskPressure Isolation", "node", "Node disk pressure or eviction risk", "cordon_node · cleanup_image"],
+  ["OOMKill Resource Profiling", "capacity", "Insufficient memory or limit configured too low", "resize_resources"],
+  ["HPA Stabilization", "capacity", "Frequent replica scaling or metric spikes", "patch_hpa_behavior"],
+  ["ConfigMap Drift Recovery", "config", "Configuration accidentally deleted or environment variable changes not released", "restore_configmap"],
+  ["Kafka Lag Rapid Mitigation", "middleware", "Consumer backlog or partition imbalance", "rebalance_consumer"],
+  ["Database Connection Storm", "database", "Connection pool saturation or slow SQL amplification", "throttle_connections"],
+  ["VM High I/O Diagnosis", "virtual-machine", "Virtual machine disk latency or application I/O jitter", "inspect_vm_io"],
+  ["Canary Release Gate", "release", "Pre-release risk assessment and error-budget protection", "release_gate"],
+  ["Cross-Cluster Data Flow Tracing", "ebpf", "East-west or north-south traffic anomalies", "trace_flow_topology"],
+  ["Emergency Rollback", "release", "Emergency rollback or recovery from accidental configuration deletion", "rollback_workload"],
 ];
 
 function useDemoProgress(durationMs: number) {
@@ -119,7 +119,7 @@ function humanPoint(
 }
 
 function DemoShell({ mode, phase = "", children }: { mode: DemoMode; phase?: string; children: React.ReactNode }) {
-  const title = mode === "inspection" ? "AI 巡检" : mode === "skills" ? "Skill 库" : "拓扑影响";
+  const title = mode === "inspection" ? "AI Inspection" : mode === "skills" ? "Skill Library" : "Topology Impact";
 
   useEffect(() => {
     document.body.dataset.theme = "dark";
@@ -161,7 +161,7 @@ function DemoShell({ mode, phase = "", children }: { mode: DemoMode; phase?: str
             <span className="health-dot warn" />
             <span className="health-dot warn" />
           </div>
-          <button className="ghost tiny"><RefreshCcw size={14} />刷新状态</button>
+          <button className="ghost tiny"><RefreshCcw size={14} />Refresh Status</button>
         </div>
         <div className="author-watermark"><span>Built by</span><strong>the maintainer</strong></div>
       </aside>
@@ -169,14 +169,14 @@ function DemoShell({ mode, phase = "", children }: { mode: DemoMode; phase?: str
         <div className="topbar demo-topbar">
           <div>
             <h1>{title}</h1>
-            <p>{mode === "topology" ? "数据流、爆炸半径与发布影响一屏收敛" : mode === "skills" ? "把专家经验沉淀为可复用的运维能力" : "风险发现、AI 预演、人工确认、自动验证闭环"}</p>
+            <p>{mode === "topology" ? "Data flow, blast radius, and release impact in one consolidated view" : mode === "skills" ? "Turn expert experience into reusable operational capabilities" : "Risk detection, AI preview, human approval, and automated verification in a closed loop"}</p>
           </div>
           <div className="top-actions">
             <select aria-label="model">
               <option>primary</option>
               <option>deepseek-ops</option>
             </select>
-            <button className="ghost tiny">日间</button>
+            <button className="ghost tiny">Light</button>
           </div>
         </div>
         {children}
@@ -197,10 +197,10 @@ function InspectionDemo() {
     progress < 0.50 ? "phase-plan" :
     progress < 0.86 ? "phase-execute" :
     "phase-verify";
-  const discovered = progress < 0.12 ? "扫描中" : progress < 0.24 ? "218" : "476";
+  const discovered = progress < 0.12 ? "Scanning" : progress < 0.24 ? "218" : "476";
   const p1 = progress < 0.12 ? "--" : progress < 0.24 ? "61" : progress < 0.90 ? "152" : "151";
-  const plans = progress < 0.24 ? "生成中" : progress < 0.90 ? "476" : "已收敛";
-  const skillRoutes = progress < 0.24 ? "匹配中" : "476";
+  const plans = progress < 0.24 ? "Generating" : progress < 0.90 ? "476" : "Converged";
+  const skillRoutes = progress < 0.24 ? "Matching" : "476";
   const cursorMove = easeBetween(progress, 0.48, 0.545);
   const [inspectionX, inspectionY] = humanPoint(cursorMove, [-420, -45], [-310, 34], [-118, -16], [6, -3], 7);
   const cursorClick = progress >= 0.545 && progress <= 0.575 ? 0.84 : 1;
@@ -210,38 +210,38 @@ function InspectionDemo() {
     progress < 0.90 ? "confirm-running" :
     "confirm-done";
   const confirmText =
-    progress < 0.545 ? "确认并执行" :
-    progress < 0.59 ? "已确认" :
-    progress < 0.90 ? "执行中..." :
-    "执行完成";
+    progress < 0.545 ? "Confirm and Execute" :
+    progress < 0.59 ? "Confirmed" :
+    progress < 0.90 ? "Executing..." :
+    "Execution Complete";
   const inspectionCursorStyle: React.CSSProperties = {
     animation: "none",
     opacity: progress >= 0.47 && progress <= 0.62 ? 1 : 0,
     transform: `translate(${inspectionX}px, ${inspectionY}px) scale(${cursorClick})`,
   };
   const findings = [
-    ["P1", "k8s-agent-alloy-4t8hf", "CrashLoop/OOM 与挂载目录权限异常", "DaemonSet/k8s-agent-alloy"],
-    ["P1", "k8s-agent-loki-58bd7", "PVC 已存在但未绑定 PV，调度被阻塞", "Deployment/k8s-agent-loki"],
-    ["P2", "grafana-6d5544", "镜像架构与节点平台存在兼容风险", "Deployment/k8s-agent-grafana"],
-    ["P2", "tempo-ingester", "重启次数升高，外部存储写入延迟", "StatefulSet/k8s-agent-tempo"],
+    ["P1", "k8s-agent-alloy-4t8hf", "CrashLoop/OOM with abnormal mount-directory permissions", "DaemonSet/k8s-agent-alloy"],
+    ["P1", "k8s-agent-loki-58bd7", "PVC exists but is not bound to a PV, blocking scheduling", "Deployment/k8s-agent-loki"],
+    ["P2", "grafana-6d5544", "Image architecture may be incompatible with the node platform", "Deployment/k8s-agent-grafana"],
+    ["P2", "tempo-ingester", "Restart count is rising and external storage writes are delayed", "StatefulSet/k8s-agent-tempo"],
   ];
   const evidence = ["previous logs", "Kubernetes Events", "Workload YAML", "PVC/PV", "Node runtime"];
   const planSteps = [
-    ["1", "锁定影响对象", "从 Pod 反查 DaemonSet、ReplicaSet、Node 与挂载卷，避免修错排名第一之外的目标。"],
-    ["2", "拉取多源证据", "采集 current/previous logs、Events、describe、YAML、PVC/PV、节点 runtime 状态。"],
-    ["3", "根因归并", "把 permission denied 与 read-only file system 归并到挂载权限链，而不是误判成应用代码错误。"],
-    ["4", "生成候选方案", "输出 fsGroup、initContainer chown、PV 权限修复、回滚路径四类方案并做风险排序。"],
-    ["5", "选择最小变更", "只 patch securityContext.fsGroup 与 fsGroupChangePolicy，不扩大镜像或业务配置变更。"],
-    ["6", "人工确认执行", "生成差异、影响范围、回滚命令，确认后才进入受控执行。"],
-    ["7", "滚动重建并观察", "rollout 后等待新 Pod 调度、挂载、启动，并实时读取新旧日志。"],
-    ["8", "恢复验证", "验证 Ready、重启次数、Events、写入探针和业务探针，失败则进入下一轮方案。"],
+    ["1", "Lock the Affected Target", "Trace back from the Pod to the DaemonSet, ReplicaSet, Node, and mounted volumes to avoid fixing anything other than the top-ranked target."],
+    ["2", "Collect Multi-Source Evidence", "Collect current/previous logs, Events, describe output, YAML, PVC/PV data, and node runtime status."],
+    ["3", "Consolidate Root Cause", "Group permission denied and read-only file system under the mount-permission chain instead of misclassifying them as application code errors."],
+    ["4", "Generate Candidate Plans", "Produce four plan types—fsGroup, initContainer chown, PV permission repair, and rollback path—and rank them by risk."],
+    ["5", "Choose the Minimal Change", "Patch only securityContext.fsGroup and fsGroupChangePolicy without expanding image or business configuration changes."],
+    ["6", "Require Human Approval", "Generate the diff, impact scope, and rollback commands, then enter controlled execution only after approval."],
+    ["7", "Roll Rebuild and Observe", "After rollout, wait for the new Pod to schedule, mount, and start, while reading new and old logs in real time."],
+    ["8", "Recovery Verification", "Verify readiness, restart count, Events, write probes, and business probes; if verification fails, proceed to the next plan."],
   ];
   const opSteps = [
-    ["采集证据", "events/logs/yaml/pvc/node"],
-    ["根因诊断", "permission denied + volume mount"],
-    ["提交变更", "patch securityContext + rollout"],
-    ["等待新 Pod", "调度、挂载、容器启动"],
-    ["验证恢复", "Ready 1/1 + no new BackOff"],
+    ["Collect Evidence", "events/logs/yaml/pvc/node"],
+    ["Diagnose Root Cause", "permission denied + volume mount"],
+    ["Apply Change", "patch securityContext + rollout"],
+    ["Wait for New Pod", "Scheduling, mounting, container startup"],
+    ["Verify Recovery", "Ready 1/1 + no new BackOff"],
   ];
   const executionProgress = easeBetween(progress, 0.59, 0.92);
   const activeOp = Math.min(opSteps.length - 1, Math.floor(executionProgress * opSteps.length));
@@ -258,31 +258,31 @@ function InspectionDemo() {
       <section className="demo-grid demo-inspection-layout">
         <div className="panel demo-scope-panel">
           <div className="panel-title">
-            <span><Search size={16} />巡检范围</span>
-            <button className="primary"><Play size={15} />立即巡检</button>
+            <span><Search size={16} />Inspection Scope</span>
+            <button className="primary"><Play size={15} />Inspect Now</button>
           </div>
           <div className="demo-form-row">
-            <label>集群<select><option>所有集群</option></select></label>
-            <label>Namespace<select><option>所有 Namespace</option></select></label>
-            <label>定时巡检<select><option>每 2 小时</option></select></label>
+            <label>Cluster<select><option>All Clusters</option></select></label>
+            <label>Namespace<select><option>All Namespaces</option></select></label>
+            <label>Scheduled Inspection<select><option>Every 2 Hours</option></select></label>
           </div>
           <div className="demo-toggle-row">
-            <span className="demo-check on" />生产模式
-            <span className="demo-check" />自动运维
-            <span className="demo-check on" />人工确认
+            <span className="demo-check on" />Production Mode
+            <span className="demo-check" />Automated Operations
+            <span className="demo-check on" />Human Approval
           </div>
           <div className="demo-scan-line"><i /></div>
         </div>
-        <Kpi label="发现问题" value={discovered} />
+        <Kpi label="Issues Found" value={discovered} />
         <Kpi label="P0/P1" value={p1} tone="danger" />
-        <Kpi label="可执行计划" value={plans} tone="good" />
-        <Kpi label="Skill 路由" value={skillRoutes} />
+        <Kpi label="Executable Plans" value={plans} tone="good" />
+        <Kpi label="Skill Routing" value={skillRoutes} />
       </section>
 
       <section className="panel demo-finding-panel">
         <div className="panel-title">
-          <span><ShieldCheck size={16} />异常队列</span>
-          <small>{progress < 0.34 ? "正在采集事件、日志、YAML 与拓扑证据" : "按业务影响、爆炸半径、证据强度自动排序"}</small>
+          <span><ShieldCheck size={16} />Anomaly Queue</span>
+          <small>{progress < 0.34 ? "Collecting Events, logs, YAML, and topology evidence" : "Automatically ranked by business impact, blast radius, and evidence strength"}</small>
         </div>
         <div className="demo-findings">
           {findings.map((item, index) => (
@@ -290,10 +290,10 @@ function InspectionDemo() {
               <b>{index === 0 && progress >= 0.90 ? "OK" : item[0]}</b>
               <div>
                 <strong>[nonprod-wgq-s2-system] Pod {item[1]}</strong>
-                <p>{index === 0 && progress >= 0.90 ? "Ready 1/1，restartCount 稳定，未再出现 BackOff 与写入失败" : item[2]} · 所属 {item[3]}</p>
+                <p>{index === 0 && progress >= 0.90 ? "Ready 1/1, restartCount stable, with no further BackOff or write failures" : item[2]} · Owned by {item[3]}</p>
                 <span>k8s-agent</span><span>{index === 0 && progress >= 0.90 ? "recovered" : "evidence-ready"}</span><span>{index === 0 && progress >= 0.90 ? "verified" : "skill-matched"}</span>
               </div>
-              <button className="ghost tiny">{index === 0 && progress >= 0.90 ? <CheckCircle2 size={14} /> : <Sparkles size={14} />}{index === 0 && progress >= 0.90 ? "已恢复" : "AI 预演"}</button>
+              <button className="ghost tiny">{index === 0 && progress >= 0.90 ? <CheckCircle2 size={14} /> : <Sparkles size={14} />}{index === 0 && progress >= 0.90 ? "Recovered" : "AI Preview"}</button>
             </article>
           ))}
         </div>
@@ -301,24 +301,24 @@ function InspectionDemo() {
 
       <section className="panel demo-preview-panel">
         <div className="panel-title">
-          <span><Zap size={16} />实时 AI 运维预演</span>
-          <strong className="demo-badge">{progress < 0.24 ? "采集中" : progress < 0.54 ? "生成方案" : progress < 0.59 ? "等待确认" : progress < 0.90 ? "执行中" : "已恢复"}</strong>
+          <span><Zap size={16} />Live AI Operations Preview</span>
+          <strong className="demo-badge">{progress < 0.24 ? "Collecting" : progress < 0.54 ? "Generating Plan" : progress < 0.59 ? "Awaiting Approval" : progress < 0.90 ? "Executing" : "Recovered"}</strong>
         </div>
         <div className="demo-phase-strip">
-          <span className={progress >= 0.12 ? "on" : ""}>异常发现</span>
-          <span className={progress >= 0.24 ? "on" : ""}>AI 生成方案</span>
-          <span className={progress >= 0.54 ? "on" : ""}>人工确认</span>
-          <span className={progress >= 0.86 ? "on" : ""}>验证恢复</span>
+          <span className={progress >= 0.12 ? "on" : ""}>Anomaly Detection</span>
+          <span className={progress >= 0.24 ? "on" : ""}>AI Plan Generation</span>
+          <span className={progress >= 0.54 ? "on" : ""}>Human Approval</span>
+          <span className={progress >= 0.86 ? "on" : ""}>Verify Recovery</span>
         </div>
         <div className="demo-preview-head">
-          <div><small>受控运维计划</small><strong>Volume permission recovery</strong></div>
-          <div><small>证据链</small><strong>{evidence.join(" · ")}</strong></div>
-          <div><small>目标链</small><strong>DaemonSet/k8s-agent-alloy → Pod</strong></div>
+          <div><small>Controlled Operations Plan</small><strong>Volume permission recovery</strong></div>
+          <div><small>Evidence Chain</small><strong>{evidence.join(" · ")}</strong></div>
+          <div><small>Target Chain</small><strong>DaemonSet/k8s-agent-alloy → Pod</strong></div>
         </div>
         <div className="demo-ai-plan">
           <div className="demo-ai-plan-title">
-            <strong>AI 生成的完整运维方案</strong>
-            <span>8 步闭环 · 可回滚 · 失败自动进入下一轮方案</span>
+            <strong>Complete Operations Plan Generated by AI</strong>
+            <span>8-step closed loop · rollback-ready · automatically moves to the next plan on failure</span>
           </div>
           <div className="demo-ai-plan-grid">
             {planSteps.map((step, index) => (
@@ -334,8 +334,8 @@ function InspectionDemo() {
         </div>
         <div className="demo-confirm-row">
           <div>
-            <strong>人工确认</strong>
-            <p>AI 已生成可回滚变更，确认后进入执行流并全程留痕。</p>
+            <strong>Human Approval</strong>
+            <p>AI has generated a rollback-ready change. After approval, it enters the execution flow with full traceability.</p>
           </div>
           <button className={`primary demo-confirm-button ${confirmState}`}>
             {confirmState === "confirm-running" ? <Wrench size={15} /> : <CheckCircle2 size={15} />}
@@ -357,15 +357,15 @@ function InspectionDemo() {
             })}
           </div>
           <div className="demo-terminal">
-            <p>[INIT] 查看事件与 previous logs</p>
+            <p>[INIT] Review Events and previous logs</p>
             <p>[LOG] mkdir data-alloy: read-only file system</p>
-            <p>[RCA] 挂载目录权限与 fsGroup 不匹配，非应用代码问题</p>
+            <p>[RCA] Mount-directory permissions do not match fsGroup; this is not an application code issue</p>
             <p>[PATCH] securityContext.fsGroup=1000 + rollout restart</p>
-            <p>[VERIFY] 等待新 Pod Ready，持续检查 Events 与业务探针</p>
+            <p>[VERIFY] Wait for the new Pod to become Ready while continuously checking Events and business probes</p>
             <p>[DONE] new pod Ready 1/1，restartCount stable，Events no backoff</p>
           </div>
           <div className="demo-patch-card">
-            <strong>找变更内容</strong>
+            <strong>Change Details</strong>
             <pre>{`securityContext:
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
@@ -387,10 +387,10 @@ rollout:
 function SkillsDemo() {
   const progress = useDemoProgress(16500);
   const phase = progress < 0.32 ? "phase-browse" : progress < 0.58 ? "phase-inject" : progress < 0.8 ? "phase-match" : "phase-ready";
-  const skillName = progress < 0.58 ? "PVC Pending 静态 PV 恢复" : "网络插件版本兼容性排查";
+  const skillName = progress < 0.58 ? "PVC Pending Static PV Recovery" : "Network Plugin Version Compatibility Analysis";
   const skillDesc = progress < 0.58
-    ? "当 PVC 长时间 Pending 且无可用 PV 时，自动校验 StorageClass、容量、访问模式，并生成静态 PV 绑定方案。"
-    : "当应用日志缺少直接错误但数据面异常时，沿拓扑影响路径采集 CNI、Service、Endpoint 与 eBPF 流量证据，定位网络插件兼容问题。";
+    ? "When a PVC remains Pending for a long time and no PV is available, automatically validate the StorageClass, capacity, and access mode, then generate a static PV binding plan."
+    : "When application logs lack direct errors but the data plane is abnormal, collect CNI, Service, Endpoint, and eBPF traffic evidence along the topology impact path to identify network plugin compatibility issues.";
   const scrollPct =
     progress < 0.10 ? 0 :
     progress < 0.24 ? interpolate(0, 25, easeOutCubic(easeBetween(progress, 0.10, 0.24))) :
@@ -419,38 +419,38 @@ function SkillsDemo() {
       <section className="demo-skills-layout">
         <div className="panel demo-skill-editor">
           <div className="panel-title">
-            <span><BrainCircuit size={16} />运维 Skill 注入</span>
-            <button className="ghost tiny">导入 Skill</button>
+            <span><BrainCircuit size={16} />Operations Skill Injection</span>
+            <button className="ghost tiny">Import Skill</button>
           </div>
           <div className="demo-form-row two">
-            <label>Skill 名称<input value={skillName} readOnly /></label>
-            <label>类别<select><option>{progress < 0.58 ? "存储" : "网络"}</option></select></label>
+            <label>Skill Name<input value={skillName} readOnly /></label>
+            <label>Category<select><option>{progress < 0.58 ? "Storage" : "Network"}</option></select></label>
           </div>
-          <label>一句话说明<textarea value={skillDesc} readOnly /></label>
+          <label>One-Line Description<textarea value={skillDesc} readOnly /></label>
           <div className="demo-choice-grid">
-            <span>适用对象：Pod</span><span>Deployment</span><span>StatefulSet</span><span>PersistentVolumeClaim</span>
-            <span>需要证据：Events</span><span>YAML</span><span>StorageClass</span><span>Node capacity</span>
+            <span>Applies to: Pod</span><span>Deployment</span><span>StatefulSet</span><span>PersistentVolumeClaim</span>
+            <span>Required Evidence: Events</span><span>YAML</span><span>StorageClass</span><span>Node capacity</span>
           </div>
-          <div className="demo-skill-note"><GitBranch size={15} />兼容 Agent Skills 开放规范，可迁移到其他智能体运行时。</div>
-          <button className="primary">{progress < 0.8 ? "保存并生成 Skill 包" : "已加入企业 Skill 库"}</button>
+          <div className="demo-skill-note"><GitBranch size={15} />Compatible with the open Agent Skills specification and portable to other agent runtimes.</div>
+          <button className="primary">{progress < 0.8 ? "Save and Generate Skill Package" : "Added to the Enterprise Skill Library"}</button>
         </div>
         <div className="panel demo-skill-match">
-          <div className="panel-title"><span><Sparkles size={16} />匹配测试</span></div>
-          <textarea value="Pod CrashLoopBackOff，previous logs 提示 permission denied，挂载 PVC 后启动失败" readOnly />
-          <button className="primary">测试匹配</button>
+          <div className="panel-title"><span><Sparkles size={16} />Match Test</span></div>
+          <textarea value="Pod CrashLoopBackOff, previous logs show permission denied, and startup fails after mounting the PVC" readOnly />
+          <button className="primary">Test Match</button>
           <div className="demo-match-result">
-            <strong>匹配结果</strong>
-            <span>Volume Permission 修复 98%</span>
-            <span>CrashLoop 根因深挖 92%</span>
-            <span>PVC/PV 静态供给 84%</span>
+            <strong>Match Results</strong>
+            <span>Volume Permission Repair 98%</span>
+            <span>CrashLoop Root Cause Deep Dive 92%</span>
+            <span>PVC/PV Static Provisioning 84%</span>
           </div>
         </div>
       </section>
 
       <section className="panel demo-skills-bank">
         <div className="panel-title">
-          <span><Database size={16} />Skill 库</span>
-          <small>越使用、越沉淀、越接近企业自己的专家系统</small>
+          <span><Database size={16} />Skill Library</span>
+          <small>The more it is used, the more it accumulates and approaches the enterprise's own expert system</small>
         </div>
         <div className="demo-skill-scroll">
           <span className="demo-scroll-thumb" style={{ animation: "none", transform: `translateY(${thumbPx}px)` }} />
@@ -485,13 +485,13 @@ type TopologyNode = {
 };
 
 const topologyNodes: TopologyNode[] = [
-  { id: "external", label: "External", sub: "客户入口 / UAAS", position: [-20, 0, 4], color: 0x2b77ff, size: 1.8 },
+  { id: "external", label: "External", sub: "Customer Entry / UAAS", position: [-20, 0, 4], color: 0x2b77ff, size: 1.8 },
   { id: "ingress", label: "Ingress", sub: "edge-gateway", position: [-11, 6, -4], color: 0x4d99ff, size: 1.55 },
   { id: "orders", label: "orders-api", sub: "canary v2.4.1", position: [-1, 1, 1], color: 0x46b7ff, risk: true, size: 1.9 },
   { id: "svc", label: "Service", sub: "orders-svc", position: [7, -3, 2], color: 0x56d8ff, size: 1.45 },
   { id: "kafka", label: "Kafka", sub: "middleware cluster", position: [14, 7, -5], color: 0x8b72ff, risk: true, size: 1.75 },
-  { id: "cbs", label: "CBS", sub: "财务链路", position: [20, 0, 3], color: 0xff6f8e, risk: true, size: 1.65 },
-  { id: "ecp", label: "ECP", sub: "关务集成", position: [13, -9, 6], color: 0x66d3aa, risk: true, size: 1.45 },
+  { id: "cbs", label: "CBS", sub: "Financial Path", position: [20, 0, 3], color: 0xff6f8e, risk: true, size: 1.65 },
+  { id: "ecp", label: "ECP", sub: "Customs Integration", position: [13, -9, 6], color: 0x66d3aa, risk: true, size: 1.45 },
   { id: "elk", label: "ELK", sub: "logging flow", position: [-9, -10, -8], color: 0x5ad7ff, size: 1.45 },
   { id: "uaas", label: "UAAS", sub: "account center", position: [-19, -8, -8], color: 0x66d3aa, size: 1.2 },
   { id: "control", label: "SCCT", sub: "control tower", position: [4, 10, 8], color: 0xffcf6b, risk: true, size: 1.25 },
@@ -749,8 +749,8 @@ function TopologyThreeScene() {
 function TopologyDemo() {
   const progress = useDemoProgress(22000);
   const phase = progress < 0.28 ? "phase-flow" : progress < 0.5 ? "phase-release" : progress < 0.75 ? "phase-impact" : "phase-gate";
-  const impactNodes = progress < 0.32 ? "扫描中" : progress < 0.55 ? "11" : "18";
-  const criticalPaths = progress < 0.44 ? "计算中" : "3";
+  const impactNodes = progress < 0.32 ? "Scanning" : progress < 0.55 ? "11" : "18";
+  const criticalPaths = progress < 0.44 ? "Calculating" : "3";
   const amp = progress < 0.54 ? "--" : "4.7";
   const topologyCursorMove = easeBetween(progress, 0.3, 0.48);
   const [topologyX, topologyY] = humanPoint(topologyCursorMove, [520, -260], [330, -212], [156, -48], [56, 8], 7);
@@ -766,68 +766,68 @@ function TopologyDemo() {
         <div className="panel demo-topology-panel">
           <div className="demo-topology-toolbar">
             <div className="segmented">
-              <button><Workflow size={14} />依赖图</button>
-              <button className="active"><Network size={14} />3D 世界</button>
+              <button><Workflow size={14} />Dependency Graph</button>
+              <button className="active"><Network size={14} />3D World</button>
             </div>
             <select><option>nonprod-wgq-s2-system</option></select>
             <select><option>cattle-neuvector-system</option><option>orders</option></select>
             <select><option>Deployment/orders-api</option></select>
-            <button className="ghost tiny"><ZoomIn size={14} />放大</button>
-            <button className="ghost tiny"><ZoomOut size={14} />缩小</button>
-            <button className="ghost tiny"><RefreshCcw size={14} />复位</button>
+            <button className="ghost tiny"><ZoomIn size={14} />Zoom In</button>
+            <button className="ghost tiny"><ZoomOut size={14} />Zoom Out</button>
+            <button className="ghost tiny"><RefreshCcw size={14} />Reset</button>
             <div className="topology-legend-inline"><span className="workload">Workload</span><span className="pod">Pod</span><span className="service">Service</span><span className="data">Data</span><span className="risk">Risk</span></div>
           </div>
           <div className="demo-flow-stage demo-three-stage">
             <TopologyThreeScene />
-            <div className="demo-release-chip"><GitBranch size={14} />提交变更：orders-api v2.4.1 · 灰度 5%</div>
+            <div className="demo-release-chip"><GitBranch size={14} />Submitted change: orders-api v2.4.1 · 5% canary</div>
             <button className="demo-node-focus-hotspot">
               <span>Deployment/orders-api</span>
-              <small>点击查看变更数据流</small>
+              <small>Click to view the change data flow</small>
             </button>
             <span className="demo-cursor demo-topology-cursor" style={topologyCursorStyle} />
             <div className="demo-selected-flow-card">
-              <strong>已选中：orders-api</strong>
-              <p>模拟变更后，订单入口、Kafka、CBS、ECP 相关数据流被标红。</p>
+              <strong>Selected: orders-api</strong>
+              <p>After simulating the change, data flows related to the order entry, Kafka, CBS, and ECP are highlighted in red.</p>
             </div>
             <div className="demo-three-status">
-              <span className={progress >= 0.25 ? "on" : ""}>捕获 eBPF 数据流</span>
-              <span className={progress >= 0.45 ? "hot" : ""}>影响链路隔离</span>
-              <span className={progress >= 0.72 ? "on" : ""}>门禁建议生成</span>
+              <span className={progress >= 0.25 ? "on" : ""}>Capture eBPF Data Flow</span>
+              <span className={progress >= 0.45 ? "hot" : ""}>Impact Path Isolation</span>
+              <span className={progress >= 0.72 ? "on" : ""}>Gate Recommendation Generated</span>
             </div>
           </div>
         </div>
 
         <aside className="panel demo-impact-panel">
           <div className="panel-title">
-            <span><BrainCircuit size={16} />AI 影响分析</span>
-            <button className="primary"><Play size={14} />分析</button>
+            <span><BrainCircuit size={16} />AI Impact Analysis</span>
+            <button className="primary"><Play size={14} />Analyze</button>
           </div>
           <div className="insight-stack">
-            <div className="metric"><span>拓扑节点</span><strong>30</strong></div>
-            <div className="metric"><span>关系边</span><strong>54</strong></div>
-            <div className="metric"><span>CMDB 状态</span><strong>ok</strong></div>
+            <div className="metric"><span>Topology Nodes</span><strong>30</strong></div>
+            <div className="metric"><span>Relationship Edges</span><strong>54</strong></div>
+            <div className="metric"><span>CMDB Status</span><strong>ok</strong></div>
           </div>
           <div className="analysis-card selected-node">
             <span>workload · nonprod-wgq-s2-system</span>
             <strong>Deployment/orders-api</strong>
-            <p>orders namespace · 风险状态 {progress >= 0.55 ? "high" : "normal"}</p>
+            <p>orders namespace · Risk Status {progress >= 0.55 ? "high" : "normal"}</p>
           </div>
           <div className="analysis-card">
             <div className="score-grid">
-              <span>等级 {progress >= 0.55 ? "high" : "计算中"}</span>
+              <span>Level {progress >= 0.55 ? "high" : "Calculating"}</span>
               <span>score {progress >= 0.55 ? "0.82" : "--"}</span>
               <span>Amp {amp}</span>
-              <span>路径 {criticalPaths}</span>
+              <span>Paths {criticalPaths}</span>
             </div>
             <div className="demo-selected-node-panel">
-              <strong>选中节点：Deployment/orders-api</strong>
-              <span>入站：External / Ingress / UAAS</span>
-              <span>出站：Kafka / CBS / ECP / ELK</span>
+              <strong>Selected Node: Deployment/orders-api</strong>
+              <span>Inbound: External / Ingress / UAAS</span>
+              <span>Outbound: Kafka / CBS / ECP / ELK</span>
             </div>
           </div>
           <div className="demo-impact-story">
-            <strong>灰度发布门禁结论</strong>
-            <p>建议先放行 5% 灰度，观察订单入口、Kafka 中间件集群、CBS 财务链路三条关键路径。若 SLO 错误预算连续 10 分钟消耗异常，自动冻结扩大发布。</p>
+            <strong>Canary Release Gate Conclusion</strong>
+            <p>Recommend approving a 5% canary first and observing the three critical paths: the order entry, the Kafka middleware cluster, and the CBS financial path. If SLO error-budget consumption is abnormal for 10 consecutive minutes, automatically freeze further rollout.</p>
           </div>
           <div className="demo-impact-list">
             <span className="hot">orders-api → Kafka → ELK</span>

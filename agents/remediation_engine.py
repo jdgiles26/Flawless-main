@@ -145,38 +145,38 @@ ACTION_CATALOG: dict[str, dict[str, Any]] = {
 }
 
 ACTION_OPERATOR_GUIDANCE: dict[str, dict[str, str]] = {
-    "create_workload": {"label": "创建新 Workload", "when_to_use": "发布治理已校验完整 YAML，需要创建新的 Deployment、StatefulSet 或 DaemonSet。", "operator_note": "高风险；创建前必须检查命名空间、镜像、资源、探针、ServiceAccount 和回滚方式。"},
-    "patch_workload": {"label": "修改 Workload 配置", "when_to_use": "证据确认 Deployment/StatefulSet/DaemonSet 的镜像、探针、资源、副本、环境变量或安全上下文配置有误。", "operator_note": "只修改受控字段，执行前展示差异；可通过恢复原模板回滚。"},
-    "restart": {"label": "滚动重启组件", "when_to_use": "配置已正确但进程卡死、连接未刷新或需要让 Workload 重新拉起 Pod。", "operator_note": "不会修复错误配置；必须先确认有足够副本和 PDB 允许滚动。"},
-    "scale_out": {"label": "增加副本", "when_to_use": "CPU、并发或流量证据显示容量不足，且应用支持水平扩展。", "operator_note": "只在副本上限内扩容，并观察下游依赖和资源配额。"},
-    "recreate_pod": {"label": "重建异常 Pod", "when_to_use": "单个 controller 管理的 Pod 状态损坏，而 Workload 模板和其他副本正常。", "operator_note": "删除后由控制器按原模板重建；不适合模板级、存储级或全副本故障。"},
-    "patch_hpa": {"label": "调整 HPA 范围", "when_to_use": "HPA 上下限阻止合理扩缩容，且指标语义和数据源正常。", "operator_note": "不会修改指标算法，只调整 min/max replicas。"},
-    "expand_pvc": {"label": "扩容 PVC", "when_to_use": "卷使用率接近上限，StorageClass 明确支持扩容。", "operator_note": "通常不可逆；必须核对文件系统扩容支持和业务备份。"},
-    "create_pvc": {"label": "创建缺失 PVC", "when_to_use": "Workload 明确引用不存在的 PVC，且存储策略、容量和访问模式已确认。", "operator_note": "高风险；只能按批准的 StorageClass 或模板创建。"},
-    "create_pv": {"label": "创建静态 PV", "when_to_use": "动态供卷不可用，且存储管理员已提供批准的后端路径和绑定信息。", "operator_note": "高风险；严禁由 LLM 编造 NFS、LUN 或目录路径。"},
-    "patch_workload_volume": {"label": "修正卷引用", "when_to_use": "证据证明 Workload 引用了错误的 PVC、volume 或 mount 配置。", "operator_note": "高风险；需要完整存储链证据和原配置回滚点。"},
-    "patch_workload_runtime_security": {"label": "修复运行时权限", "when_to_use": "日志/事件证明挂载目录所有权导致容器无法写入，且 fsGroup 方案不足，需要受控 initContainer 或安全上下文调整。", "operator_note": "高风险；必须逐步确认，只允许有界的 chown/chmod/mkdir 权限修复命令。"},
-    "cordon_node": {"label": "隔离节点", "when_to_use": "节点明确存在压力、NotReady、硬件或运行时故障，需要停止新 Pod 调度。", "operator_note": "只停止新调度，不会自动迁移现有 Pod；后续通常配合受控驱逐。"},
-    "evict_pod": {"label": "受控驱逐 Pod", "when_to_use": "节点维护或隔离后需要迁移 Pod，并且 PDB 允许中断。", "operator_note": "通过 Eviction API 执行，遵守 PDB；高风险且需人工确认。"},
-    "uncordon_node": {"label": "恢复节点调度", "when_to_use": "节点 Ready、压力条件恢复、容量和系统组件验证通过。", "operator_note": "恢复前必须确认故障已解除，避免工作负载重新落到问题节点。"},
-    "rollback_workload": {"label": "回滚 Workload", "when_to_use": "最近发布与故障时间线一致，且存在已验证的稳定镜像或模板 revision。", "operator_note": "高风险；只回滚到真实观测过的稳定版本。"},
-    "patch_service": {"label": "修正 Service", "when_to_use": "selector、端口或 targetPort 与 Ready Pod 明确不匹配。", "operator_note": "高风险；错误修改会造成流量黑洞，必须先保存原 selector 和端口映射。"},
-    "patch_service_account": {"label": "修正 ServiceAccount", "when_to_use": "镜像拉取失败且证据确认缺少企业批准的 imagePullSecret 绑定。", "operator_note": "只允许添加批准 Secret 的引用，不读取或修改 Secret 明文。"},
-    "create_configmap": {"label": "恢复 ConfigMap", "when_to_use": "Workload 引用的 ConfigMap 缺失，且平台已有运维人员批准的配置模板。", "operator_note": "高风险；不能让 LLM 自行生成生产配置值。"},
-    "patch_pdb": {"label": "修正 PDB", "when_to_use": "PDB 与副本数配置形成发布或驱逐死锁，并且可用性证据充分。", "operator_note": "高风险；修改期间必须持续观察可用副本和业务 SLO。"},
-    "db_restart_instance": {"label": "重启数据库实例", "when_to_use": "连接、角色、备份和业务影响证据齐全，且故障明确需要实例级恢复。", "operator_note": "高风险；必须通过 DBA 执行器，不允许 LLM 直接执行 SQL 或系统命令。"},
-    "db_kill_session": {"label": "终止数据库会话", "when_to_use": "证据确认某个会话是锁等待、长事务或资源耗尽的直接根因。", "operator_note": "高风险；必须展示会话来源、SQL 摘要、阻塞链和业务影响。"},
-    "db_expand_storage": {"label": "扩容数据库存储", "when_to_use": "表空间或磁盘容量接近上限，备份和存储策略已确认。", "operator_note": "通常不可逆；需要 DBA/存储管理员确认。"},
-    "db_failover": {"label": "数据库主备切换", "when_to_use": "主库不可用或延迟/错误已达到 HA 预案阈值，且从库状态满足接管条件。", "operator_note": "极高风险；必须二次确认和业务窗口/回切方案。"},
-    "db_apply_parameter": {"label": "调整数据库参数", "when_to_use": "参数配置被证明确认为锁、连接、内存或复制问题的根因。", "operator_note": "必须保存原参数快照并限制修改范围。"},
-    "vm_restart_service": {"label": "重启主机服务", "when_to_use": "单个 OS 服务异常，系统资源和配置证据支持服务级恢复。", "operator_note": "通过受控执行器重启指定服务，不接受任意 shell。"},
-    "vm_reboot": {"label": "重启虚拟机", "when_to_use": "主机不可达、内核/驱动/系统级异常，且有业务冗余或维护窗口。", "operator_note": "高风险；需确认快照、控制台、HA 和影响范围。"},
-    "vm_expand_disk": {"label": "扩容虚拟机磁盘", "when_to_use": "文件系统容量风险明确，快照、磁盘和分区扩容步骤已确认。", "operator_note": "通常不可逆；必须确认文件系统扩容命令由批准执行器完成。"},
-    "vm_run_approved_script": {"label": "执行批准主机脚本", "when_to_use": "企业脚本目录已有对应脚本，证据和触发条件完全满足。", "operator_note": "Skill 只引用脚本 ID，不保存脚本正文。"},
-    "vm_snapshot": {"label": "创建虚拟机快照", "when_to_use": "高风险主机变更前需要可回退点。", "operator_note": "快照不是长期备份，需设置清理窗口。"},
-    "middleware_rebalance": {"label": "中间件重平衡", "when_to_use": "Kafka/队列/缓存分片存在倾斜、积压或节点异常。", "operator_note": "必须确认客户端影响和回滚策略。"},
-    "storage_expand_volume": {"label": "扩容企业存储卷", "when_to_use": "存储池容量、卷容量和业务使用率证据支持扩容。", "operator_note": "需要存储平台执行器和容量审批。"},
-    "infra_run_approved_action": {"label": "执行基础设施批准动作", "when_to_use": "资源类型已接入外部执行器，但尚未细分到专用动作。", "operator_note": "必须由执行器返回审计号、结果和回滚提示。"},
+    "create_workload": {"label": "Create new Workload", "when_to_use": "Release governance has validated the full YAML, and a new Deployment, StatefulSet, or DaemonSet must be created.", "operator_note": "High risk; verify the namespace, image, resources, probes, ServiceAccount, and rollback path before creating it."},
+    "patch_workload": {"label": "Modify Workload configuration", "when_to_use": "Evidence confirms that the image, probes, resources, replicas, environment variables, or security context of a Deployment, StatefulSet, or DaemonSet is misconfigured.", "operator_note": "Only change controlled fields, show the diff before execution, and preserve the ability to roll back to the original template."},
+    "restart": {"label": "Rolling restart component", "when_to_use": "The configuration is correct, but the process is stuck, connections were not refreshed, or the Workload must recreate its Pods.", "operator_note": "This does not fix bad configuration; first confirm there are enough replicas and that the PDB allows a rolling restart."},
+    "scale_out": {"label": "Increase replicas", "when_to_use": "CPU, concurrency, or traffic evidence shows insufficient capacity, and the application supports horizontal scaling.", "operator_note": "Scale only within the replica limit and monitor downstream dependencies and resource quotas."},
+    "recreate_pod": {"label": "Recreate unhealthy Pod", "when_to_use": "A single controller-managed Pod is corrupted, while the Workload template and other replicas remain healthy.", "operator_note": "After deletion, the controller recreates it from the original template; this is not suitable for template-level, storage-level, or fleet-wide failures."},
+    "patch_hpa": {"label": "Adjust HPA range", "when_to_use": "The HPA min/max range is blocking appropriate scaling, while metric semantics and data sources are healthy.", "operator_note": "Do not change the metric algorithm; only adjust min/max replicas."},
+    "expand_pvc": {"label": "Expand PVC", "when_to_use": "Volume usage is approaching the limit, and the StorageClass explicitly supports expansion.", "operator_note": "Usually irreversible; verify filesystem expansion support and business backups first."},
+    "create_pvc": {"label": "Create missing PVC", "when_to_use": "The Workload clearly references a non-existent PVC, and the storage policy, capacity, and access mode have been confirmed.", "operator_note": "High risk; create it only from an approved StorageClass or approved template."},
+    "create_pv": {"label": "Create static PV", "when_to_use": "Dynamic provisioning is unavailable, and the storage administrator has provided approved backend paths and binding details.", "operator_note": "High risk; the LLM must never invent NFS, LUN, or directory paths."},
+    "patch_workload_volume": {"label": "Correct volume reference", "when_to_use": "Evidence shows the Workload references the wrong PVC, volume, or mount configuration.", "operator_note": "High risk; requires complete storage-chain evidence and a rollback point for the original configuration."},
+    "patch_workload_runtime_security": {"label": "Fix runtime permissions", "when_to_use": "Logs or events show that mount ownership prevents the container from writing, the fsGroup approach is insufficient, and a controlled initContainer or security-context adjustment is required.", "operator_note": "High risk; verify step by step and allow only bounded chown/chmod/mkdir permission-repair commands."},
+    "cordon_node": {"label": "Cordon node", "when_to_use": "The node clearly has pressure, NotReady, hardware, or runtime faults, and new Pod scheduling must stop.", "operator_note": "This only stops new scheduling; it does not automatically migrate existing Pods and is typically followed by controlled eviction."},
+    "evict_pod": {"label": "Controlled Pod eviction", "when_to_use": "Pods must be moved after node maintenance or isolation, and the PDB allows disruption.", "operator_note": "Execute via the Eviction API and honor the PDB; this is high risk and requires human approval."},
+    "uncordon_node": {"label": "Restore node scheduling", "when_to_use": "The node is Ready again, pressure conditions have cleared, and capacity and system-component checks have passed.", "operator_note": "Before restoring scheduling, confirm the fault is resolved so workloads do not land back on a bad node."},
+    "rollback_workload": {"label": "Rollback Workload", "when_to_use": "The most recent rollout aligns with the incident timeline, and a verified stable image or template revision exists.", "operator_note": "High risk; roll back only to a genuinely observed stable version."},
+    "patch_service": {"label": "Correct Service", "when_to_use": "The selector, port, or targetPort clearly does not match Ready Pods.", "operator_note": "High risk; an incorrect change can create a traffic black hole, so preserve the original selector and port mapping first."},
+    "patch_service_account": {"label": "Correct ServiceAccount", "when_to_use": "Image pull failures are caused by a missing, enterprise-approved imagePullSecret binding.", "operator_note": "Only add references to approved Secrets; never read or modify Secret plaintext."},
+    "create_configmap": {"label": "Restore ConfigMap", "when_to_use": "A ConfigMap referenced by the Workload is missing, and the platform already has an operations-approved configuration template.", "operator_note": "High risk; the LLM must not generate production configuration values on its own."},
+    "patch_pdb": {"label": "Correct PDB", "when_to_use": "The PDB and replica configuration have created a rollout or eviction deadlock, and availability evidence is sufficient.", "operator_note": "High risk; continuously monitor available replicas and business SLOs while the change is in effect."},
+    "db_restart_instance": {"label": "Restart database instance", "when_to_use": "Connection, role, backup, and business-impact evidence is complete, and the incident clearly requires instance-level recovery.", "operator_note": "High risk; execution must go through a DBA executor, and the LLM may not run SQL or system commands directly."},
+    "db_kill_session": {"label": "Terminate database session", "when_to_use": "Evidence confirms a specific session is the direct root cause of lock waits, long transactions, or resource exhaustion.", "operator_note": "High risk; you must show the session source, SQL summary, blocking chain, and business impact."},
+    "db_expand_storage": {"label": "Expand database storage", "when_to_use": "Tablespace or disk capacity is nearing its limit, and backup and storage policy have been confirmed.", "operator_note": "Usually irreversible; requires confirmation from the DBA or storage administrator."},
+    "db_failover": {"label": "Database failover", "when_to_use": "The primary database is unavailable or latency/errors have crossed the HA playbook threshold, and the replica is ready to take over.", "operator_note": "Extremely high risk; requires a second confirmation plus a business window and failback plan."},
+    "db_apply_parameter": {"label": "Adjust database parameter", "when_to_use": "A parameter setting is conclusively identified as the root cause of locking, connection, memory, or replication problems.", "operator_note": "You must preserve the original parameter snapshot and limit the scope of changes."},
+    "vm_restart_service": {"label": "Restart host service", "when_to_use": "A single OS service is unhealthy, and system-resource and configuration evidence supports service-level recovery.", "operator_note": "Restart only the specified service through a controlled executor; arbitrary shell commands are not allowed."},
+    "vm_reboot": {"label": "Reboot virtual machine", "when_to_use": "The host is unreachable or has kernel, driver, or system-level failures, and business redundancy or a maintenance window is available.", "operator_note": "High risk; confirm snapshots, console access, HA, and blast radius first."},
+    "vm_expand_disk": {"label": "Expand virtual machine disk", "when_to_use": "Filesystem capacity risk is clear, and snapshot, disk, and partition expansion steps have been verified.", "operator_note": "Usually irreversible; ensure filesystem expansion commands are executed only by an approved executor."},
+    "vm_run_approved_script": {"label": "Run approved host script", "when_to_use": "The matching script already exists in the enterprise script catalog, and the evidence and trigger conditions are fully satisfied.", "operator_note": "The Skill may reference only the script ID and must not store the script body."},
+    "vm_snapshot": {"label": "Create virtual machine snapshot", "when_to_use": "A rollback point is required before a high-risk host change.", "operator_note": "A snapshot is not a long-term backup; define a cleanup window."},
+    "middleware_rebalance": {"label": "Rebalance middleware", "when_to_use": "Kafka, queue, or cache shards are skewed, backlogged, or affected by node issues.", "operator_note": "You must confirm client impact and the rollback strategy."},
+    "storage_expand_volume": {"label": "Expand enterprise storage volume", "when_to_use": "Storage-pool capacity, volume capacity, and business usage evidence support expansion.", "operator_note": "Requires a storage-platform executor and capacity approval."},
+    "infra_run_approved_action": {"label": "Run approved infrastructure action", "when_to_use": "The resource type is integrated with an external executor but has not yet been broken out into a dedicated action.", "operator_note": "The executor must return an audit ID, result, and rollback guidance."},
 }
 
 
@@ -192,24 +192,24 @@ EXPERT_PROBES = {
 
 
 def _infer_expert_probe(text: str) -> str:
-    """把 AI 的自然语言步骤绑定到平台真实可执行的只读探针。"""
+    """Bind an AI natural-language step to a real read-only probe the platform can execute."""
     lowered = str(text or "").lower()
     mappings = [
-        (("previous", "上一次", "退出日志", "laststate"), "previous_logs"),
-        (("event", "事件", "failedscheduling", "failedmount"), "events"),
-        (("pvc", "pv", "storageclass", "csi", "存储", "挂载"), "storage_chain"),
-        (("service", "endpoint", "selector", "流量入口"), "service_endpoints"),
-        (("networkpolicy", "网络策略"), "network_policy"),
-        (("dns", "域名解析"), "dns"),
-        (("node", "节点", "diskpressure", "memorypressure"), "node_conditions"),
+        (("previous", "prior", "termination log", "laststate"), "previous_logs"),
+        (("event", "events", "failedscheduling", "failedmount"), "events"),
+        (("pvc", "pv", "storageclass", "csi", "storage", "mount"), "storage_chain"),
+        (("service", "endpoint", "selector", "traffic entry"), "service_endpoints"),
+        (("networkpolicy", "network policy"), "network_policy"),
+        (("dns", "name resolution"), "dns"),
+        (("node", "host node", "diskpressure", "memorypressure"), "node_conditions"),
         (("pdb", "disruption"), "pdb_state"),
-        (("quota", "limitrange", "配额"), "quota"),
-        (("rollout", "revision", "近期变更", "镜像版本", "回滚"), "recent_changes"),
-        (("hpa", "扩缩容"), "hpa"),
-        (("cmdb", "依赖", "调用链", "kafka"), "dependency_topology"),
-        (("registry", "imagepull", "镜像仓库", "拉取"), "registry_connectivity"),
-        (("workload", "deployment", "statefulset", "daemonset", "模板", "配置"), "workload_spec"),
-        (("log", "日志", "错误栈"), "current_logs"),
+        (("quota", "limitrange", "resource quota"), "quota"),
+        (("rollout", "revision", "recent changes", "image version", "rollback"), "recent_changes"),
+        (("hpa", "autoscaling"), "hpa"),
+        (("cmdb", "dependency", "call chain", "kafka"), "dependency_topology"),
+        (("registry", "imagepull", "image registry", "pull"), "registry_connectivity"),
+        (("workload", "deployment", "statefulset", "daemonset", "template", "configuration"), "workload_spec"),
+        (("log", "logs", "stack trace"), "current_logs"),
     ]
     for terms, probe in mappings:
         if any(term in lowered for term in terms):
@@ -218,17 +218,17 @@ def _infer_expert_probe(text: str) -> str:
 
 
 def expert_steps_from_diagnosis(diagnosis: dict) -> list[dict[str, Any]]:
-    """将本次 LLM 诊断转成可执行、可审计且绑定真实探针的差异化步骤。"""
+    """Convert the current LLM diagnosis into executable, auditable steps bound to real probes."""
     steps: list[dict[str, Any]] = []
     for index, raw in enumerate((diagnosis.get("immediate_actions") or [])[:10], start=1):
         if isinstance(raw, dict):
-            title = str(raw.get("title") or raw.get("step") or raw.get("action") or f"专家步骤 {index}").strip()
+            title = str(raw.get("title") or raw.get("step") or raw.get("action") or f"Expert step {index}").strip()
             description = str(raw.get("description") or raw.get("detail") or raw.get("purpose") or title).strip()
             requested_probe = str(raw.get("probe") or "").strip()
             probe = requested_probe if requested_probe in EXPERT_PROBES else _infer_expert_probe(f"{title} {description}")
-            decision_rule = str(raw.get("decision_rule") or raw.get("decision") or "根据该步骤返回的真实证据决定下一分支。").strip()
-            on_match = str(raw.get("on_match") or raw.get("action_if_matched") or raw.get("next_if_true") or "进入证据支持的最小变更候选。").strip()
-            on_miss = str(raw.get("on_miss") or raw.get("action_if_not_matched") or raw.get("next_if_false") or "排除该分支并检查下一候选根因。").strip()
+            decision_rule = str(raw.get("decision_rule") or raw.get("decision") or "Use the real evidence returned by this step to choose the next branch.").strip()
+            on_match = str(raw.get("on_match") or raw.get("action_if_matched") or raw.get("next_if_true") or "Proceed to the smallest evidence-backed change candidate.").strip()
+            on_miss = str(raw.get("on_miss") or raw.get("action_if_not_matched") or raw.get("next_if_false") or "Eliminate this branch and inspect the next candidate root cause.").strip()
             expected = raw.get("expected_evidence") or raw.get("evidence") or []
         else:
             text = str(raw or "").strip()
@@ -237,12 +237,12 @@ def expert_steps_from_diagnosis(diagnosis: dict) -> list[dict[str, Any]]:
             title, _, detail = text.partition("：")
             if not detail:
                 title, _, detail = text.partition(":")
-            title = title.strip() or f"专家步骤 {index}"
+            title = title.strip() or f"Expert step {index}"
             description = detail.strip() or text
             probe = _infer_expert_probe(text)
-            decision_rule = "根据该步骤返回的真实证据决定下一分支。"
-            on_match = "进入证据支持的最小变更候选。"
-            on_miss = "排除该分支并检查下一候选根因。"
+            decision_rule = "Use the real evidence returned by this step to choose the next branch."
+            on_match = "Proceed to the smallest evidence-backed change candidate."
+            on_miss = "Eliminate this branch and inspect the next candidate root cause."
             expected = []
         if not title:
             continue
@@ -258,13 +258,13 @@ def expert_steps_from_diagnosis(diagnosis: dict) -> list[dict[str, Any]]:
 RUNBOOKS: dict[str, dict[str, Any]] = {
     "oom": {
         "title": "OOM / memory pressure recovery",
-        "terms": ("oomkilled", "out of memory", "exit code 137", "内存溢出", "内存不足"),
+        "terms": ("oomkilled", "out of memory", "exit code 137", "memory exhaustion", "insufficient memory"),
         "diagnostics": ("previous_logs", "workload_spec", "pod_metrics", "node_pressure"),
         "success": ("pod_ready", "restart_count_stable", "oom_absent"),
     },
     "probe": {
         "title": "Probe and slow-start recovery",
-        "terms": ("liveness", "readiness", "startup probe", "probe failed", "connection refused", "context deadline exceeded", "探针"),
+        "terms": ("liveness", "readiness", "startup probe", "probe failed", "connection refused", "context deadline exceeded", "probe"),
         "diagnostics": ("current_logs", "previous_logs", "workload_spec", "service_endpoints"),
         "success": ("pod_ready", "endpoint_ready", "probe_failures_absent"),
     },
@@ -273,7 +273,7 @@ RUNBOOKS: dict[str, dict[str, Any]] = {
         "terms": (
             "permission denied", "operation not permitted", "read-only file system",
             "can't create directory", "cannot create directory", "mkdir:",
-            "权限不足", "目录权限", "无法创建目录",
+            "permission issue", "directory permissions", "unable to create directory",
         ),
         "diagnostics": ("previous_logs", "storage_chain", "workload_spec", "pod_security_context"),
         "success": ("mount_events_absent", "pod_ready", "write_errors_absent"),
@@ -281,7 +281,7 @@ RUNBOOKS: dict[str, dict[str, Any]] = {
     "storage_mount": {
         "title": "PVC / mount recovery",
         "terms": (
-            "failedmount", "failedattachvolume", "mountvolume", "persistentvolumeclaim", "pvc", "挂载失败",
+            "failedmount", "failedattachvolume", "mountvolume", "persistentvolumeclaim", "pvc", "mount failure",
             "unbound immediate persistentvolumeclaims", "no persistent volumes available", "volume binding",
         ),
         "diagnostics": ("storage_chain", "events", "node_storage", "csi_status"),
@@ -289,7 +289,7 @@ RUNBOOKS: dict[str, dict[str, Any]] = {
     },
     "image_auth": {
         "title": "Image registry authentication recovery",
-        "terms": ("imagepullbackoff", "errimagepull", "unauthorized", "authentication required", "pull access denied", "镜像拉取"),
+        "terms": ("imagepullbackoff", "errimagepull", "unauthorized", "authentication required", "pull access denied", "image pull"),
         "diagnostics": ("events", "workload_spec", "image_pull_secrets", "registry_connectivity"),
         "success": ("image_pulled", "pod_ready"),
     },
@@ -298,86 +298,86 @@ RUNBOOKS: dict[str, dict[str, Any]] = {
         "terms": (
             "exec format error", "standard_init_linux.go", "cannot execute binary file",
             "no matching manifest for linux/amd64", "no matching manifest for linux/arm64",
-            "image architecture", "platform mismatch", "镜像架构", "架构不匹配", "amd64", "arm64",
+            "image architecture", "platform mismatch", "architecture mismatch", "amd64", "arm64",
         ),
         "diagnostics": ("events", "previous_logs", "workload_spec", "node_labels", "recent_changes", "registry_connectivity"),
         "success": ("image_platform_matches_node", "pod_ready", "restart_count_stable"),
     },
     "config_missing": {
         "title": "Missing ConfigMap / configuration reference recovery",
-        "terms": ("configmap", "not found", "couldn't find key", "optional: false", "configmap not found", "配置不存在", "配置缺失"),
+        "terms": ("configmap", "not found", "couldn't find key", "optional: false", "configmap not found", "configuration not found", "missing configuration"),
         "diagnostics": ("events", "workload_spec", "recent_changes"),
         "success": ("config_ref_exists", "pod_ready", "restart_count_stable"),
     },
     "scheduling_capacity": {
         "title": "Scheduling and capacity recovery",
-        "terms": ("failedscheduling", "insufficient cpu", "insufficient memory", "unschedulable", "无法调度", "资源不足"),
+        "terms": ("failedscheduling", "insufficient cpu", "insufficient memory", "unschedulable", "scheduling failed", "insufficient resources"),
         "diagnostics": ("events", "scheduler_constraints", "node_capacity", "quota", "pvc_binding"),
         "success": ("pod_scheduled", "pod_ready"),
     },
     "scheduling_constraints": {
         "title": "Affinity, taint and topology recovery",
-        "terms": ("taint", "toleration", "node affinity", "pod affinity", "topology spread", "亲和性", "污点"),
+        "terms": ("taint", "toleration", "node affinity", "pod affinity", "topology spread", "affinity", "taint"),
         "diagnostics": ("scheduler_constraints", "node_labels", "events", "workload_spec"),
         "success": ("pod_scheduled", "constraint_satisfied"),
     },
     "network_service": {
         "title": "Service discovery and endpoint recovery",
-        "terms": ("no endpoints", "connection refused", "no route to host", "service unavailable", "endpoint", "服务发现"),
+        "terms": ("no endpoints", "connection refused", "no route to host", "service unavailable", "endpoint", "service discovery"),
         "diagnostics": ("service_endpoints", "dns", "network_policy", "mesh_routes", "dependency_topology"),
         "success": ("endpoint_ready", "dependency_reachable", "error_rate_recovered"),
     },
     "dns_cni": {
         "title": "DNS / CNI recovery",
-        "terms": ("dns", "coredns", "cni", "networkplugin", "failedcreatepodsandbox", "i/o timeout", "解析失败"),
+        "terms": ("dns", "coredns", "cni", "networkplugin", "failedcreatepodsandbox", "i/o timeout", "resolution failure"),
         "diagnostics": ("dns", "cni_events", "node_conditions", "network_policy"),
         "success": ("dns_resolves", "pod_sandbox_ready", "pod_ready"),
     },
     "cpu_saturation": {
         "title": "CPU saturation recovery",
-        "terms": ("highcpu", "high cpu", "cpu usage", "cpu thrott", "高 cpu", "高cpu"),
+        "terms": ("highcpu", "high cpu", "cpu usage", "cpu thrott", "cpu spike", "elevated cpu"),
         "diagnostics": ("pod_metrics", "hpa", "workload_spec", "traffic_baseline", "dependency_latency"),
         "success": ("cpu_below_threshold", "latency_recovered", "error_rate_recovered"),
     },
     "node_pressure": {
         "title": "Node pressure containment",
-        "terms": ("diskpressure", "memorypressure", "pidpressure", "notready", "node pressure", "节点压力"),
+        "terms": ("diskpressure", "memorypressure", "pidpressure", "notready", "node pressure", "node stress"),
         "diagnostics": ("node_conditions", "node_capacity", "system_pods", "events"),
         "success": ("node_condition_recovered", "workloads_rescheduled"),
     },
     "crash_unknown": {
         "title": "CrashLoop evidence deep dive",
-        "terms": ("crashloopbackoff", "back-off restarting", "crashloop", "反复重启", "容器崩溃"),
+        "terms": ("crashloopbackoff", "back-off restarting", "crashloop", "repeated restarts", "container crash"),
         "diagnostics": ("current_logs", "previous_logs", "events", "workload_spec", "recent_changes", "dependency_topology"),
         "success": ("pod_ready", "restart_count_stable", "business_probe_ok"),
     },
     "rollout_regression": {
         "title": "Recent rollout regression recovery",
-        "terms": ("progressdeadlineexceeded", "rollout", "revision", "new replicaset", "发布后", "变更后"),
+        "terms": ("progressdeadlineexceeded", "rollout", "revision", "new replicaset", "post-release", "post-change"),
         "diagnostics": ("recent_changes", "workload_spec", "previous_logs", "events", "dependency_topology"),
         "success": ("rollout_complete", "pod_ready", "business_probe_ok", "error_rate_recovered"),
     },
     "service_selector": {
         "title": "Service selector / EndpointSlice repair",
-        "terms": ("no endpoints", "endpointslice", "selector mismatch", "503 service unavailable", "服务无端点"),
+        "terms": ("no endpoints", "endpointslice", "selector mismatch", "503 service unavailable", "service without endpoints"),
         "diagnostics": ("service_endpoints", "workload_spec", "network_policy", "dependency_topology"),
         "success": ("endpoint_ready", "dependency_reachable", "error_rate_recovered"),
     },
     "pdb_deadlock": {
         "title": "PDB and rollout deadlock recovery",
-        "terms": ("disruptionbudget", "pdb", "cannot evict pod", "too many unavailable", "驱逐失败"),
+        "terms": ("disruptionbudget", "pdb", "cannot evict pod", "too many unavailable", "eviction failure"),
         "diagnostics": ("pdb_state", "workload_spec", "events", "node_conditions"),
         "success": ("eviction_allowed", "rollout_complete", "replica_budget_safe"),
     },
     "quota_limit": {
         "title": "Quota / LimitRange admission recovery",
-        "terms": ("exceeded quota", "resourcequota", "limitrange", "forbidden: exceeded", "配额不足"),
+        "terms": ("exceeded quota", "resourcequota", "limitrange", "forbidden: exceeded", "quota shortage"),
         "diagnostics": ("quota", "workload_spec", "node_capacity", "events"),
         "success": ("admission_allowed", "pod_scheduled", "pod_ready"),
     },
     "certificate_expiry": {
         "title": "Certificate and webhook trust recovery",
-        "terms": ("x509", "certificate has expired", "tls handshake", "webhook", "证书过期"),
+        "terms": ("x509", "certificate has expired", "tls handshake", "webhook", "certificate expired"),
         "diagnostics": ("current_logs", "events", "certificate_chain", "webhook_status", "dependency_topology"),
         "success": ("tls_handshake_ok", "webhook_available", "error_rate_recovered"),
     },
@@ -600,7 +600,7 @@ def _container_patch_base(container_name: str, container: dict) -> dict[str, Any
 
 
 def _startup_probe_patch(container: dict) -> dict[str, Any]:
-    """基于现有探针生成合法 startupProbe，避免提交缺少处理器的无效 patch。"""
+    """Generate a valid startupProbe from existing probes to avoid an invalid patch with no handler."""
     handler_keys = ("httpGet", "tcpSocket", "exec", "grpc")
     source = (
         container.get("startupProbe")
@@ -639,7 +639,7 @@ def _memory_growth(value: str | None) -> str:
     original = float(match.group(1))
     unit = match.group(2)
     amount = original * float(os.getenv("AUTO_OPS_MEMORY_GROWTH_FACTOR", "1.5"))
-    # 小规格容器只乘 1.5 往往仍然不够，至少增加 256Mi，避免反复提交无效 patch。
+    # For small containers, multiplying by only 1.5 is often still insufficient; add at least 256Mi to avoid repeated ineffective patches.
     if unit.lower() == "mi":
         amount = max(amount, original + float(os.getenv("AUTO_OPS_MIN_MEMORY_BUMP_MI", "256")))
     if unit.lower() == "gi":
@@ -670,7 +670,7 @@ def _log_unavailable_evidence(context: dict) -> bool:
 
 
 def _template_blocker_evidence(context: dict) -> bool:
-    """重建 Pod 前先排除重启无法修好的模板/外部阻断类证据。"""
+    """Before recreating a Pod, rule out template or external blockers that a restart cannot fix."""
     text = _flatten_text(
         context.get("events"),
         context.get("storage"),
@@ -994,7 +994,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
             changes.append({
                 "type": "create_pvc", "namespace": namespace, "pvc_name": pvc_name,
                 "manifest": _pvc_manifest(namespace, pvc_name, issue),
-                "reason": "Kubernetes API 已确认 Pod 引用的 PVC 不存在；创建受存储策略约束的 PVC，并等待动态供卷后验证 Pod。",
+                "reason": "The Kubernetes API confirmed that the Pod references a non-existent PVC; create a policy-compliant PVC and validate the Pod after dynamic provisioning completes.",
                 "runbook_id": runbook_id, **ACTION_CATALOG["create_pvc"],
             })
         elif pvc_name and phase in {"pending", "lost"}:
@@ -1003,7 +1003,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                 changes.append({
                     "type": "create_pv", "namespace": namespace, "pvc_name": pvc_name,
                     "manifest": pv_manifest,
-                    "reason": "Kubernetes API 已确认 PVC 未绑定，且平台配置了批准的静态存储模板；创建预绑定 PV 并验证 PVC=Bound。",
+                    "reason": "The Kubernetes API confirmed that the PVC is unbound, and the platform has an approved static-storage template; create a pre-bound PV and verify the PVC reaches Bound.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["create_pv"],
                 })
 
@@ -1017,16 +1017,16 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                     "requests": {"cpu": requests.get("cpu") or "100m", "memory": requests.get("memory") or "256Mi"},
                     "limits": {"cpu": limits.get("cpu") or "1", "memory": _memory_growth(limits.get("memory"))},
                 },
-            }]}}}}, "OOM 证据达到执行阈值：提高内存上限并保留 CPU 约束，滚动后验证 OOM 是否消失。")
+            }]}}}}, "OOM evidence reached the execution threshold: increase the memory limit while preserving the CPU constraint, then verify that OOM events stop after rollout.")
         elif runbook_id == "probe" and container_name:
             workload_patch({"spec": {"template": {"spec": {"containers": [{
                 **_container_patch_base(container_name, container), **_startup_probe_patch(container)
-            }]}}}}, "探针/慢启动证据达到执行阈值：增加 startupProbe 容错窗口并验证 Endpoint Ready。")
+            }]}}}}, "Probe/slow-start evidence reached the execution threshold: widen the startupProbe tolerance window and verify the Endpoint becomes Ready.")
         elif runbook_id == "storage_permission":
             fs_group = _security_group_from_pod(pod)
             workload_patch({"spec": {"template": {"spec": {"securityContext": {
                 "fsGroup": fs_group, "fsGroupChangePolicy": "OnRootMismatch"
-            }}}}}, f"卷写入权限证据达到执行阈值：按容器运行用户/组选择 fsGroup={fs_group}，并在 rollout 后复查挂载与写入错误。")
+            }}}}}, f"Volume write-permission evidence reached the execution threshold: choose fsGroup={fs_group} based on the container runtime user/group, then recheck mounts and write errors after rollout.")
         elif runbook_id == "storage_mount" and not changes:
             issue = _first_storage_issue(context)
             issue_text = _flatten_text(issue)
@@ -1035,7 +1035,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                 changes.append({
                     "type": "create_pvc", "namespace": namespace, "pvc_name": pvc_name,
                     "manifest": _pvc_manifest(namespace, pvc_name, issue),
-                    "reason": "Pod 引用了不存在的 PVC；先创建受策略约束的 PVC，再等待存储插件动态供卷并验证 Pod 挂载。",
+                    "reason": "The Pod references a non-existent PVC; create a policy-compliant PVC first, then wait for the storage plugin to provision it dynamically and verify the Pod mount.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["create_pvc"],
                 })
             elif pvc_name and str(issue.get("pvc_phase") or issue.get("phase") or "").lower() in {"pending", "lost"}:
@@ -1044,7 +1044,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                     changes.append({
                         "type": "create_pv", "namespace": namespace, "pvc_name": pvc_name,
                         "manifest": pv_manifest,
-                        "reason": "PVC 已存在但未绑定 PV，且平台已配置静态 PV 模板；创建预绑定 PV 让 PVC 收敛到 Bound。",
+                        "reason": "The PVC exists but is not bound to a PV, and the platform has a static PV template configured; create a pre-bound PV so the PVC converges to Bound.",
                         "runbook_id": runbook_id, **ACTION_CATALOG["create_pv"],
                     })
         elif runbook_id == "image_auth" and container_name:
@@ -1054,20 +1054,20 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                     "type": "rollback_workload", "namespace": namespace, "workload_type": workload_type,
                     "workload_name": workload_name,
                     "patch": {"spec": {"template": {"spec": {"containers": [{"name": container_name, "image": replacement_image}]}}}},
-                    "reason": "镜像拉取失败且命中批准镜像替换映射；优先替换到稳定镜像，再验证 Pod 是否完成拉取和启动。",
+                    "reason": "Image pulls are failing and an approved image-replacement mapping matched; switch to the stable image first, then verify that the Pod can pull and start successfully.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["rollback_workload"],
                 })
             secret_name = os.getenv("DEFAULT_IMAGE_PULL_SECRET", "").strip()
             if secret_name and not changes:
                 workload_patch({"spec": {"template": {"spec": {"imagePullSecrets": [{"name": secret_name}]}}}},
-                               f"镜像鉴权证据明确：注入平台预配置 imagePullSecret {secret_name}。")
+                               f"Image-authentication evidence is conclusive: inject the platform-preconfigured imagePullSecret {secret_name}.")
                 service_account = _workload_service_account(context)
                 if service_account:
                     changes.append({
                         "type": "patch_service_account", "namespace": namespace, "service_account": service_account,
                         "image_pull_secret": secret_name,
                         "patch": {"imagePullSecrets": [{"name": secret_name}]},
-                        "reason": f"将平台批准的镜像凭据 {secret_name} 绑定到 ServiceAccount/{service_account}，后续同账号 Pod 也可拉取镜像。",
+                        "reason": f"Bind the platform-approved image credential {secret_name} to ServiceAccount/{service_account} so later Pods using the same account can also pull the image.",
                         "runbook_id": runbook_id, **ACTION_CATALOG["patch_service_account"],
                     })
         elif runbook_id == "image_architecture" and container_name:
@@ -1082,7 +1082,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                     "type": "rollback_workload", "namespace": namespace, "workload_type": workload_type,
                     "workload_name": workload_name,
                     "patch": {"spec": {"template": {"spec": {"containers": [{"name": container_name, "image": previous_image}]}}}},
-                    "reason": "证据显示镜像架构或运行时平台与节点不匹配；回滚/替换到发布历史或批准映射中的稳定镜像并验证平台架构匹配。",
+                    "reason": "Evidence shows that the image architecture or runtime platform does not match the node; roll back or switch to a stable image from rollout history or an approved mapping, then verify platform compatibility.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["rollback_workload"],
                 })
         elif runbook_id == "config_missing":
@@ -1092,7 +1092,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                 changes.append({
                     "type": "create_configmap", "namespace": namespace, "configmap_name": configmap_name,
                     "manifest": manifest,
-                    "reason": f"Kubernetes 事件确认 ConfigMap/{configmap_name} 缺失，且平台存在批准模板；恢复配置后验证 Pod Ready。",
+                    "reason": f"Kubernetes events confirmed that ConfigMap/{configmap_name} is missing, and the platform has an approved template; restore the configuration and then verify the Pod becomes Ready.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["create_configmap"],
                 })
         elif runbook_id == "cpu_saturation":
@@ -1101,7 +1101,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                 "type": "scale_out", "namespace": namespace, "workload_type": workload_type,
                 "workload_name": workload_name, "replicas": min(current + 1, int(os.getenv("MAX_PATCH_REPLICAS", "20"))),
                 "patch": {"spec": {"replicas": min(current + 1, int(os.getenv("MAX_PATCH_REPLICAS", "20")))}},
-                "reason": "CPU 饱和证据达到执行阈值：先扩一副本恢复容量，再验证延迟、错误率和 HPA。",
+                "reason": "CPU saturation evidence reached the execution threshold: add one replica first to restore capacity, then verify latency, error rate, and HPA behavior.",
                 "runbook_id": runbook_id, **ACTION_CATALOG["scale_out"],
             })
         elif runbook_id == "rollout_regression" and container_name:
@@ -1115,7 +1115,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                     "type": "rollback_workload", "namespace": namespace, "workload_type": workload_type,
                     "workload_name": workload_name,
                     "patch": {"spec": {"template": {"spec": {"containers": [{"name": container_name, "image": previous_image}]}}}},
-                    "reason": "近期发布与故障时间线强相关，回滚到证据中记录的上一不可变镜像并验证业务 SLI。",
+                    "reason": "The recent rollout is strongly correlated with the incident timeline; roll back to the previous immutable image recorded in the evidence and verify the business SLI.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["rollback_workload"],
                 })
         elif runbook_id == "service_selector":
@@ -1126,7 +1126,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                 changes.append({
                     "type": "patch_service", "namespace": namespace, "service_name": service_name,
                     "selector": selector, "patch": {"spec": {"selector": selector}},
-                    "reason": "Service selector 与健康 Workload 标签不一致的证据已确认。",
+                    "reason": "Evidence confirms that the Service selector does not match the labels on the healthy Workload.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["patch_service"],
                 })
         elif runbook_id == "pdb_deadlock":
@@ -1135,7 +1135,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
                 changes.append({
                     "type": "patch_pdb", "namespace": namespace, "pdb_name": pdb.get("name"),
                     "patch": {"spec": {"maxUnavailable": pdb.get("recommended_max_unavailable")}},
-                    "reason": "PDB 与副本数形成驱逐死锁，候选值已通过可用副本预算计算。",
+                    "reason": "The PDB and replica count have created an eviction deadlock, and the candidate value was calculated from the available-replica budget.",
                     "runbook_id": runbook_id, **ACTION_CATALOG["patch_pdb"],
                 })
     if primary and confidence >= 0.72 and not changes and runbook_id == "node_pressure":
@@ -1143,7 +1143,7 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
         if node_name:
             changes.append({
                 "type": "cordon_node", "node_name": node_name, "patch": {"spec": {"unschedulable": True}},
-                "reason": "节点压力证据较强：先隔离节点避免新 Pod 调度；该动作必须人工审批。",
+                "reason": "Node-pressure evidence is strong: cordon the node first to prevent new Pod scheduling; this action requires human approval.",
                 "runbook_id": runbook_id, **ACTION_CATALOG["cordon_node"],
             })
     diagnostic_recreate_needed = (
@@ -1159,10 +1159,10 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
             "type": "recreate_pod", "namespace": namespace, "pod_name": pod_name,
             "workload_type": workload_type, "workload_name": workload_name,
             "reason": (
-                "日志探针不可用且未发现 PVC/镜像/ConfigMap/调度等模板级阻断；"
-                "先诊断性重建单个受控制器管理的异常 Pod，随后重新采集 current/previous logs、Events 和 Ready 状态。"
+                "Log probes are unavailable, and no template-level blockers such as PVC, image, ConfigMap, or scheduling issues were found; "
+                "diagnostically recreate the single controller-managed unhealthy Pod first, then recollect current/previous logs, Events, and Ready status."
                 if diagnostic_recreate_needed else
-                "已完成根因取证但未发现模板级安全 patch；重建单个受控制器管理的异常 Pod 以排除节点/沙箱瞬态故障。"
+                "Root-cause evidence collection is complete, but no template-level safe patch was found; recreate one controller-managed unhealthy Pod to rule out transient node or sandbox faults."
             ),
             "runbook_id": runbook_id, **ACTION_CATALOG["recreate_pod"],
         })
@@ -1172,26 +1172,26 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
         {"id": probe, "title": diagnostic_title(probe), "description": diagnostic_description(probe), "status": "pending"}
         for probe in diagnostics
     ]
-    evidence_gap = "" if changes else "缺少足够强的根因证据、目标 Workload 状态或可回滚 patch 证据，尚不能证明直接修改模板比继续诊断更安全。"
+    evidence_gap = "" if changes else "There is not yet enough strong evidence about the root cause, target Workload state, or a rollback-safe patch to prove that changing the template is safer than continuing diagnosis."
     if not changes and runbook_id == "storage_mount":
         issue = _first_storage_issue(context)
         pvc_name = str(issue.get("pvc") or issue.get("pvc_name") or issue.get("claim") or "").strip()
         if pvc_name and str(issue.get("pvc_phase") or issue.get("phase") or "").lower() in {"pending", "lost"}:
             evidence_gap = (
-                f"PVC {namespace}/{pvc_name} 未绑定到 PV，但平台没有配置 AUTO_OPS_STATIC_PV_TEMPLATE_JSON "
-                "或 AUTO_OPS_STATIC_PV_NFS_SERVER/AUTO_OPS_STATIC_PV_NFS_BASE_PATH，因此不能安全创建静态 PV。"
+                f"PVC {namespace}/{pvc_name} is not bound to a PV, but the platform has not configured AUTO_OPS_STATIC_PV_TEMPLATE_JSON "
+                "or AUTO_OPS_STATIC_PV_NFS_SERVER/AUTO_OPS_STATIC_PV_NFS_BASE_PATH, so it is not safe to create a static PV."
             )
     if not changes and runbook_id == "config_missing":
         configmap_name = _extract_missing_configmap(context)
         if configmap_name:
             evidence_gap = (
-                f"ConfigMap {namespace}/{configmap_name} 缺失已被事件命中，但平台没有配置 "
-                "AUTO_OPS_CONFIGMAP_TEMPLATES_JSON 中对应模板；请先录入批准配置模板，再执行恢复。"
+                f"Events confirm that ConfigMap {namespace}/{configmap_name} is missing, but the platform does not have a matching template in "
+                "AUTO_OPS_CONFIGMAP_TEMPLATES_JSON; register an approved configuration template before attempting recovery."
             )
     if not changes and runbook_id == "image_architecture":
         evidence_gap = (
-            "已命中镜像架构/运行时平台不匹配证据，但没有读取到上一稳定镜像或批准镜像映射。"
-            "请在发布治理中保留 revision/image digest，或在知识库/Skill 中登记该应用的 amd64/arm64 镜像对应关系。"
+            "Evidence of an image-architecture or runtime-platform mismatch was found, but no previous stable image or approved image mapping was available. "
+            "Preserve the revision/image digest in release governance, or register the application's amd64/arm64 image mapping in the knowledge base or Skill."
         )
     return {
         "engine": "EvidenceRunbookEngine/v1",
@@ -1206,9 +1206,9 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
         "decision": "ready_for_approval" if changes else "evidence_collection_required",
         "evidence_gap": evidence_gap,
         "reason": (
-            "存在达到证据阈值且通过动作白名单的修复候选。"
+            "A remediation candidate met the evidence threshold and passed the action allowlist."
             if changes else
-            "当前证据不足以证明某个变更优于其他方案；先执行诊断探针，完成后自动重规划。"
+            "The current evidence is not sufficient to prove that one change is better than the alternatives; run the diagnostic probes first and replan automatically afterward."
         ),
         "success_criteria": list((primary or {}).get("success_criteria") or ["pod_ready", "business_probe_ok"]),
         "action_catalog": action_catalog_payload(),
@@ -1217,38 +1217,38 @@ def build_remediation_plan(alert: dict, diagnosis: dict, context: dict) -> dict[
 
 def diagnostic_title(probe: str) -> str:
     return {
-        "current_logs": "读取当前容器日志", "previous_logs": "读取上一次退出日志", "events": "分析 Kubernetes Events",
-        "workload_spec": "核对 Workload 模板", "pod_metrics": "检查 Pod 资源指标", "node_pressure": "检查节点压力",
-        "node_conditions": "检查节点健康条件", "node_capacity": "核对节点容量", "system_pods": "检查节点系统组件",
-        "service_endpoints": "核对 Service 与 Endpoint", "dns": "验证 DNS 解析链路", "network_policy": "分析 NetworkPolicy",
-        "mesh_routes": "检查 Service Mesh 路由", "dependency_topology": "追踪 CMDB 依赖链", "storage_chain": "检查 PVC/PV/StorageClass",
-        "node_storage": "检查节点与 CSI 存储", "csi_status": "检查 CSI 组件状态", "pod_security_context": "核对运行用户与卷权限",
-        "image_pull_secrets": "核对镜像凭据引用", "registry_connectivity": "验证镜像仓库连通性", "scheduler_constraints": "分析调度约束",
-        "node_labels": "核对节点标签", "quota": "检查 ResourceQuota", "pvc_binding": "检查 PVC 绑定", "hpa": "检查 HPA 状态",
-        "traffic_baseline": "比对流量基线", "dependency_latency": "分析依赖延迟", "cni_events": "分析 CNI 事件",
-        "recent_changes": "关联近期变更", "workload_spec": "核对 Workload 模板", "registry_connectivity": "验证镜像仓库连通性",
-        "pdb_state": "检查 PodDisruptionBudget", "certificate_chain": "验证证书链与有效期",
-        "webhook_status": "检查准入 Webhook", "hpa": "检查 HPA 状态", "config_ref_exists": "检查配置引用是否存在",
+        "current_logs": "Read current container logs", "previous_logs": "Read previous exit logs", "events": "Analyze Kubernetes Events",
+        "workload_spec": "Review the Workload template", "pod_metrics": "Check Pod resource metrics", "node_pressure": "Check node pressure",
+        "node_conditions": "Check node health conditions", "node_capacity": "Review node capacity", "system_pods": "Check node system components",
+        "service_endpoints": "Review Service and Endpoints", "dns": "Validate DNS resolution path", "network_policy": "Analyze NetworkPolicy",
+        "mesh_routes": "Check Service Mesh routes", "dependency_topology": "Trace the CMDB dependency chain", "storage_chain": "Check PVC/PV/StorageClass",
+        "node_storage": "Check node and CSI storage", "csi_status": "Check CSI component status", "pod_security_context": "Review runtime user and volume permissions",
+        "image_pull_secrets": "Review image credential references", "registry_connectivity": "Validate image registry connectivity", "scheduler_constraints": "Analyze scheduling constraints",
+        "node_labels": "Review node labels", "quota": "Check ResourceQuota", "pvc_binding": "Check PVC binding", "hpa": "Check HPA status",
+        "traffic_baseline": "Compare traffic baseline", "dependency_latency": "Analyze dependency latency", "cni_events": "Analyze CNI events",
+        "recent_changes": "Correlate recent changes", "workload_spec": "Review the Workload template", "registry_connectivity": "Validate image registry connectivity",
+        "pdb_state": "Check PodDisruptionBudget", "certificate_chain": "Validate certificate chain and expiration",
+        "webhook_status": "Check admission webhook", "hpa": "Check HPA status", "config_ref_exists": "Check whether the configuration reference exists",
     }.get(probe, probe.replace("_", " ").title())
 
 
 def diagnostic_description(probe: str) -> str:
     return {
-        "current_logs": "读取目标 Pod 当前容器日志并提取错误栈、超时和依赖失败。",
-        "previous_logs": "读取 --previous 日志、退出码和 lastState，区分 OOM、崩溃与探针杀死。",
-        "events": "按时间线聚合调度、镜像、挂载、探针和沙箱事件。",
-        "workload_spec": "读取真实模板，检查镜像、资源、探针、环境变量引用、调度和安全上下文。",
-        "service_endpoints": "核对 selector、EndpointSlice 和 Ready endpoint，识别流量黑洞。",
-        "storage_chain": "沿 Pod volume -> PVC -> PV -> StorageClass/CSI 检查绑定、容量和权限。",
-        "scheduler_constraints": "联查 requests、quota、affinity、taint/toleration 与 topology spread。",
-        "dependency_topology": "结合 CMDB/Kafka/数据库调用关系判断上游与下游影响。",
-        "recent_changes": "关联 Deployment revision、镜像摘要、ConfigMap 版本和故障开始时间，判断是否需要回滚。",
-        "pdb_state": "核对 expectedPods、currentHealthy、disruptionsAllowed 与 Workload 副本数，识别驱逐死锁。",
-        "quota": "核对 ResourceQuota、LimitRange、requests/limits 和准入失败事件。",
-        "config_ref_exists": "读取 Workload 引用的 ConfigMap/Secret 名称，确认缺失对象和批准恢复模板。",
-        "certificate_chain": "读取证书有效期、SAN、issuer 和信任链，不导出私钥。",
-        "webhook_status": "检查 Webhook Service、Endpoint、CABundle、failurePolicy 与超时事件。",
-    }.get(probe, f"执行 {diagnostic_title(probe)}，将结果作为下一轮根因评分证据。")
+        "current_logs": "Read the current container logs of the target Pod and extract stack traces, timeouts, and dependency failures.",
+        "previous_logs": "Read the --previous logs, exit code, and lastState to distinguish OOM, crashes, and probe-triggered kills.",
+        "events": "Aggregate scheduling, image, mount, probe, and sandbox events along a timeline.",
+        "workload_spec": "Read the real template and inspect image, resources, probes, environment-variable references, scheduling, and security context.",
+        "service_endpoints": "Review selector, EndpointSlice, and Ready endpoints to identify traffic black holes.",
+        "storage_chain": "Inspect binding, capacity, and permissions along the Pod volume -> PVC -> PV -> StorageClass/CSI chain.",
+        "scheduler_constraints": "Cross-check requests, quota, affinity, taints/tolerations, and topology spread.",
+        "dependency_topology": "Use CMDB, Kafka, and database call relationships to judge upstream and downstream impact.",
+        "recent_changes": "Correlate Deployment revision, image digest, ConfigMap version, and incident start time to decide whether rollback is needed.",
+        "pdb_state": "Review expectedPods, currentHealthy, disruptionsAllowed, and Workload replica count to detect eviction deadlocks.",
+        "quota": "Review ResourceQuota, LimitRange, requests/limits, and admission-failure events.",
+        "config_ref_exists": "Read the ConfigMap/Secret names referenced by the Workload and confirm the missing object and approved recovery template.",
+        "certificate_chain": "Read certificate expiration, SAN, issuer, and trust chain without exporting private keys.",
+        "webhook_status": "Check the Webhook Service, Endpoint, CABundle, failurePolicy, and timeout events.",
+    }.get(probe, f"Run {diagnostic_title(probe)} and use the result as evidence for the next round of root-cause scoring.")
 
 
 def validate_change(change: dict) -> tuple[bool, str]:

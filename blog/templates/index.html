@@ -1,9 +1,8 @@
 <section class="hero" style="--hero-image: url('{{ hero_image }}')">
   <div class="hero-copy">
-    <p class="eyebrow">PUBLIC SOURCE · AGENTICOPS · SHANGHAI</p>
+    <p class="eyebrow">PUBLIC SOURCE · AGENTICOPS</p>
     <h1>Flawless</h1>
     <p class="hero-line">From alert to verified recovery.</p>
-    <p class="hero-line zh">从告警到恢复验证。</p>
     <p class="hero-summary">Evidence-driven diagnosis, human-approved remediation, and auditable recovery for Kubernetes and cloud infrastructure.</p>
     <div class="hero-actions">
       <a class="primary-action" href="{{ repository_url }}">View on GitHub</a>
@@ -14,9 +13,9 @@
 
 <section class="story-band" id="stories">
   <div class="section-heading">
-    <p class="eyebrow">FIELD NOTES / 实战手记</p>
+    <p class="eyebrow">FIELD NOTES</p>
     <h2>Building infrastructure that can explain, repair, and verify itself.</h2>
-    <p>关于 AI SRE、安全修复与下一代运维控制平面的中英文思考。</p>
+    <p>Field notes on AI SRE, safe remediation, and the next-generation operations control plane.</p>
   </div>
   <div class="story-grid">
     {% for post in posts %}
@@ -27,9 +26,8 @@
       <div class="story-body">
         <p class="story-meta">{{ post.date_display }} · {{ post.reading_time }} min read</p>
         <h3><a href="{{ post.url }}">{{ post.title }}</a></h3>
-        <p class="story-title-en">{{ post.title_en }}</p>
         <p>{{ post.description }}</p>
-        <a class="read-link" href="{{ post.url }}">Read / 阅读 <span aria-hidden="true">→</span></a>
+        <a class="read-link" href="{{ post.url }}">Read <span aria-hidden="true">→</span></a>
       </div>
     </article>
     {% endfor %}

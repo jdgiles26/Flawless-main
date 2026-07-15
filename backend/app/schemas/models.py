@@ -1,4 +1,4 @@
-"""可插拔模型与运维能力测评接口的数据模型。"""
+"""Data models for pluggable model and operations capability evaluation endpoints."""
 
 from pydantic import BaseModel, Field
 

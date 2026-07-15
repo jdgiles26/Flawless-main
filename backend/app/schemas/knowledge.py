@@ -1,4 +1,4 @@
-"""知识库导入、重建和问答接口的数据模型。"""
+"""Data models for knowledge base import, reindexing, and Q&A endpoints."""
 
 from pydantic import BaseModel, Field
 

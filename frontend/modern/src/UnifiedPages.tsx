@@ -91,7 +91,7 @@ export function DashboardPage() {
     setAdvice({ loading: true });
     try {
       const data = await apiPost<any>("/api/chat", {
-        message: `请基于真实集群证据分析 Pod ${pod.name} 的异常原因并给出简洁处置建议。当前信号：${pod.issue?.reason || pod.phase || "NotReady"}`,
+        message: `Please analyze the root cause of Pod ${pod.name} based on real cluster evidence and provide concise remediation guidance. Current signal: ${pod.issue?.reason || pod.phase || "NotReady"}`,
         cluster: pod.cluster || cluster,
         cluster_id: pod.cluster_id || pod.cluster || cluster,
         namespace: pod.namespace || "default",
@@ -108,39 +108,39 @@ export function DashboardPage() {
   return (
     <div className="unified-page">
       <div className="page-commandbar">
-        <div className="scope-control"><span>监控范围</span><select value={cluster} onChange={(event) => setCluster(event.target.value)}><option value="all">所有集群</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div>
-        <button className="ghost" onClick={refresh}><RefreshCcw size={15} />刷新</button>
+        <div className="scope-control"><span>Monitoring Scope</span><select value={cluster} onChange={(event) => setCluster(event.target.value)}><option value="all">All Clusters</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div>
+        <button className="ghost" onClick={refresh}><RefreshCcw size={15} />Refresh</button>
       </div>
       <section className="kpi-grid six">
-        <Kpi label="集群" value={cluster === "all" ? (rancher.data?.cluster_count || selectedInventory.length || 1) : 1} detail={rancher.data?.status || "local"} />
+        <Kpi label="Clusters" value={cluster === "all" ? (rancher.data?.cluster_count || selectedInventory.length || 1) : 1} detail={rancher.data?.status || "local"} />
         <Kpi label="Pods" value={summary.pods?.total || 0} detail={`${summary.pods?.running || 0} Running`} />
-        <Kpi label="异常" value={summary.pods?.failed || problems.length || 0} detail="未就绪或运行异常" tone={(summary.pods?.failed || problems.length) ? "danger" : "good"} />
+        <Kpi label="Anomalies" value={summary.pods?.failed || problems.length || 0} detail="Not ready or running abnormally" tone={(summary.pods?.failed || problems.length) ? "danger" : "good"} />
         <Kpi label="CPU" value={`${Number(values.cpu_cores || 0).toFixed(2)} C`} detail={metrics.data?.source || "metrics"} />
-        <Kpi label="内存" value={`${(Number(values.memory_bytes || 0) / 1024 / 1024 / 1024).toFixed(2)} GiB`} detail="Working set" />
-        <Kpi label="节点" value={summary.nodes?.total || nodes.length || 0} detail={`${summary.nodes?.ready || nodes.filter((node: any) => node.ready).length || 0} Ready`} />
+        <Kpi label="Memory" value={`${(Number(values.memory_bytes || 0) / 1024 / 1024 / 1024).toFixed(2)} GiB`} detail="Working set" />
+        <Kpi label="Nodes" value={summary.nodes?.total || nodes.length || 0} detail={`${summary.nodes?.ready || nodes.filter((node: any) => node.ready).length || 0} Ready`} />
       </section>
       <section className="unified-grid dashboard-grid">
         <div className="surface span-two">
-          <SectionHead icon={AlertTriangle} title="需要关注" meta={`${problems.length} 项实时异常`} />
-          {problems.length ? <div className="compact-list attention-scroll">{problems.map((pod: any) => <div className="compact-row attention-row" key={`${pod.cluster}-${pod.namespace}-${pod.name}`}><span className="resource-icon risk"><Boxes size={15} /></span><div><strong>{pod.name}</strong><small>{pod.cluster} / {pod.namespace} · {pod.issue?.reason || pod.phase || "NotReady"}</small></div><div className="attention-actions"><StatusPill status={pod.issue?.severity || "warning"} /><button className="row-icon-button" onClick={() => { setSelectedProblem(pod); setAdvice({ loading: false }); }} title="查看异常详情"><Eye size={14} /></button></div></div>)}</div> : <Empty text="当前范围没有发现异常 Pod" />}
+          <SectionHead icon={AlertTriangle} title="Needs Attention" meta={`${problems.length}  live anomalies`} />
+          {problems.length ? <div className="compact-list attention-scroll">{problems.map((pod: any) => <div className="compact-row attention-row" key={`${pod.cluster}-${pod.namespace}-${pod.name}`}><span className="resource-icon risk"><Boxes size={15} /></span><div><strong>{pod.name}</strong><small>{pod.cluster} / {pod.namespace} · {pod.issue?.reason || pod.phase || "NotReady"}</small></div><div className="attention-actions"><StatusPill status={pod.issue?.severity || "warning"} /><button className="row-icon-button" onClick={() => { setSelectedProblem(pod); setAdvice({ loading: false }); }} title="View anomaly details"><Eye size={14} /></button></div></div>)}</div> : <Empty text="No anomalous Pods were found in the current scope" />}
         </div>
         <div className="surface">
-          <SectionHead icon={Activity} title="平台服务" />
+          <SectionHead icon={Activity} title="Platform Services" />
           <div className="service-matrix">{Object.entries(health.data?.services || {}).map(([name, value]: [string, any]) => <div key={name}><span>{name}</span><StatusPill status={value?.status || "unknown"} /></div>)}</div>
           {health.error && <div className="inline-error">{health.error}</div>}
         </div>
         {selectedProblem && <div className="surface span-three attention-detail">
-          <SectionHead icon={Eye} title={selectedProblem.name} meta={`${selectedProblem.cluster || cluster} / ${selectedProblem.namespace || "default"}`} action={<button className="primary" onClick={() => askForAdvice(selectedProblem)} disabled={advice.loading}>{advice.loading ? <Loader2 className="spin" size={15} /> : <Sparkles size={15} />}AI 建议</button>} />
-          <div className="attention-detail-grid"><div><span>异常原因</span><strong>{selectedProblem.issue?.reason || selectedProblem.phase || "NotReady"}</strong></div><div><span>容器状态</span><strong>{selectedProblem.ready ? "Ready" : "NotReady"} · restart {selectedProblem.restart_count || 0}</strong></div><div><span>上游工作负载</span><strong>{selectedProblem.workload_kind || selectedProblem.workload?.kind || "-"}/{selectedProblem.workload_name || selectedProblem.workload?.name || "-"}</strong></div></div>
+          <SectionHead icon={Eye} title={selectedProblem.name} meta={`${selectedProblem.cluster || cluster} / ${selectedProblem.namespace || "default"}`} action={<button className="primary" onClick={() => askForAdvice(selectedProblem)} disabled={advice.loading}>{advice.loading ? <Loader2 className="spin" size={15} /> : <Sparkles size={15} />}AI Guidance</button>} />
+          <div className="attention-detail-grid"><div><span>Anomaly Cause</span><strong>{selectedProblem.issue?.reason || selectedProblem.phase || "NotReady"}</strong></div><div><span>Container Status</span><strong>{selectedProblem.ready ? "Ready" : "NotReady"} · restart {selectedProblem.restart_count || 0}</strong></div><div><span>Upstream Workload</span><strong>{selectedProblem.workload_kind || selectedProblem.workload?.kind || "-"}/{selectedProblem.workload_name || selectedProblem.workload?.name || "-"}</strong></div></div>
           {advice.error && <div className="inline-error">{advice.error}</div>}
           {advice.data?.answer && <div className="attention-advice"><BrainCircuit size={17} /><p>{advice.data.answer}</p></div>}
         </div>}
         <div className="surface span-three">
-          <SectionHead icon={Layers3} title="工作负载健康" meta={`${workloads.length} workloads`} />
+          <SectionHead icon={Layers3} title="Workload Health" meta={`${workloads.length} workloads`} />
           {workloads.length ? <div className="workload-strip">{workloads.slice(0, 12).map((item: any) => {
             const healthy = Number(item.ready_replicas || 0) >= Number(item.replicas || 0);
             return <div key={`${item.cluster}-${item.namespace}-${item.kind}-${item.name}`}><span>{item.kind}</span><strong>{item.name}</strong><small>{item.cluster}/{item.namespace}</small><StatusPill status={healthy ? "healthy" : "degraded"} text={`${item.ready_replicas || 0}/${item.replicas || 0}`} /></div>;
-          })}</div> : <Empty text="Rancher 尚未返回工作负载清单" />}
+          })}</div> : <Empty text="Rancher has not returned the workload inventory yet" />}
         </div>
       </section>
     </div>
@@ -162,18 +162,18 @@ export function ResourcesPage() {
   return <div className="unified-page">
     <div className="page-commandbar resource-toolbar">
       <div className="segmented"><button className={kind === "pods" ? "active" : ""} onClick={() => setKind("pods")}>Pods</button><button className={kind === "workloads" ? "active" : ""} onClick={() => setKind("workloads")}>Workloads</button><button className={kind === "nodes" ? "active" : ""} onClick={() => setKind("nodes")}>Nodes</button></div>
-      <select value={cluster} onChange={(event) => { setCluster(event.target.value); setNamespace("all"); }}><option value="all">所有集群</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select>
-      {kind !== "nodes" && <select value={namespace} onChange={(event) => setNamespace(event.target.value)}><option value="all">所有 Namespace</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select>}
-      <label className="search-field"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="筛选资源" /></label>
+      <select value={cluster} onChange={(event) => { setCluster(event.target.value); setNamespace("all"); }}><option value="all">All Clusters</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select>
+      {kind !== "nodes" && <select value={namespace} onChange={(event) => setNamespace(event.target.value)}><option value="all">All Namespaces</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select>}
+      <label className="search-field"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter resources" /></label>
       <button className="ghost" onClick={refresh}><RefreshCcw size={15} /></button>
     </div>
     <div className="surface resource-surface">
-      <SectionHead icon={kind === "nodes" ? ServerCog : Boxes} title={kind === "pods" ? "Pod 清单" : kind === "workloads" ? "Workload 清单" : "Node 清单"} meta={`${rows.length} resources`} />
+      <SectionHead icon={kind === "nodes" ? ServerCog : Boxes} title={kind === "pods" ? "Pod Inventory" : kind === "workloads" ? "Workload Inventory" : "Node Inventory"} meta={`${rows.length} resources`} />
       {state.error && <div className="inline-error">{state.error}</div>}
-      {rows.length ? <div className="resource-table"><div className="resource-table-head"><span>名称</span><span>位置</span><span>类型 / 状态</span><span>健康</span></div>{rows.slice(0, 200).map((item: any, index: number) => {
+      {rows.length ? <div className="resource-table"><div className="resource-table-head"><span>Name</span><span>Location</span><span>Type / Status</span><span>Health</span></div>{rows.slice(0, 200).map((item: any, index: number) => {
         const healthy = kind === "nodes" ? item.ready : kind === "workloads" ? Number(item.ready_replicas || 0) >= Number(item.replicas || 0) : item.ready || item.phase === "Succeeded";
         return <div className="resource-table-row" key={`${item.cluster}-${item.namespace}-${item.name}-${index}`}><div><strong>{item.name}</strong><small>{item.workload_kind && item.workload_name ? `${item.workload_kind}/${item.workload_name}` : item.kind || ""}</small></div><span>{item.cluster || "-"}<small>{item.namespace || "global"}</small></span><span>{item.kind || item.phase || "Node"}<small>{kind === "workloads" ? `${item.ready_replicas || 0}/${item.replicas || 0} ready` : item.issue?.reason || ""}</small></span><StatusPill status={healthy ? "healthy" : "degraded"} /></div>;
-      })}</div> : !state.loading && <Empty text="当前筛选范围没有资源" />}
+      })}</div> : !state.loading && <Empty text="No resources match the current filters" />}
     </div>
   </div>;
 }
@@ -220,22 +220,22 @@ export function InfrastructurePage({ activeModelId = "" }: { activeModelId?: str
 
   return <div className="unified-page infrastructure-page">
     <div className="page-commandbar infrastructure-toolbar">
-      <div className="scope-control"><span>资源类型</span><select value={resourceType} onChange={(event) => { setResourceType(event.target.value); setResourceId(""); }}><option value="all">全部基础设施</option>{catalog.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div>
-      <div className="scope-control"><span>目标资源</span><select value={resourceId} onChange={(event) => setResourceId(event.target.value)}><option value="">当前类型全部资源</option>{scopedResources.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div>
-      <button className="primary" onClick={runScan} disabled={scan.loading}>{scan.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}AI SRE 巡检</button>
-      <button className="ghost" onClick={refreshAll}><RefreshCcw size={15} />刷新</button>
+      <div className="scope-control"><span>Resource Type</span><select value={resourceType} onChange={(event) => { setResourceType(event.target.value); setResourceId(""); }}><option value="all">All Infrastructure</option>{catalog.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div>
+      <div className="scope-control"><span>Target Resource</span><select value={resourceId} onChange={(event) => setResourceId(event.target.value)}><option value="">All resources of the current type</option>{scopedResources.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div>
+      <button className="primary" onClick={runScan} disabled={scan.loading}>{scan.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}AI SRE Inspection</button>
+      <button className="ghost" onClick={refreshAll}><RefreshCcw size={15} />Refresh</button>
     </div>
     <section className="kpi-grid six">
-      <Kpi label="纳管资源" value={providers.data?.summary?.total || resourceRows.length || 0} detail={providers.data?.summary?.configured ? "已配置 Provider" : "等待接入"} />
-      <Kpi label="数据库" value={providers.data?.summary?.by_type?.database || 0} detail="MySQL / Oracle / Redis" />
-      <Kpi label="虚拟机" value={providers.data?.summary?.by_type?.virtual_machine || 0} detail="VMware / ECS / Linux" />
-      <Kpi label="中间件" value={providers.data?.summary?.by_type?.middleware || 0} detail="Kafka / MQ / ELK" />
-      <Kpi label="本次异常" value={summary.total || 0} detail={`${summary.p1 || 0} P1 · ${summary.p2 || 0} P2`} tone={summary.total ? "danger" : "good"} />
-      <Kpi label="受控执行器" value={providers.data?.summary?.action_webhook_configured ? "Ready" : "待配置"} detail="外部变更 Webhook" tone={providers.data?.summary?.action_webhook_configured ? "good" : ""} />
+      <Kpi label="Managed Resources" value={providers.data?.summary?.total || resourceRows.length || 0} detail={providers.data?.summary?.configured ? "Provider Configured" : "Awaiting Integration"} />
+      <Kpi label="Databases" value={providers.data?.summary?.by_type?.database || 0} detail="MySQL / Oracle / Redis" />
+      <Kpi label="Virtual Machines" value={providers.data?.summary?.by_type?.virtual_machine || 0} detail="VMware / ECS / Linux" />
+      <Kpi label="Middleware" value={providers.data?.summary?.by_type?.middleware || 0} detail="Kafka / MQ / ELK" />
+      <Kpi label="Current Anomalies" value={summary.total || 0} detail={`${summary.p1 || 0} P1 · ${summary.p2 || 0} P2`} tone={summary.total ? "danger" : "good"} />
+      <Kpi label="Controlled Executor" value={providers.data?.summary?.action_webhook_configured ? "Ready" : "Not Configured"} detail="External Change Webhook" tone={providers.data?.summary?.action_webhook_configured ? "good" : ""} />
     </section>
     <section className="unified-grid infrastructure-grid">
       <div className="surface">
-        <SectionHead icon={CloudCog} title="Provider 目录" meta="K8s 之外的全栈资源入口" />
+        <SectionHead icon={CloudCog} title="Provider Catalog" meta="Full-stack resource entry points beyond K8s" />
         <div className="infra-provider-list">
           {catalog.map((item: any) => <article key={item.id}>
             <span className="resource-icon">{item.id === "database" ? <Database size={15} /> : item.id === "virtual_machine" ? <ServerCog size={15} /> : item.id === "storage" ? <HardDrive size={15} /> : <CloudCog size={15} />}</span>
@@ -244,33 +244,33 @@ export function InfrastructurePage({ activeModelId = "" }: { activeModelId?: str
         </div>
       </div>
       <div className="surface span-two">
-        <SectionHead icon={Layers3} title="资源清单" meta={`${scopedResources.length} resources`} />
+        <SectionHead icon={Layers3} title="Resource Inventory" meta={`${scopedResources.length} resources`} />
         {resources.error && <div className="inline-error">{resources.error}</div>}
         {scopedResources.length ? <div className="infra-resource-grid">{scopedResources.slice(0, 60).map((item: any) => <button className={resourceId === item.id ? "selected" : ""} key={item.id} onClick={() => setResourceId(item.id)}>
           <span className="resource-icon">{item.type === "database" ? <Database size={15} /> : item.type === "virtual_machine" ? <ServerCog size={15} /> : item.type === "storage" ? <HardDrive size={15} /> : <CloudCog size={15} />}</span>
-          <div><strong>{item.name || item.id}</strong><small>{item.type} · {item.provider || item.subtype} · {item.cluster || "external"}</small><small>{item.business_service || item.owner || item.endpoint || item.host || "未绑定业务服务"}</small></div>
-          <StatusPill status={item.actions_enabled ? "actions" : "read-only"} text={item.actions_enabled ? "可申请变更" : "只读诊断"} />
+          <div><strong>{item.name || item.id}</strong><small>{item.type} · {item.provider || item.subtype} · {item.cluster || "external"}</small><small>{item.business_service || item.owner || item.endpoint || item.host || "Not bound to a business service"}</small></div>
+          <StatusPill status={item.actions_enabled ? "actions" : "read-only"} text={item.actions_enabled ? "Change Request Available" : "Read-Only Diagnosis"} />
         </button>)}</div> : <div className="infra-config-guide">
           <Database size={22} />
-          <div><strong>还没有接入 K8s 之外的资源</strong><p>在 ConfigMap 中配置 <code>INFRASTRUCTURE_RESOURCES_JSON</code>、<code>DATABASE_TARGETS_JSON</code>、<code>VM_TARGETS_JSON</code> 后，这里会自动出现数据库、虚拟机、中间件和存储资源。</p></div>
+          <div><strong>No resources beyond K8s have been integrated yet</strong><p>After configuring <code>INFRASTRUCTURE_RESOURCES_JSON</code>, <code>DATABASE_TARGETS_JSON</code>, and <code>VM_TARGETS_JSON</code> in the ConfigMap, database, virtual machine, middleware, and storage resources will appear here automatically.</p></div>
         </div>}
       </div>
       <div className="surface">
-        <SectionHead icon={AlertTriangle} title="异常队列" meta={`${findings.length} findings`} />
+        <SectionHead icon={AlertTriangle} title="Anomaly Queue" meta={`${findings.length} findings`} />
         {scan.error && <div className="inline-error">{scan.error}</div>}
-        {scan.loading && <Empty text="正在探测资源、读取指标并让 AI SRE 生成预演" />}
+        {scan.loading && <Empty text="Probing resources, reading metrics, and having AI SRE generate a preview" />}
         {!scan.loading && findings.length ? <div className="infra-finding-list">{findings.map((item: any) => <button className={selectedFinding?.id === item.id ? "selected" : ""} key={item.id} onClick={() => setSelectedFindingId(item.id)}>
           <StatusPill status={item.severity || "P2"} />
           <strong>{item.title}</strong>
           <small>{item.resource_type}/{item.resource_id}</small>
           <p>{item.summary}</p>
-        </button>)}</div> : !scan.loading && <Empty text={providers.data?.summary?.configured ? "点击 AI SRE 巡检后展示异常和可执行预演" : "先配置资源 Provider，再进行全栈巡检"} />}
+        </button>)}</div> : !scan.loading && <Empty text={providers.data?.summary?.configured ? "Click AI SRE Inspection to display anomalies and executable previews" : "Configure resource providers first, then run a full-stack inspection"} />}
       </div>
       <div className="surface span-two infra-plan-shell">
-        <SectionHead icon={BrainCircuit} title="AI SRE 运维预演" meta={selectedResource ? `${selectedResource.type}/${selectedResource.name}` : selectedPlan?.target || "waiting"} />
+        <SectionHead icon={BrainCircuit} title="AI SRE Operations Preview" meta={selectedResource ? `${selectedResource.type}/${selectedResource.name}` : selectedPlan?.target || "waiting"} />
         {selectedPlan ? <OpsPlanPanel plan={selectedPlan} /> : <div className="infra-config-guide">
           <ShieldCheck size={22} />
-          <div><strong>执行边界已经预留</strong><p>数据库、虚拟机、存储和云资源的真实变更统一提交到 <code>INFRASTRUCTURE_ACTION_WEBHOOK_URL</code>。执行器负责对接 DBA、虚拟化平台、ITSM 或企业脚本平台，页面保留审批、审计和恢复验证。</p></div>
+          <div><strong>Execution Boundaries Are Reserved</strong><p>Real changes for databases, virtual machines, storage, and cloud resources are uniformly submitted to <code>INFRASTRUCTURE_ACTION_WEBHOOK_URL</code>. The executor handles integration with DBAs, virtualization platforms, ITSM, or enterprise scripting platforms, while this page preserves approval, audit, and recovery verification.</p></div>
         </div>}
       </div>
     </section>
@@ -301,8 +301,8 @@ export function OperationsPage() {
     catch (error: any) { setScan({ loading: false, error: error.message }); }
   }
   return <div className="unified-page">
-    <div className="page-commandbar"><div className="segmented"><button className={tab === "scan" ? "active" : ""} onClick={() => setTab("scan")}>扫描诊断</button><button className={tab === "incidents" ? "active" : ""} onClick={() => setTab("incidents")}>事件</button><button className={tab === "alerts" ? "active" : ""} onClick={() => setTab("alerts")}>告警</button><button className={tab === "postmortems" ? "active" : ""} onClick={() => setTab("postmortems")}>复盘</button><button className={tab === "capabilities" ? "active" : ""} onClick={() => setTab("capabilities")}>运维工具</button><button className={tab === "skills" ? "active" : ""} onClick={() => setTab("skills")}>Skill 库</button></div><button className="ghost" onClick={refresh}><RefreshCcw size={15} />刷新</button></div>
-    {tab === "scan" ? <div className="operations-scan-grid"><div className="surface"><SectionHead icon={Search} title="证据扫描" meta="仅在发现真实信号后触发 AI 诊断" /><div className="ops-scan-form"><label>集群<select value={cluster} onChange={(event) => { setCluster(event.target.value); setNamespace("all"); }}><option value="all">所有集群</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></label><label>Namespace<select value={namespace} onChange={(event) => setNamespace(event.target.value)}><option value="all">所有 Namespace</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label>异常类型<select value={intent} onChange={(event) => setIntent(event.target.value)}><option value="crashloop">CrashLoop / 镜像 / OOM</option><option value="pending">Pending / 调度</option><option value="highcpu">高 CPU</option></select></label><label>严重级别<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="auto">自动识别</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option></select></label><button className="primary" onClick={runScan} disabled={scan.loading}>{scan.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}扫描并诊断</button></div></div><div className="surface"><SectionHead icon={BrainCircuit} title="诊断结果" meta={scan.data?.status || "waiting"} />{scan.error && <div className="inline-error">{scan.error}</div>}{scan.data ? <div className="scan-result"><StatusPill status={scan.data.status || "ok"} /><h3>{scan.data.reason || scan.data.scan?.findings?.[0]?.issue?.reason || "扫描完成"}</h3><p>{scan.data.results?.[0]?.answer || scan.data.answer || `检查 ${scan.data.evidence?.pods_checked ?? list(scan.data.scan?.findings).length} 个 Pod，发现 ${list(scan.data.scan?.findings).length} 条匹配信号。`}</p><div className="compact-list">{list(scan.data.scan?.findings).map((item: any) => <div className="compact-row" key={`${item.cluster}-${item.namespace}-${item.name}`}><span className="resource-icon risk"><Boxes size={14} /></span><div><strong>{item.name}</strong><small>{item.cluster}/{item.namespace} · {item.issue?.reason || item.phase}</small></div><StatusPill status={scan.data.scan?.severity || "warning"} /></div>)}</div></div> : <Empty text="选择范围和异常类型后开始扫描" />}</div></div> : tab === "capabilities" ? <div className="surface"><SectionHead icon={TerminalSquare} title="受控运维能力" meta={capabilities.data?.planner} /><div className="capability-grid">{list(capabilities.data?.actions).map((item: any) => <div className="capability-card" key={item.action || item.id}><span>{item.risk || "controlled"}</span><strong>{item.action || item.id || item.name}</strong><p>{item.description || item.summary || "通过证据、预演、审批和恢复验证执行"}</p></div>)}</div></div> : tab === "skills" ? <OpsSkillsPage /> : <div className="surface"><SectionHead icon={tab === "incidents" ? BellRing : tab === "alerts" ? AlertTriangle : FileClock} title={tab === "incidents" ? "事件时间线" : tab === "alerts" ? "告警记录" : "复盘报告"} meta={`${rows.length} records`} />{rows.length ? <div className="timeline-list">{rows.slice().reverse().map((item: any, index: number) => <div className="timeline-item" key={item.incident_id || item.id || index}><i /><div><div><strong>{item.title || item.alert_name || item.name || "记录"}</strong><StatusPill status={item.status || item.severity || "recorded"} /></div><p>{item.summary || item.description || item.root_cause || item.report || "已进入审计时间线"}</p><small>{item.cluster || ""} {item.namespace || ""} · {timeText(item.created_at || item.timestamp)}</small></div></div>)}</div> : <Empty text="暂无记录；新的告警与处置会自动进入这里" />}</div>}
+    <div className="page-commandbar"><div className="segmented"><button className={tab === "scan" ? "active" : ""} onClick={() => setTab("scan")}>Scan Diagnosis</button><button className={tab === "incidents" ? "active" : ""} onClick={() => setTab("incidents")}>Incidents</button><button className={tab === "alerts" ? "active" : ""} onClick={() => setTab("alerts")}>Alerts</button><button className={tab === "postmortems" ? "active" : ""} onClick={() => setTab("postmortems")}>Postmortems</button><button className={tab === "capabilities" ? "active" : ""} onClick={() => setTab("capabilities")}>Operations Tools</button><button className={tab === "skills" ? "active" : ""} onClick={() => setTab("skills")}>Skill Library</button></div><button className="ghost" onClick={refresh}><RefreshCcw size={15} />Refresh</button></div>
+    {tab === "scan" ? <div className="operations-scan-grid"><div className="surface"><SectionHead icon={Search} title="Evidence Scan" meta="Trigger AI diagnosis only after real signals are detected" /><div className="ops-scan-form"><label>Clusters<select value={cluster} onChange={(event) => { setCluster(event.target.value); setNamespace("all"); }}><option value="all">All Clusters</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></label><label>Namespace<select value={namespace} onChange={(event) => setNamespace(event.target.value)}><option value="all">All Namespaces</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label>Anomaly Type<select value={intent} onChange={(event) => setIntent(event.target.value)}><option value="crashloop">CrashLoop / Image / OOM</option><option value="pending">Pending / Scheduling</option><option value="highcpu">High CPU</option></select></label><label>Severity<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="auto">Auto Detect</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option></select></label><button className="primary" onClick={runScan} disabled={scan.loading}>{scan.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}Scan and Diagnose</button></div></div><div className="surface"><SectionHead icon={BrainCircuit} title="Diagnosis Results" meta={scan.data?.status || "waiting"} />{scan.error && <div className="inline-error">{scan.error}</div>}{scan.data ? <div className="scan-result"><StatusPill status={scan.data.status || "ok"} /><h3>{scan.data.reason || scan.data.scan?.findings?.[0]?.issue?.reason || "Scan Complete"}</h3><p>{scan.data.results?.[0]?.answer || scan.data.answer || `Checked ${scan.data.evidence?.pods_checked ?? list(scan.data.scan?.findings).length} Pods and found ${list(scan.data.scan?.findings).length} matching signals.`}</p><div className="compact-list">{list(scan.data.scan?.findings).map((item: any) => <div className="compact-row" key={`${item.cluster}-${item.namespace}-${item.name}`}><span className="resource-icon risk"><Boxes size={14} /></span><div><strong>{item.name}</strong><small>{item.cluster}/{item.namespace} · {item.issue?.reason || item.phase}</small></div><StatusPill status={scan.data.scan?.severity || "warning"} /></div>)}</div></div> : <Empty text="Select a scope and anomaly type to start scanning" />}</div></div> : tab === "capabilities" ? <div className="surface"><SectionHead icon={TerminalSquare} title="Controlled Operations Capabilities" meta={capabilities.data?.planner} /><div className="capability-grid">{list(capabilities.data?.actions).map((item: any) => <div className="capability-card" key={item.action || item.id}><span>{item.risk || "controlled"}</span><strong>{item.action || item.id || item.name}</strong><p>{item.description || item.summary || "Execute through evidence, preview, approval, and recovery verification"}</p></div>)}</div></div> : tab === "skills" ? <OpsSkillsPage /> : <div className="surface"><SectionHead icon={tab === "incidents" ? BellRing : tab === "alerts" ? AlertTriangle : FileClock} title={tab === "incidents" ? "Incident Timeline" : tab === "alerts" ? "Alert Records" : "Postmortem Reports"} meta={`${rows.length} records`} />{rows.length ? <div className="timeline-list">{rows.slice().reverse().map((item: any, index: number) => <div className="timeline-item" key={item.incident_id || item.id || index}><i /><div><div><strong>{item.title || item.alert_name || item.name || "Record"}</strong><StatusPill status={item.status || item.severity || "recorded"} /></div><p>{item.summary || item.description || item.root_cause || item.report || "Entered the audit timeline"}</p><small>{item.cluster || ""} {item.namespace || ""} · {timeText(item.created_at || item.timestamp)}</small></div></div>)}</div> : <Empty text="No records yet; new alerts and handling results will appear here automatically" />}</div>}
   </div>;
 }
 
@@ -322,84 +322,84 @@ type SkillChoice = {
 
 const fallbackSkillOptions = {
   applies_to: [
-    { id: "Pod", label: "Pod", description: "单个运行实例，适合日志、重启、挂载、探针和调度问题。" },
-    { id: "Deployment", label: "Deployment", description: "无状态工作负载，适合模板、镜像、副本和发布问题。" },
-    { id: "StatefulSet", label: "StatefulSet", description: "有状态工作负载，需关注稳定身份和持久卷。" },
-    { id: "Service", label: "Service", description: "服务发现和流量入口，适合 selector、端口和 Endpoint 问题。" },
-    { id: "Node", label: "Node", description: "集群节点，适合压力、NotReady、隔离和恢复调度问题。" },
-    { id: "PVC", label: "PVC", description: "存储声明，适合 Pending、扩容和绑定问题。" },
-    { id: "Database", label: "Database", description: "数据库实例或集群，适合连接、慢 SQL、锁、复制、容量和备份问题。" },
-    { id: "MySQL", label: "MySQL", description: "MySQL / MariaDB 实例，关注连接池、主从复制、慢查询和 InnoDB 锁。" },
-    { id: "Oracle", label: "Oracle", description: "Oracle 数据库实例，关注表空间、会话、归档、锁等待和 Data Guard。" },
-    { id: "Redis", label: "Redis", description: "缓存与内存型数据库，关注内存、主从、慢命令、过期策略和连接数。" },
-    { id: "VirtualMachine", label: "VirtualMachine", description: "虚拟机、云主机或物理主机，适合系统服务、磁盘、网络和 Agent 问题。" },
-    { id: "LinuxHost", label: "LinuxHost", description: "Linux 主机，适合 systemd、文件系统、内核、进程和网络排障。" },
-    { id: "StorageArray", label: "StorageArray", description: "企业存储或 NAS/SAN 后端，适合容量、路径、ACL 和快照问题。" },
+    { id: "Pod", label: "Pod", description: "A single running instance, suitable for log, restart, mount, probe, and scheduling issues." },
+    { id: "Deployment", label: "Deployment", description: "A stateless workload, suitable for template, image, replica, and release issues." },
+    { id: "StatefulSet", label: "StatefulSet", description: "A stateful workload that requires attention to stable identity and persistent volumes." },
+    { id: "Service", label: "Service", description: "Service discovery and traffic entry, suitable for selector, port, and Endpoint issues." },
+    { id: "Node", label: "Node", description: "A cluster node, suitable for pressure, NotReady, isolation, and scheduling recovery issues." },
+    { id: "PVC", label: "PVC", description: "A storage claim, suitable for Pending, expansion, and binding issues." },
+    { id: "Database", label: "Database", description: "A database instance or cluster, suitable for connection, slow SQL, lock, replication, capacity, and backup issues." },
+    { id: "MySQL", label: "MySQL", description: "A MySQL / MariaDB instance, with focus on connection pools, replication, slow queries, and InnoDB locks." },
+    { id: "Oracle", label: "Oracle", description: "An Oracle database instance, with focus on tablespaces, sessions, archiving, lock waits, and Data Guard." },
+    { id: "Redis", label: "Redis", description: "A cache or in-memory database, with focus on memory, primary/replica, slow commands, expiration policies, and connection count." },
+    { id: "VirtualMachine", label: "VirtualMachine", description: "A virtual machine, cloud host, or physical host, suitable for system service, disk, network, and Agent issues." },
+    { id: "LinuxHost", label: "LinuxHost", description: "A Linux host, suitable for troubleshooting systemd, filesystems, the kernel, processes, and networking." },
+    { id: "StorageArray", label: "StorageArray", description: "Enterprise storage or a NAS/SAN backend, suitable for capacity, path, ACL, and snapshot issues." },
   ],
   evidence_required: [
-    { id: "previous_logs", label: "上一次容器日志", description: "CrashLoop 场景优先读取，定位上次退出前的错误。" },
-    { id: "events", label: "Kubernetes Events", description: "确认调度、挂载、镜像、探针和准入失败。" },
-    { id: "workload_spec", label: "Workload 配置", description: "读取镜像、探针、资源、卷和安全上下文。" },
-    { id: "dependency_topology", label: "依赖拓扑", description: "读取 CMDB、调用链和跨集群中间件数据流。" },
-    { id: "db_connectivity", label: "数据库连通性", description: "确认实例、监听端口、账号权限和网络路径。" },
-    { id: "db_slow_queries", label: "慢 SQL 证据", description: "读取慢 SQL、执行计划和热点表信息。" },
-    { id: "db_locks", label: "锁等待 / 长事务", description: "确认阻塞会话、锁等待、长事务和影响范围。" },
-    { id: "db_replication", label: "复制 / HA 状态", description: "确认主从、延迟、只读、故障转移和同步状态。" },
-    { id: "db_capacity", label: "数据库容量", description: "检查表空间、磁盘、连接数、内存和日志空间。" },
-    { id: "vm_agent_status", label: "主机 Agent 状态", description: "确认监控、云助手、虚拟化 Agent 或安全 Agent 是否在线。" },
-    { id: "vm_system_metrics", label: "主机系统指标", description: "读取 CPU、内存、磁盘、IO、网络和文件句柄。" },
-    { id: "vm_service_status", label: "系统服务状态", description: "读取 systemd / Windows Service 状态和最近错误。" },
-    { id: "vm_disk_usage", label: "主机磁盘使用", description: "确认文件系统、inode、挂载点、增长目录和扩容能力。" },
+    { id: "previous_logs", label: "Previous Container Logs", description: "Prioritize reading this in CrashLoop scenarios to locate the error before the last exit." },
+    { id: "events", label: "Kubernetes Events", description: "Confirm scheduling, mounting, image, probe, and admission failures." },
+    { id: "workload_spec", label: "Workload Configuration", description: "Read images, probes, resources, volumes, and security context." },
+    { id: "dependency_topology", label: "Dependency Topology", description: "Read the CMDB, call chains, and cross-cluster middleware data flows." },
+    { id: "db_connectivity", label: "Database Connectivity", description: "Confirm the instance, listening port, account permissions, and network path." },
+    { id: "db_slow_queries", label: "Slow SQL Evidence", description: "Read slow SQL, execution plans, and hot-table information." },
+    { id: "db_locks", label: "Lock Waits / Long Transactions", description: "Confirm blocking sessions, lock waits, long transactions, and the impact scope." },
+    { id: "db_replication", label: "Replication / HA Status", description: "Confirm primary/replica, lag, read-only mode, failover, and synchronization status." },
+    { id: "db_capacity", label: "Database Capacity", description: "Check tablespaces, disk, connection count, memory, and log space." },
+    { id: "vm_agent_status", label: "Host Agent Status", description: "Confirm whether monitoring, cloud assistant, virtualization Agent, or security Agent is online." },
+    { id: "vm_system_metrics", label: "Host System Metrics", description: "Read CPU, memory, disk, IO, network, and file handle metrics." },
+    { id: "vm_service_status", label: "System Service Status", description: "Read systemd / Windows Service status and recent errors." },
+    { id: "vm_disk_usage", label: "Host Disk Usage", description: "Confirm filesystems, inodes, mount points, growth directories, and expansion capability." },
   ],
   success_criteria: [
-    { id: "pod_ready", label: "Pod Ready", description: "目标 Pod 连续通过 readiness 并保持稳定。" },
-    { id: "rollout_complete", label: "发布完成", description: "期望副本全部可用，generation 已收敛。" },
-    { id: "restart_count_stable", label: "重启数稳定", description: "观察窗口内重启数不再增长。" },
-    { id: "error_rate_recovered", label: "错误率恢复", description: "错误率回到 SLO 或变更前基线。" },
-    { id: "db_connection_recovered", label: "数据库连接恢复", description: "业务连接成功率和实例连接数恢复到安全区间。" },
-    { id: "db_replication_caught_up", label: "复制追平", description: "复制延迟回到阈值内，HA 状态正常。" },
-    { id: "db_slow_query_reduced", label: "慢 SQL 降低", description: "慢查询和锁等待回落，核心 SQL 不再阻塞业务。" },
-    { id: "vm_agent_online", label: "主机 Agent 在线", description: "监控、虚拟化或云助手 Agent 恢复在线。" },
-    { id: "vm_service_active", label: "服务运行正常", description: "关键服务 active/running，业务探针恢复。" },
-    { id: "vm_disk_pressure_relieved", label: "磁盘压力解除", description: "磁盘、inode 或挂载点容量回到安全阈值。" },
+    { id: "pod_ready", label: "Pod Ready", description: "The target Pod consistently passes readiness checks and remains stable." },
+    { id: "rollout_complete", label: "Release Complete", description: "All expected replicas are available and the generation has converged." },
+    { id: "restart_count_stable", label: "Stable Restart Count", description: "The restart count no longer increases within the observation window." },
+    { id: "error_rate_recovered", label: "Error Rate Recovered", description: "The error rate has returned to the SLO or pre-change baseline." },
+    { id: "db_connection_recovered", label: "Database Connections Recovered", description: "Business connection success rate and instance connection count have returned to a safe range." },
+    { id: "db_replication_caught_up", label: "Replication Caught Up", description: "Replication lag is back within threshold and HA status is healthy." },
+    { id: "db_slow_query_reduced", label: "Slow SQL Reduced", description: "Slow queries and lock waits have dropped, and critical SQL no longer blocks the business." },
+    { id: "vm_agent_online", label: "Host Agent Online", description: "The monitoring, virtualization, or cloud assistant Agent is back online." },
+    { id: "vm_service_active", label: "Service Running Normally", description: "Key services are active/running and business probes have recovered." },
+    { id: "vm_disk_pressure_relieved", label: "Disk Pressure Relieved", description: "Disk, inode, or mount-point capacity is back within safe thresholds." },
   ],
   script_triggers: [
-    { id: "symptom_matched", label: "症状精确命中", description: "日志、事件或告警命中 Skill 症状关键词。" },
-    { id: "required_evidence_collected", label: "必要证据已齐", description: "本 Skill 选择的必要证据全部采集完成。" },
-    { id: "root_cause_confirmed", label: "根因已确认", description: "证据评分达到确认阈值，不凭猜测执行。" },
-    { id: "manual_confirmation", label: "必须人工确认", description: "运维人员查看影响和参数后点击确认。" },
+    { id: "symptom_matched", label: "Exact Symptom Match", description: "Logs, events, or alerts match the Skill symptom keywords." },
+    { id: "required_evidence_collected", label: "Required Evidence Complete", description: "All required evidence selected for this Skill has been collected." },
+    { id: "root_cause_confirmed", label: "Root Cause Confirmed", description: "Evidence scoring reached the confirmation threshold; execution does not rely on guesswork." },
+    { id: "manual_confirmation", label: "Manual Approval Required", description: "Operations personnel click confirm after reviewing the impact and parameters." },
   ],
 };
 
 const fallbackActionOptions: SkillChoice[] = [
-  { id: "patch_workload", label: "修改 Workload 配置", description: "修正镜像、探针、资源、副本、环境变量或安全上下文。", risk: "medium", when_to_use: "证据确认 Deployment、StatefulSet 或 DaemonSet 模板配置有误。", operator_note: "执行前展示差异，可恢复原模板回滚。" },
-  { id: "restart", label: "滚动重启组件", description: "触发受控滚动重启，不修改 Workload 配置。", risk: "medium", when_to_use: "配置正确但进程卡死、连接未刷新或需要重新拉起 Pod。", operator_note: "不会修复错误配置，需确认副本和 PDB 安全。" },
-  { id: "scale_out", label: "增加副本", description: "在平台上限内增加 Workload 副本。", risk: "medium", when_to_use: "CPU、流量或并发证据证明容量不足。", operator_note: "观察资源配额和下游依赖承载能力。" },
-  { id: "recreate_pod", label: "重建异常 Pod", description: "删除单个异常 Pod，由控制器按原模板重建。", risk: "medium", when_to_use: "只有单个 Pod 状态异常，模板和其他副本正常。", operator_note: "不适合模板级或存储级故障。" },
-  { id: "rollback_workload", label: "回滚 Workload", description: "回滚到真实观测过的稳定镜像或模板 revision。", risk: "high", when_to_use: "故障与最近发布高度相关，并存在稳定回滚点。", operator_note: "高风险，必须人工确认。" },
-  { id: "create_pvc", label: "创建缺失 PVC", description: "按批准存储策略创建 Workload 缺失的 PVC。", risk: "high", when_to_use: "Workload 明确引用不存在的 PVC，容量和访问模式已确认。", operator_note: "不能由 LLM 编造 StorageClass 和容量策略。" },
-  { id: "create_pv", label: "创建静态 PV", description: "按存储管理员批准模板创建静态 PV。", risk: "high", when_to_use: "动态供卷不可用且后端路径、回收策略已批准。", operator_note: "严禁编造 NFS、LUN 或目录路径。" },
-  { id: "patch_workload_volume", label: "修正卷引用", description: "修正 Workload 的 PVC、volume 或 mount 引用。", risk: "high", when_to_use: "完整存储链证据证明原卷引用错误。", operator_note: "需要保存原配置回滚点。" },
-  { id: "patch_service", label: "修正 Service", description: "修正 selector、port 或 targetPort 不匹配。", risk: "high", when_to_use: "Service 没有 Endpoint，且证据证明配置不匹配。", operator_note: "错误修改会造成流量黑洞。" },
-  { id: "patch_service_account", label: "修正 ServiceAccount", description: "绑定企业批准的 imagePullSecret。", risk: "medium", when_to_use: "镜像拉取失败且缺少批准的凭据引用。", operator_note: "不读取或修改 Secret 明文。" },
-  { id: "create_configmap", label: "恢复 ConfigMap", description: "从运维人员批准模板恢复缺失 ConfigMap。", risk: "high", when_to_use: "Workload 引用的配置缺失且存在批准模板。", operator_note: "不能让 LLM 自行生成生产配置值。" },
-  { id: "patch_hpa", label: "调整 HPA 范围", description: "调整 HPA 最小和最大副本。", risk: "medium", when_to_use: "HPA 上下限阻止合理扩缩容，指标语义正常。", operator_note: "不修改 HPA 指标算法。" },
-  { id: "expand_pvc", label: "扩容 PVC", description: "扩展支持在线扩容的已绑定 PVC。", risk: "high", when_to_use: "卷容量逼近上限且 StorageClass 支持扩容。", operator_note: "通常不可逆，需核对备份和文件系统。" },
-  { id: "cordon_node", label: "隔离节点", description: "停止在问题节点上调度新 Pod。", risk: "high", when_to_use: "节点明确存在压力、NotReady 或硬件故障。", operator_note: "不会自动迁移已有 Pod。" },
-  { id: "evict_pod", label: "受控驱逐 Pod", description: "通过 Eviction API 迁移 Pod，并遵守 PDB。", risk: "high", when_to_use: "节点维护或隔离后需要迁移工作负载。", operator_note: "高风险且必须人工确认。" },
-  { id: "uncordon_node", label: "恢复节点调度", description: "将已恢复节点重新加入调度。", risk: "high", when_to_use: "节点 Ready、压力和系统组件均已恢复。", operator_note: "恢复前必须完成健康验证。" },
-  { id: "patch_pdb", label: "修正 PDB", description: "修正导致发布或驱逐死锁的中断预算。", risk: "high", when_to_use: "PDB 与副本数形成死锁且业务可用性证据充分。", operator_note: "持续观察可用副本和 SLO。" },
-  { id: "db_expand_storage", label: "扩容数据库存储", description: "通过 DBA/存储受控执行器扩容数据库表空间或磁盘。", risk: "high", when_to_use: "数据库容量证据达到阈值，备份和扩容策略已确认。", operator_note: "通常不可逆，必须保留变更单和容量审批。" },
-  { id: "db_kill_session", label: "终止阻塞会话", description: "终止确认阻塞业务的数据库会话。", risk: "high", when_to_use: "锁等待、长事务和会话来源证据完整。", operator_note: "必须展示会话、SQL、业务影响和回滚说明。" },
-  { id: "db_failover", label: "数据库主备切换", description: "按 HA 预案触发数据库故障转移。", risk: "high", when_to_use: "主库故障或复制链路异常且备用节点健康。", operator_note: "必须二次确认 RPO/RTO、只读状态和回切方案。" },
-  { id: "db_apply_parameter", label: "调整数据库参数", description: "按批准模板调整数据库运行参数。", risk: "high", when_to_use: "证据证明参数导致连接、锁或性能故障。", operator_note: "不能由 LLM 编造生产参数值。" },
-  { id: "db_restart_instance", label: "重启数据库实例", description: "通过受控执行器重启数据库实例。", risk: "high", when_to_use: "只在 HA、窗口、备份和影响范围均确认后使用。", operator_note: "高风险，通常作为最后手段。" },
-  { id: "vm_restart_service", label: "重启主机服务", description: "重启虚拟机或主机上的指定系统服务。", risk: "medium", when_to_use: "服务进程异常且配置、依赖、磁盘和权限已确认。", operator_note: "必须指定服务名和恢复探针。" },
-  { id: "vm_expand_disk", label: "扩容主机磁盘", description: "扩展虚拟磁盘并执行文件系统扩容。", risk: "high", when_to_use: "磁盘或 inode 压力达到阈值，快照和挂载点已确认。", operator_note: "需要外部虚拟化/云平台执行器。" },
-  { id: "vm_reboot", label: "重启虚拟机", description: "对故障主机执行受控重启。", risk: "high", when_to_use: "内核、Agent、系统服务无法恢复，且业务冗余已确认。", operator_note: "必须作为高风险动作二次确认。" },
-  { id: "middleware_rebalance", label: "中间件再均衡", description: "对 Kafka/MQ 等中间件执行分区或实例再均衡。", risk: "high", when_to_use: "消费者滞后、Broker 压力或分区分布异常证据充分。", operator_note: "需要限速、窗口和回滚策略。" },
-  { id: "storage_expand_volume", label: "扩容存储卷", description: "通过存储受控执行器扩展企业存储卷。", risk: "high", when_to_use: "存储池、卷、映射和业务挂载关系确认无误。", operator_note: "必须由存储团队批准容量策略。" },
-  { id: "infra_run_approved_action", label: "执行批准基础设施动作", description: "调用外部执行器中已经登记的企业标准动作。", risk: "high", when_to_use: "非 K8s 对象需要平台外动作，且动作已在企业执行器登记。", operator_note: "平台只传递结构化计划，不执行任意命令。" },
+  { id: "patch_workload", label: "Modify Workload Configuration", description: "Correct images, probes, resources, replicas, environment variables, or security context.", risk: "medium", when_to_use: "Evidence confirms that a Deployment, StatefulSet, or DaemonSet template is misconfigured.", operator_note: "Show the diff before execution and allow rollback to the original template." },
+  { id: "restart", label: "Rolling Restart Component", description: "Trigger a controlled rolling restart without modifying the Workload configuration.", risk: "medium", when_to_use: "Use when the configuration is correct but the process is stuck, connections have not refreshed, or the Pod needs to be restarted.", operator_note: "This will not fix bad configuration; replica and PDB safety must be confirmed." },
+  { id: "scale_out", label: "Increase Replicas", description: "Increase Workload replicas within platform limits.", risk: "medium", when_to_use: "Evidence from CPU, traffic, or concurrency shows insufficient capacity.", operator_note: "Observe resource quotas and downstream dependency capacity." },
+  { id: "recreate_pod", label: "Recreate Anomalous Pod", description: "Delete a single anomalous Pod and let the controller recreate it from the original template.", risk: "medium", when_to_use: "Only one Pod is in an anomalous state while the template and other replicas are healthy.", operator_note: "Not suitable for template-level or storage-level failures." },
+  { id: "rollback_workload", label: "Rollback Workload", description: "Roll back to a stable image or template revision that has been observed in production.", risk: "high", when_to_use: "The fault is strongly related to a recent release and a stable rollback point exists.", operator_note: "High risk and requires manual approval." },
+  { id: "create_pvc", label: "Create Missing PVC", description: "Create the missing PVC for the Workload according to the approved storage policy.", risk: "high", when_to_use: "The Workload clearly references a non-existent PVC, and capacity and access mode are confirmed.", operator_note: "The LLM must not invent a StorageClass or capacity policy." },
+  { id: "create_pv", label: "Create Static PV", description: "Create a static PV from a storage-admin-approved template.", risk: "high", when_to_use: "Dynamic provisioning is unavailable and the backend path and reclaim policy are approved.", operator_note: "Never invent NFS, LUN, or directory paths." },
+  { id: "patch_workload_volume", label: "Correct Volume References", description: "Correct the PVC, volume, or mount references in the Workload.", risk: "high", when_to_use: "Complete storage-chain evidence proves the original volume references are wrong.", operator_note: "A rollback point for the original configuration must be preserved." },
+  { id: "patch_service", label: "Correct Service", description: "Correct selector, port, or targetPort mismatches.", risk: "high", when_to_use: "The Service has no Endpoints and evidence proves a configuration mismatch.", operator_note: "An incorrect modification can create a traffic black hole." },
+  { id: "patch_service_account", label: "Correct ServiceAccount", description: "Bind the enterprise-approved imagePullSecret.", risk: "medium", when_to_use: "Image pulling fails and the approved credential reference is missing.", operator_note: "Do not read or modify Secret plaintext." },
+  { id: "create_configmap", label: "Restore ConfigMap", description: "Restore the missing ConfigMap from an operations-approved template.", risk: "high", when_to_use: "The configuration referenced by the Workload is missing and an approved template exists.", operator_note: "The LLM must not generate production configuration values on its own." },
+  { id: "patch_hpa", label: "Adjust HPA Range", description: "Adjust the HPA minimum and maximum replicas.", risk: "medium", when_to_use: "The HPA bounds prevent reasonable scaling while metric semantics are normal.", operator_note: "Do not modify the HPA metric algorithm." },
+  { id: "expand_pvc", label: "Expand PVC", description: "Expand a bound PVC that supports online expansion.", risk: "high", when_to_use: "Volume capacity is near the limit and the StorageClass supports expansion.", operator_note: "Usually irreversible; backup and filesystem status must be verified." },
+  { id: "cordon_node", label: "Cordon Node", description: "Stop scheduling new Pods onto the problematic node.", risk: "high", when_to_use: "The node clearly has pressure, is NotReady, or has a hardware fault.", operator_note: "Existing Pods will not be migrated automatically." },
+  { id: "evict_pod", label: "Controlled Pod Eviction", description: "Evict Pods through the Eviction API while honoring the PDB.", risk: "high", when_to_use: "Workloads need to be migrated after node maintenance or isolation.", operator_note: "High risk and requires manual approval." },
+  { id: "uncordon_node", label: "Restore Node Scheduling", description: "Return a recovered node to scheduling.", risk: "high", when_to_use: "The node is Ready, pressure is relieved, and system components are restored.", operator_note: "Health verification must be completed before restoration." },
+  { id: "patch_pdb", label: "Correct PDB", description: "Correct a disruption budget that causes deadlock during rollout or eviction.", risk: "high", when_to_use: "The PDB and replica count form a deadlock and there is sufficient business-availability evidence.", operator_note: "Continuously observe available replicas and the SLO." },
+  { id: "db_expand_storage", label: "Expand Database Storage", description: "Expand database tablespace or disk through the DBA/storage controlled executor.", risk: "high", when_to_use: "Database capacity evidence has reached the threshold, and backup and expansion strategy are confirmed.", operator_note: "Usually irreversible; change records and capacity approvals must be retained." },
+  { id: "db_kill_session", label: "Terminate Blocking Session", description: "Terminate a database session confirmed to be blocking the business.", risk: "high", when_to_use: "Evidence for lock waits, long transactions, and session source is complete.", operator_note: "Session, SQL, business impact, and rollback notes must be shown." },
+  { id: "db_failover", label: "Database Failover", description: "Trigger database failover according to the HA playbook.", risk: "high", when_to_use: "The primary database has failed or replication is abnormal, and the standby node is healthy.", operator_note: "RPO/RTO, read-only status, and failback plans must be confirmed a second time." },
+  { id: "db_apply_parameter", label: "Adjust Database Parameters", description: "Adjust database runtime parameters using an approved template.", risk: "high", when_to_use: "Evidence shows that parameters are causing connection, locking, or performance faults.", operator_note: "The LLM must not invent production parameter values." },
+  { id: "db_restart_instance", label: "Restart Database Instance", description: "Restart the database instance through the controlled executor.", risk: "high", when_to_use: "Use only after HA, maintenance window, backups, and impact scope are confirmed.", operator_note: "High risk and typically used only as a last resort." },
+  { id: "vm_restart_service", label: "Restart Host Service", description: "Restart the specified system service on the virtual machine or host.", risk: "medium", when_to_use: "The service process is abnormal and configuration, dependencies, disk, and permissions have been confirmed.", operator_note: "The service name and recovery probe must be specified." },
+  { id: "vm_expand_disk", label: "Expand Host Disk", description: "Expand the virtual disk and grow the filesystem.", risk: "high", when_to_use: "Disk or inode pressure has reached the threshold, and snapshots and mount points are confirmed.", operator_note: "An external virtualization/cloud-platform executor is required." },
+  { id: "vm_reboot", label: "Reboot Virtual Machine", description: "Perform a controlled reboot of the faulty host.", risk: "high", when_to_use: "The kernel, Agent, or system services cannot recover, and business redundancy has been confirmed.", operator_note: "This must be confirmed a second time as a high-risk action." },
+  { id: "middleware_rebalance", label: "Middleware Rebalance", description: "Rebalance partitions or instances for middleware such as Kafka/MQ.", risk: "high", when_to_use: "There is sufficient evidence of consumer lag, broker pressure, or abnormal partition distribution.", operator_note: "Rate limiting, a maintenance window, and rollback strategy are required." },
+  { id: "storage_expand_volume", label: "Expand Storage Volume", description: "Expand the enterprise storage volume through the storage controlled executor.", risk: "high", when_to_use: "Storage pools, volumes, mappings, and business mount relationships are all verified.", operator_note: "Capacity strategy must be approved by the storage team." },
+  { id: "infra_run_approved_action", label: "Execute Approved Infrastructure Action", description: "Invoke an enterprise-standard action already registered in the external executor.", risk: "high", when_to_use: "A non-K8s object requires an external platform action, and that action is registered in the enterprise executor.", operator_note: "The platform passes only structured plans and does not execute arbitrary commands." },
 ];
 
 function createEmptySkillForm() {
@@ -450,18 +450,18 @@ function SkillMultiSelect({
   }
   const selectedOptions = selected.map((id) => options.find((item) => item.id === id) || { id, label: id });
   return <div className="skill-multiselect">
-    <div className="skill-field-title"><span>{title}</span><small>可多选 · {selected.length} 项</small></div>
+    <div className="skill-field-title"><span>{title}</span><small>Multiple selections allowed · {selected.length} selected</small></div>
     <details>
-      <summary>{selected.length ? selectedOptions.slice(0, 3).map((item) => item.label || item.name || item.id).join("、") + (selected.length > 3 ? ` 等 ${selected.length} 项` : "") : hint}<ChevronRight size={14} /></summary>
+      <summary>{selected.length ? selectedOptions.slice(0, 3).map((item) => item.label || item.name || item.id).join(", ") + (selected.length > 3 ? ` total ${selected.length} selected` : "") : hint}<ChevronRight size={14} /></summary>
       <div className="skill-option-menu">
         {options.map((option) => <div className={selected.includes(option.id) ? "selected" : ""} key={option.id}>
           <label><input type="checkbox" checked={selected.includes(option.id)} onChange={() => toggle(option.id)} /><span><b>{option.label || option.name || option.id}</b><small>{option.description || option.when_to_use || option.id}</small></span></label>
-          <button type="button" onClick={() => onInspect(option, title)} title={`查看${option.label || option.id}说明`}><Eye size={14} /></button>
+          <button type="button" onClick={() => onInspect(option, title)} title={`View ${option.label || option.id} description`}><Eye size={14} /></button>
         </div>)}
       </div>
     </details>
     <div className="skill-selected-chips">
-      {selectedOptions.map((option) => <button type="button" key={option.id} onClick={() => toggle(option.id)} title="点击移除">{option.label || option.name || option.id}<X size={11} /></button>)}
+      {selectedOptions.map((option) => <button type="button" key={option.id} onClick={() => toggle(option.id)} title="Click to remove">{option.label || option.name || option.id}<X size={11} /></button>)}
     </div>
   </div>;
 }
@@ -472,7 +472,7 @@ export function OpsSkillsPage() {
   const [form, setForm] = useState<SkillForm>(() => createEmptySkillForm());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [matchQuestion, setMatchQuestion] = useState("Pod CrashLoopBackOff，previous log 提示 permission denied，挂载 PVC 后启动失败");
+  const [matchQuestion, setMatchQuestion] = useState("Pod CrashLoopBackOff, previous logs indicate permission denied, and startup fails after mounting the PVC");
   const [match, setMatch] = useState<ApiState<any>>({ loading: false });
   const [inspected, setInspected] = useState<{ title: string; option: SkillChoice } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -545,7 +545,7 @@ export function OpsSkillsPage() {
         },
       });
       setForm(createEmptySkillForm());
-      setMessage("Skill 已保存，会参与 SRE 对话和 AI 巡检的自动匹配。");
+      setMessage("Skill saved. It will participate in automatic matching for SRE chat and AI inspection.");
       refreshSkills();
     } catch (error: any) {
       setMessage(error.message);
@@ -558,7 +558,7 @@ export function OpsSkillsPage() {
     setMessage("");
     try {
       await apiPost(`/api/ops/skills/${encodeURIComponent(skill.id)}/delete`, {});
-      setMessage(skill.builtin ? "内置 Skill 已禁用。" : "自定义 Skill 已删除。");
+      setMessage(skill.builtin ? "Built-in Skill disabled." : "Custom Skill deleted.");
       refreshSkills();
     } catch (error: any) {
       setMessage(error.message);
@@ -586,7 +586,7 @@ export function OpsSkillsPage() {
       if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `${response.status} ${response.statusText}`);
       invalidateApiCache("/api/ops/skills");
       invalidateApiCache("/api/ops/capabilities");
-      setMessage(data.message || `已导入 ${list(data.imported).length} 个标准 Agent Skill。`);
+      setMessage(data.message || `Imported ${list(data.imported).length} standard Agent Skills.`);
       refreshSkills();
     } catch (error: any) {
       setMessage(error.message);
@@ -602,62 +602,62 @@ export function OpsSkillsPage() {
 
   return <div className="skill-workbench">
     <div className="surface">
-      <SectionHead icon={BrainCircuit} title="运维 Skill 注入" meta="保存即生成标准 SKILL.md，可跨智能体复用" action={<div className="skill-head-actions"><input ref={importInput} type="file" accept=".zip,application/zip" hidden onChange={(event) => importSkill(event.target.files?.[0])} /><button className="ghost" onClick={() => importInput.current?.click()} disabled={importing}>{importing ? <Loader2 className="spin" size={15} /> : <Upload size={15} />}导入 Skill</button><button className="ghost" onClick={refreshSkills}><RefreshCcw size={15} />刷新</button></div>} />
+      <SectionHead icon={BrainCircuit} title="Operations Skill Injection" meta="Saving generates a standard SKILL.md for reuse across agents" action={<div className="skill-head-actions"><input ref={importInput} type="file" accept=".zip,application/zip" hidden onChange={(event) => importSkill(event.target.files?.[0])} /><button className="ghost" onClick={() => importInput.current?.click()} disabled={importing}>{importing ? <Loader2 className="spin" size={15} /> : <Upload size={15} />}Import Skill</button><button className="ghost" onClick={refreshSkills}><RefreshCcw size={15} />Refresh</button></div>} />
       <div className="skill-form">
-        <label>Skill 名称<input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="例如：PVC Pending 静态 PV 恢复" /></label>
-        <label>类别<select value={form.category} onChange={(event) => update("category", event.target.value)}><option value="runtime">运行时</option><option value="database">数据库</option><option value="virtual_machine">虚拟机 / 主机</option><option value="middleware">中间件</option><option value="storage">存储</option><option value="network">网络</option><option value="release">发布</option><option value="security">安全</option><option value="cloud">云资源</option><option value="custom">自定义</option></select></label>
-        <label>风险<select value={form.risk} onChange={(event) => update("risk", event.target.value)}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select></label>
-        <label>负责人<input value={form.owner} onChange={(event) => update("owner", event.target.value)} placeholder="团队或姓名" /></label>
-        <label className="span-two">一句话说明<textarea value={form.summary} onChange={(event) => update("summary", event.target.value)} placeholder="这条经验解决什么场景，AI 什么时候应该考虑它；可以是 K8s、数据库、虚拟机、存储或中间件。" /></label>
-        <label>症状关键词<textarea value={form.symptoms} onChange={(event) => update("symptoms", event.target.value)} placeholder="一行一个，例如 FailedMount、permission denied、ImagePullBackOff、表空间不足、锁等待、主机磁盘满" /></label>
-        <label>诊断步骤<textarea value={form.diagnostic_steps} onChange={(event) => update("diagnostic_steps", event.target.value)} placeholder="按真实运维流程写，一行一步。" /></label>
-        <SkillMultiSelect title="适用对象" selected={form.applies_to} options={appliesToOptions} onChange={(value) => update("applies_to", value)} onInspect={inspectOption} hint="选择 K8s、数据库、虚拟机、中间件、存储或云资源对象" />
-        <SkillMultiSelect title="需要证据" selected={form.evidence_required} options={evidenceOptions} onChange={(value) => update("evidence_required", value)} onInspect={inspectOption} hint="选择执行前必须读取的真实证据" />
-        <SkillMultiSelect title="允许动作" selected={form.allowed_actions} options={actions} onChange={(value) => update("allowed_actions", value)} onInspect={inspectOption} hint="选择经过平台门禁的受控动作" />
-        <SkillMultiSelect title="恢复判据" selected={form.success_criteria} options={successOptions} onChange={(value) => update("success_criteria", value)} onInspect={inspectOption} hint="选择如何客观判断问题已恢复" />
+        <label>Skill Name<input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="For example: PVC Pending Static PV Recovery" /></label>
+        <label>Category<select value={form.category} onChange={(event) => update("category", event.target.value)}><option value="runtime">Runtime</option><option value="database">Databases</option><option value="virtual_machine">Virtual Machines / Hosts</option><option value="middleware">Middleware</option><option value="storage">Storage</option><option value="network">Network</option><option value="release">Release</option><option value="security">Security</option><option value="cloud">Cloud Resources</option><option value="custom">Custom</option></select></label>
+        <label>Risk<select value={form.risk} onChange={(event) => update("risk", event.target.value)}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select></label>
+        <label>Owner<input value={form.owner} onChange={(event) => update("owner", event.target.value)} placeholder="Team or name" /></label>
+        <label className="span-two">One-Line Description<textarea value={form.summary} onChange={(event) => update("summary", event.target.value)} placeholder="What scenario does this experience solve, and when should AI consider it? It can apply to K8s, databases, virtual machines, storage, or middleware." /></label>
+        <label>Symptom Keywords<textarea value={form.symptoms} onChange={(event) => update("symptoms", event.target.value)} placeholder="One per line, for example: FailedMount, permission denied, ImagePullBackOff, tablespace full, lock waits, host disk full" /></label>
+        <label>Diagnostic Steps<textarea value={form.diagnostic_steps} onChange={(event) => update("diagnostic_steps", event.target.value)} placeholder="Write these according to the real operations workflow, one step per line." /></label>
+        <SkillMultiSelect title="Applicable Objects" selected={form.applies_to} options={appliesToOptions} onChange={(value) => update("applies_to", value)} onInspect={inspectOption} hint="Choose K8s, database, virtual machine, middleware, storage, or cloud resource objects" />
+        <SkillMultiSelect title="Required Evidence" selected={form.evidence_required} options={evidenceOptions} onChange={(value) => update("evidence_required", value)} onInspect={inspectOption} hint="Choose the real evidence that must be read before execution" />
+        <SkillMultiSelect title="Allowed Actions" selected={form.allowed_actions} options={actions} onChange={(value) => update("allowed_actions", value)} onInspect={inspectOption} hint="Choose controlled actions that pass platform gating" />
+        <SkillMultiSelect title="Recovery Criteria" selected={form.success_criteria} options={successOptions} onChange={(value) => update("success_criteria", value)} onInspect={inspectOption} hint="Choose how to determine objectively that the issue has been resolved" />
         <div className="skill-script-policy span-two">
           <div className="skill-script-header">
-            <div><ShieldCheck size={16} /><span><strong>企业批准脚本</strong><small>可选能力，脚本正文不进入 Skill</small></span></div>
-            <label className="skill-toggle"><input type="checkbox" checked={form.script_enabled} onChange={(event) => update("script_enabled", event.target.checked)} /><i /><span>{form.script_enabled ? "允许作为候选" : "不使用脚本"}</span></label>
+            <div><ShieldCheck size={16} /><span><strong>Enterprise-Approved Script</strong><small>Optional capability; the script body itself does not become part of the Skill</small></span></div>
+            <label className="skill-toggle"><input type="checkbox" checked={form.script_enabled} onChange={(event) => update("script_enabled", event.target.checked)} /><i /><span>{form.script_enabled ? "Allow as a Candidate" : "Do Not Use Script"}</span></label>
           </div>
           {form.script_enabled && <div className="skill-script-body">
-            <label>批准脚本<select value={form.script_id} onChange={(event) => update("script_id", event.target.value)}>
-              <option value="">选择 ConfigMap 中登记的脚本</option>
+            <label>Approved Script<select value={form.script_id} onChange={(event) => update("script_id", event.target.value)}>
+              <option value="">Choose a script registered in the ConfigMap</option>
               {approvedScripts.filter((item: any) => item.enabled !== false).map((item) => <option key={item.id} value={item.id}>{item.name || item.id} · {item.risk || "high"}</option>)}
             </select></label>
             <div className="script-inspect">
-              <button type="button" className="ghost tiny" disabled={!selectedScript} onClick={() => selectedScript && inspectOption(selectedScript, "企业批准脚本")}><Eye size={13} />查看脚本说明</button>
-              {!approvedScripts.length && <small>尚未配置 OPS_APPROVED_SCRIPTS_JSON，脚本模式不能保存。</small>}
+              <button type="button" className="ghost tiny" disabled={!selectedScript} onClick={() => selectedScript && inspectOption(selectedScript, "Enterprise-Approved Script")}><Eye size={13} />View Script Description</button>
+              {!approvedScripts.length && <small>OPS_APPROVED_SCRIPTS_JSON is not configured yet, so script mode cannot be saved.</small>}
             </div>
-            <SkillMultiSelect title="脚本触发条件" selected={form.script_trigger_conditions} options={scriptTriggerOptions} onChange={(value) => update("script_trigger_conditions", value)} onInspect={inspectOption} hint="选择必须同时满足的触发门槛" />
-            <label>最长执行时间<select value={form.script_timeout_seconds} onChange={(event) => update("script_timeout_seconds", Number(event.target.value))}><option value={30}>30 秒</option><option value={60}>60 秒</option><option value={120}>120 秒</option><option value={300}>300 秒</option><option value={600}>600 秒</option></select></label>
-            <label className="span-two">具体触发场景<textarea value={form.script_trigger_description} onChange={(event) => update("script_trigger_description", event.target.value)} placeholder="例如：Pod 连续 3 次 CrashLoop，previous log 明确出现 permission denied，PVC 已 Bound，且 securityContext 与存储目录权限不一致时，允许调用该脚本；仅凭用户描述不得触发。" /></label>
-            <div className="skill-script-guard span-two"><ShieldCheck size={15} /><span>脚本必须先在 ConfigMap 批准目录登记。命中 Skill 后只会成为候选，仍需证据齐全、影响范围检查、人工确认、超时控制和执行审计。</span></div>
+            <SkillMultiSelect title="Script Trigger Conditions" selected={form.script_trigger_conditions} options={scriptTriggerOptions} onChange={(value) => update("script_trigger_conditions", value)} onInspect={inspectOption} hint="Choose trigger thresholds that must be met simultaneously" />
+            <label>Maximum Execution Time<select value={form.script_timeout_seconds} onChange={(event) => update("script_timeout_seconds", Number(event.target.value))}><option value={30}>30 seconds</option><option value={60}>60 seconds</option><option value={120}>120 seconds</option><option value={300}>300 seconds</option><option value={600}>600 seconds</option></select></label>
+            <label className="span-two">Specific Trigger Scenario<textarea value={form.script_trigger_description} onChange={(event) => update("script_trigger_description", event.target.value)} placeholder="For example: allow this script only when a Pod has entered CrashLoop three times in a row, the previous log clearly shows permission denied, the PVC is already Bound, and the securityContext does not match the storage directory permissions; a user description alone must not trigger it." /></label>
+            <div className="skill-script-guard span-two"><ShieldCheck size={15} /><span>Scripts must first be registered in the approved ConfigMap catalog. Even after a Skill match, the script is only a candidate and still requires complete evidence, impact-scope checks, human approval, timeout control, and execution auditing.</span></div>
           </div>}
         </div>
         {inspected && <div className="skill-info-panel span-two">
-          <header><div><Eye size={15} /><span><small>{inspected.title}</small><strong>{inspected.option.label || inspected.option.name || inspected.option.id}</strong></span></div><button type="button" onClick={() => setInspected(null)} title="关闭说明"><X size={16} /></button></header>
-          <p>{inspected.option.description || inspected.option.when_to_use || "暂无详细说明。"}</p>
+          <header><div><Eye size={15} /><span><small>{inspected.title}</small><strong>{inspected.option.label || inspected.option.name || inspected.option.id}</strong></span></div><button type="button" onClick={() => setInspected(null)} title="Close description"><X size={16} /></button></header>
+          <p>{inspected.option.description || inspected.option.when_to_use || "No detailed description available yet."}</p>
           <div>
-            {inspected.option.when_to_use && <span><b>何时使用</b>{inspected.option.when_to_use}</span>}
-            {inspected.option.operator_note && <span><b>操作注意</b>{inspected.option.operator_note}</span>}
-            {inspected.option.risk && <span><b>风险等级</b>{inspected.option.risk}</span>}
-            {typeof inspected.option.auto_allowed === "boolean" && <span><b>自动执行</b>{inspected.option.auto_allowed ? "满足门禁时允许" : "必须人工确认"}</span>}
-            {inspected.option.rollback && <span><b>回退方式</b>{inspected.option.rollback}</span>}
-            {list(inspected.option.allowed_targets).length > 0 && <span><b>允许对象</b>{list(inspected.option.allowed_targets).join("、")}</span>}
-            {list(inspected.option.required_evidence).length > 0 && <span><b>脚本前置证据</b>{list(inspected.option.required_evidence).join("、")}</span>}
+            {inspected.option.when_to_use && <span><b>When to Use</b>{inspected.option.when_to_use}</span>}
+            {inspected.option.operator_note && <span><b>Operator Note</b>{inspected.option.operator_note}</span>}
+            {inspected.option.risk && <span><b>Risk Level</b>{inspected.option.risk}</span>}
+            {typeof inspected.option.auto_allowed === "boolean" && <span><b>Automatic Execution</b>{inspected.option.auto_allowed ? "Allowed When Gates Pass" : "Manual Approval Required"}</span>}
+            {inspected.option.rollback && <span><b>Rollback Method</b>{inspected.option.rollback}</span>}
+            {list(inspected.option.allowed_targets).length > 0 && <span><b>Allowed Targets</b>{list(inspected.option.allowed_targets).join(", ")}</span>}
+            {list(inspected.option.required_evidence).length > 0 && <span><b>Pre-Script Evidence</b>{list(inspected.option.required_evidence).join(", ")}</span>}
           </div>
         </div>}
-        <div className="skill-portability-note span-two"><Workflow size={15} /><span><strong>兼容 Agent Skills 开放规范</strong><small>平台会生成 SKILL.md、agents/openai.yaml 与 references/ops-policy.yaml；原有证据门禁和执行审批保持不变。</small></span></div>
-        <button className="primary span-two" onClick={saveSkill} disabled={saving || !form.name.trim()}>{saving ? <Loader2 className="spin" size={15} /> : <CheckCircle2 size={15} />}保存并生成 Skill 包</button>
-        {message && <div className={message.includes("已") ? "success-box span-two" : "inline-error span-two"}>{message}</div>}
+        <div className="skill-portability-note span-two"><Workflow size={15} /><span><strong>Compatible with the Open Agent Skills Specification</strong><small>The platform generates SKILL.md, agents/openai.yaml, and references/ops-policy.yaml; existing evidence gates and execution approvals remain unchanged.</small></span></div>
+        <button className="primary span-two" onClick={saveSkill} disabled={saving || !form.name.trim()}>{saving ? <Loader2 className="spin" size={15} /> : <CheckCircle2 size={15} />}Save and Generate Skill Package</button>
+        {message && <div className={/(?:\u5df2|saved|imported|disabled|deleted|delivered)/i.test(message) ? "success-box span-two" : "inline-error span-two"}>{message}</div>}
       </div>
     </div>
     <div className="surface">
-      <SectionHead icon={Search} title="匹配测试" meta="模拟 AI 如何选择专家经验" />
+      <SectionHead icon={Search} title="Match Test" meta="Simulate how AI selects expert knowledge" />
       <div className="skill-match-box">
         <textarea value={matchQuestion} onChange={(event) => setMatchQuestion(event.target.value)} />
-        <button className="primary" onClick={testMatch} disabled={match.loading}>{match.loading ? <Loader2 className="spin" size={15} /> : <Sparkles size={15} />}测试匹配</button>
+        <button className="primary" onClick={testMatch} disabled={match.loading}>{match.loading ? <Loader2 className="spin" size={15} /> : <Sparkles size={15} />}Test Match</button>
       </div>
       {match.error && <div className="inline-error">{match.error}</div>}
       <div className="skill-match-list">
@@ -665,15 +665,15 @@ export function OpsSkillsPage() {
       </div>
     </div>
     <div className="surface span-two">
-      <SectionHead icon={TerminalSquare} title="Skill 库" meta={`${skills.data?.summary?.enabled || 0}/${skills.data?.summary?.total || 0} enabled · ${skills.data?.summary?.portable || 0} portable`} />
+      <SectionHead icon={TerminalSquare} title="Skill Library" meta={`${skills.data?.summary?.enabled || 0}/${skills.data?.summary?.total || 0} enabled · ${skills.data?.summary?.portable || 0} portable`} />
       {skills.error && <div className="inline-error">{skills.error}</div>}
       <div className="skill-grid">
         {list(skills.data?.skills).map((skill: any) => <article className={`skill-card ${skill.enabled ? "" : "disabled"}`} key={skill.id}>
           <div><span>{skill.category} · {skill.risk} · v{skill.version || "1.0.0"}</span><strong>{skill.name}</strong></div>
           <p>{skill.summary}</p>
           <div className="chips">{list(skill.allowed_actions).slice(0, 4).map((item: any) => <span key={item}>{item}</span>)}</div>
-          {skill.script_policy?.enabled && <div className="skill-script-badge"><TerminalSquare size={13} /><span>批准脚本：{skill.script_policy.script_id}</span></div>}
-          <footer><small>{skill.builtin ? "内置" : "自定义"} · {skill.owner || "operator"} · {skill.execution_ready ? "可执行映射" : "指令型"}</small><div><button className="ghost tiny" onClick={() => exportSkill(skill)} title="导出标准 Agent Skill ZIP"><Download size={13} />导出</button><button className="ghost tiny" onClick={() => editSkill(skill)}>编辑</button><button className="ghost tiny" onClick={() => disableSkill(skill)}>{skill.builtin ? "禁用" : "删除"}</button></div></footer>
+          {skill.script_policy?.enabled && <div className="skill-script-badge"><TerminalSquare size={13} /><span>Approved Script: {skill.script_policy.script_id}</span></div>}
+          <footer><small>{skill.builtin ? "Built-in" : "Custom"} · {skill.owner || "operator"} · {skill.execution_ready ? "Executable Mapping" : "Instruction-Based"}</small><div><button className="ghost tiny" onClick={() => exportSkill(skill)} title="Export Standard Agent Skill ZIP"><Download size={13} />Export</button><button className="ghost tiny" onClick={() => editSkill(skill)}>Edit</button><button className="ghost tiny" onClick={() => disableSkill(skill)}>{skill.builtin ? "Disable" : "Delete"}</button></div></footer>
         </article>)}
       </div>
     </div>
@@ -682,7 +682,7 @@ export function OpsSkillsPage() {
 
 function flatten(value: any, prefix = "", rows: Array<{ label: string; value: string }> = []) {
   if (rows.length >= 9) return rows;
-  if (Array.isArray(value)) { rows.push({ label: prefix || "items", value: value.length ? value.slice(0, 3).map((item) => Array.isArray(item) ? item.join(" → ") : typeof item === "object" ? Object.values(item).join(" · ") : String(item)).join("；") : "0 项" }); return rows; }
+  if (Array.isArray(value)) { rows.push({ label: prefix || "items", value: value.length ? value.slice(0, 3).map((item) => Array.isArray(item) ? item.join(" → ") : typeof item === "object" ? Object.values(item).join(" · ") : String(item)).join("; ") : "0 items" }); return rows; }
   if (value && typeof value === "object") { Object.entries(value).forEach(([key, item]) => flatten(item, prefix ? `${prefix}.${key}` : key, rows)); return rows; }
   if (prefix) rows.push({ label: prefix.split(".").pop()!.replaceAll("_", " "), value: value === undefined || value === null || value === "" ? "-" : String(value) });
   return rows;
@@ -692,10 +692,10 @@ export function AlgorithmsPage() {
   const [state, refresh] = useAsync<any>(() => apiGet("/api/algorithms/workbench"), []);
   const cases = list(state.data?.cases);
   const decisions = list(state.data?.recent_decisions);
-  return <div className="unified-page"><div className="page-commandbar"><div className="quiet-note"><BrainCircuit size={15} />算法只在实际决策链路中展示，不做静态概念陈列</div><button className="ghost" onClick={refresh}><RefreshCcw size={15} />刷新</button></div>
+  return <div className="unified-page"><div className="page-commandbar"><div className="quiet-note"><BrainCircuit size={15} />Algorithms are shown only in real decision chains, not as static concept displays</div><button className="ghost" onClick={refresh}><RefreshCcw size={15} />Refresh</button></div>
     <div className="algorithm-overview">{list(state.data?.module_map).map((item: any, index: number) => <div className="algorithm-stage" key={item.algorithm}><span>0{index + 1}</span><div><strong>{item.module}</strong><small>{item.algorithm}</small></div><ChevronRight size={16} /><p>{item.effect}</p></div>)}</div>
-    {cases.length ? <div className="algorithm-case-grid">{cases.map((item: any) => <div className="surface algorithm-case" key={item.id}><SectionHead icon={Workflow} title={item.title} meta={item.where_used} /><div className="decision-flow"><div><span>输入证据</span>{flatten(item.input).map((row) => <b key={row.label}>{row.label}<small>{row.value}</small></b>)}</div><i>→</i><div className="algorithm-core"><BrainCircuit size={22} /><strong>{item.algorithm}</strong></div><i>→</i><div><span>决策输出</span>{flatten(item.output).map((row) => <b key={row.label}>{row.label}<small>{row.value}</small></b>)}</div></div><p className="algorithm-effect">{item.action_effect}</p></div>)}</div> : <div className="surface"><Empty text="运行一次巡检、拓扑分析或变更门禁后，这里会出现真实算法样本" /></div>}
-    <div className="surface"><SectionHead icon={FileClock} title="决策审计" meta={`${decisions.length} decisions`} />{decisions.length ? <div className="audit-grid">{decisions.slice(0, 12).map((item: any, index: number) => <div key={`${item.timestamp}-${index}`}><StatusPill status="recorded" text={item.algorithm} /><strong>{item.used_by}</strong><p>{item.action_effect}</p><small>{timeText(item.timestamp)}</small></div>)}</div> : <Empty text="暂无算法审计记录" />}</div>
+    {cases.length ? <div className="algorithm-case-grid">{cases.map((item: any) => <div className="surface algorithm-case" key={item.id}><SectionHead icon={Workflow} title={item.title} meta={item.where_used} /><div className="decision-flow"><div><span>Input Evidence</span>{flatten(item.input).map((row) => <b key={row.label}>{row.label}<small>{row.value}</small></b>)}</div><i>→</i><div className="algorithm-core"><BrainCircuit size={22} /><strong>{item.algorithm}</strong></div><i>→</i><div><span>Decision Output</span>{flatten(item.output).map((row) => <b key={row.label}>{row.label}<small>{row.value}</small></b>)}</div></div><p className="algorithm-effect">{item.action_effect}</p></div>)}</div> : <div className="surface"><Empty text="After you run an inspection, topology analysis, or change gate, real algorithm samples will appear here" /></div>}
+    <div className="surface"><SectionHead icon={FileClock} title="Decision Audit" meta={`${decisions.length} decisions`} />{decisions.length ? <div className="audit-grid">{decisions.slice(0, 12).map((item: any, index: number) => <div key={`${item.timestamp}-${index}`}><StatusPill status="recorded" text={item.algorithm} /><strong>{item.used_by}</strong><p>{item.action_effect}</p><small>{timeText(item.timestamp)}</small></div>)}</div> : <Empty text="No algorithm audit records yet" />}</div>
   </div>;
 }
 
@@ -727,19 +727,19 @@ export function SignalsPage() {
   }
   const refresh = () => { refreshMetrics(); refreshLlm(); refreshIntegrations(); };
   const maxDailyTokens = Math.max(1, ...list(analytics.daily_usage).map((item: any) => Number(item.tokens || 0)));
-  return <div className="unified-page"><div className="page-commandbar"><div className="scope-control"><span>Metrics scope</span><select value={cluster} onChange={(event) => setCluster(event.target.value)}><option value="all">所有集群</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div><button className="ghost" onClick={refresh}><RefreshCcw size={15} />刷新</button></div>
-    <section className="kpi-grid six"><Kpi label="CPU" value={`${Number(values.cpu_cores || 0).toFixed(2)} C`} detail={metrics.data?.source || "Prometheus"} /><Kpi label="内存" value={`${(Number(values.memory_bytes || 0) / 1024 / 1024 / 1024).toFixed(2)} GiB`} detail="working set" /><Kpi label="重启 / 1h" value={values.pod_restarts_1h || 0} /><Kpi label="LLM 调用" value={summary.total || 0} detail={`${summary.failures || 0} failed`} /><Kpi label="Token" value={compactNumber(summary.total_tokens)} detail={`$${Number(summary.estimated_cost_usd || 0).toFixed(4)} · ${compactNumber(summary.input_tokens)} in`} /><Kpi label="P95" value={`${summary.p95_latency_ms || 0} ms`} detail={`${summary.throughput_per_min || 0} req/min`} /></section>
+  return <div className="unified-page"><div className="page-commandbar"><div className="scope-control"><span>Metrics scope</span><select value={cluster} onChange={(event) => setCluster(event.target.value)}><option value="all">All Clusters</option>{clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></div><button className="ghost" onClick={refresh}><RefreshCcw size={15} />Refresh</button></div>
+    <section className="kpi-grid six"><Kpi label="CPU" value={`${Number(values.cpu_cores || 0).toFixed(2)} C`} detail={metrics.data?.source || "Prometheus"} /><Kpi label="Memory" value={`${(Number(values.memory_bytes || 0) / 1024 / 1024 / 1024).toFixed(2)} GiB`} detail="working set" /><Kpi label="Restarts / 1h" value={values.pod_restarts_1h || 0} /><Kpi label="LLM Calls" value={summary.total || 0} detail={`${summary.failures || 0} failed`} /><Kpi label="Token" value={compactNumber(summary.total_tokens)} detail={`$${Number(summary.estimated_cost_usd || 0).toFixed(4)} · ${compactNumber(summary.input_tokens)} in`} /><Kpi label="P95" value={`${summary.p95_latency_ms || 0} ms`} detail={`${summary.throughput_per_min || 0} req/min`} /></section>
     <section className="unified-grid signals-grid">
-      <div className="surface span-two"><SectionHead icon={Activity} title="信号源" meta="Metrics · Logs · Traces · LLM" /><div className="integration-strip">{sources.map((item: any) => <div key={item.id}><span className="resource-icon"><Database size={15} /></span><div><strong>{item.name}</strong><small>{item.capability}</small></div><StatusPill status={item.status} /></div>)}</div></div>
-      <div className="surface"><SectionHead icon={Gauge} title="模型调用分布" /><div className="mini-bars">{list(analytics.by_model).slice(0, 7).map((item: any) => <div key={item.name}><span>{item.name}</span><i><b style={{ width: `${Math.min(100, Number(item.calls || 0) * 10)}%` }} /></i><strong>{item.calls || 0}</strong></div>)}</div></div>
-      <div className="surface span-three langfuse-lens"><SectionHead icon={GitBranch} title="Langfuse 黑盒拆解" meta={`${summary.langfuse_traces || 0} traces · ${langfuse.active ? "active" : langfuse.configured ? "configured" : "not configured"}`} /><div className="langfuse-chain">{["User", "Session", "Trace", "Generation", "Tool Call", "Score"].map((item) => <div key={item}><span>{item}</span><small>{item === "User" ? "Operator / Alert" : item === "Session" ? "Incident / Inspection" : item === "Trace" ? "SRE Workflow" : item === "Generation" ? "LLM Tokens" : item === "Tool Call" ? "MCP / Healing" : "Quality Eval"}</small></div>)}</div><div className="quality-strip">{list(analytics.quality_scores).length ? list(analytics.quality_scores).map((item: any) => <div key={item.name}><span>{item.name}</span><i><b style={{ width: `${Math.round(Number(item.avg || 0) * 100)}%` }} /></i><strong>{Math.round(Number(item.avg || 0) * 100)}</strong></div>) : <Empty text="运行 SRE 对话或巡检后展示 Langfuse 质量评分" />}</div></div>
-      <div className="surface span-two"><SectionHead icon={LineChart} title="每日 Token 用量" meta={`${weekly.observed_days || 0} observed days`} /><div className="usage-chart">{list(analytics.daily_usage).length ? list(analytics.daily_usage).map((item: any) => <div key={item.date}><div><i style={{ height: `${Math.max(4, Number(item.tokens || 0) / maxDailyTokens * 100)}%` }} /></div><strong>{compactNumber(item.tokens)}</strong><span>{item.date?.slice(5)}</span></div>) : <Empty text="产生 LLM 调用后展示每日 Token 曲线" />}</div></div>
-      <div className="surface"><SectionHead icon={BrainCircuit} title="一周用量预测" /><div className="weekly-forecast"><div><span>不开自动巡检</span><strong>{compactNumber(weekly.weekly_tokens_without_auto_inspection)}</strong></div><div><span>开启自动巡检</span><strong>{compactNumber(weekly.weekly_tokens_with_auto_inspection)}</strong></div><p>每 {weekly.inspection_interval_minutes || 30} 分钟巡检，预计增加 {compactNumber(weekly.auto_inspection_extra_tokens)} Token / 周</p></div></div>
-      <div className="surface"><SectionHead icon={Workflow} title="LLM 数据流" /><div className="flow-list">{list(analytics.data_flows).map((item: any, index: number) => <div key={item.name}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.name}</strong><small>{item.count} calls</small></div>)}</div></div>
-      <div className="surface span-two"><SectionHead icon={FileClock} title="调用审计" meta={`${summary.shown || 0} shown`} /><div className="call-table"><div><span>时间</span><span>来源 / 模型</span><span>延迟</span><span>状态</span><span /></div>{list(llm.data?.items).slice(0, 80).map((item: any) => <button key={item.id} onClick={() => setSelectedCall(item)}><span>{timeText(item.timestamp)}</span><span>{item.source}<small>{item.llm?.model_profile_id || item.llm?.model}{item.trace_id ? ` · ${String(item.trace_id).slice(0, 10)}` : ""}</small></span><span>{item.latency_ms || 0} ms</span><StatusPill status={item.status || "unknown"} /><Eye size={14} /></button>)}</div></div>
-      {selectedCall && <div className="surface span-three"><SectionHead icon={Eye} title="调用详情" meta={selectedCall.id} action={<button className="ghost tiny" onClick={() => setSelectedCall(null)}>关闭</button>} /><div className="call-detail-grid"><div><span>输入范围</span><pre>{JSON.stringify(selectedCall.metadata || selectedCall.input, null, 2)}</pre></div><div><span>Agent 链</span><pre>{JSON.stringify(selectedCall.chain || [], null, 2)}</pre></div><div><span>输出摘要</span><pre>{JSON.stringify(selectedCall.output || {}, null, 2)}</pre></div></div></div>}
-      <div className="surface span-three"><SectionHead icon={HardDrive} title="日志查询" meta="受限 LogQL，只读访问 Loki" /><div className="querybar"><input value={logQuery} onChange={(event) => setLogQuery(event.target.value)} /><button className="primary" onClick={queryLogs} disabled={logs.loading}>{logs.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}查询</button></div>{logs.error && <div className="inline-error">{logs.error}</div>}{list(logs.data?.streams).length ? <div className="log-view">{list(logs.data.streams).flatMap((stream: any) => list(stream.values).map((value: any[], index: number) => <div key={`${value[0]}-${index}`}><span>{value[0]}</span><code>{value[1]}</code></div>)).slice(0, 120)}</div> : <Empty text="配置 Loki 后可在这里关联检索日志；未连接时不会伪造数据" />}</div>
-      <div className="surface span-three"><SectionHead icon={GitBranch} title="链路查询" meta="Tempo / TraceQL backend" /><div className="querybar"><input value={traceService} onChange={(event) => setTraceService(event.target.value)} placeholder="service.name，可留空查看最近链路" /><button className="primary" onClick={queryTraces} disabled={traces.loading}>{traces.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}查询</button></div>{traces.error && <div className="inline-error">{traces.error}</div>}{list(traces.data?.traces).length ? <div className="trace-list">{list(traces.data.traces).map((trace: any, index: number) => <div key={trace.traceID || index}><strong>{trace.rootServiceName || trace.serviceName || "trace"}</strong><code>{trace.traceID}</code><span>{trace.durationMs || trace.duration || "-"} ms</span></div>)}</div> : <Empty text="配置 Tempo 并上报 OTLP Trace 后可关联检索调用链" />}</div>
+      <div className="surface span-two"><SectionHead icon={Activity} title="Signal Sources" meta="Metrics · Logs · Traces · LLM" /><div className="integration-strip">{sources.map((item: any) => <div key={item.id}><span className="resource-icon"><Database size={15} /></span><div><strong>{item.name}</strong><small>{item.capability}</small></div><StatusPill status={item.status} /></div>)}</div></div>
+      <div className="surface"><SectionHead icon={Gauge} title="Model Call Distribution" /><div className="mini-bars">{list(analytics.by_model).slice(0, 7).map((item: any) => <div key={item.name}><span>{item.name}</span><i><b style={{ width: `${Math.min(100, Number(item.calls || 0) * 10)}%` }} /></i><strong>{item.calls || 0}</strong></div>)}</div></div>
+      <div className="surface span-three langfuse-lens"><SectionHead icon={GitBranch} title="Langfuse Black-Box Breakdown" meta={`${summary.langfuse_traces || 0} traces · ${langfuse.active ? "active" : langfuse.configured ? "configured" : "not configured"}`} /><div className="langfuse-chain">{["User", "Session", "Trace", "Generation", "Tool Call", "Score"].map((item) => <div key={item}><span>{item}</span><small>{item === "User" ? "Operator / Alert" : item === "Session" ? "Incident / Inspection" : item === "Trace" ? "SRE Workflow" : item === "Generation" ? "LLM Tokens" : item === "Tool Call" ? "MCP / Healing" : "Quality Eval"}</small></div>)}</div><div className="quality-strip">{list(analytics.quality_scores).length ? list(analytics.quality_scores).map((item: any) => <div key={item.name}><span>{item.name}</span><i><b style={{ width: `${Math.round(Number(item.avg || 0) * 100)}%` }} /></i><strong>{Math.round(Number(item.avg || 0) * 100)}</strong></div>) : <Empty text="Langfuse quality scores will appear after running SRE chat or an inspection" />}</div></div>
+      <div className="surface span-two"><SectionHead icon={LineChart} title="Daily Token Usage" meta={`${weekly.observed_days || 0} observed days`} /><div className="usage-chart">{list(analytics.daily_usage).length ? list(analytics.daily_usage).map((item: any) => <div key={item.date}><div><i style={{ height: `${Math.max(4, Number(item.tokens || 0) / maxDailyTokens * 100)}%` }} /></div><strong>{compactNumber(item.tokens)}</strong><span>{item.date?.slice(5)}</span></div>) : <Empty text="The daily Token chart appears after LLM calls are generated" />}</div></div>
+      <div className="surface"><SectionHead icon={BrainCircuit} title="Weekly Usage Forecast" /><div className="weekly-forecast"><div><span>Without Automatic Inspection</span><strong>{compactNumber(weekly.weekly_tokens_without_auto_inspection)}</strong></div><div><span>With Automatic Inspection</span><strong>{compactNumber(weekly.weekly_tokens_with_auto_inspection)}</strong></div><p>Every {weekly.inspection_interval_minutes || 30} minutes of inspection is expected to add {compactNumber(weekly.auto_inspection_extra_tokens)} Token / week</p></div></div>
+      <div className="surface"><SectionHead icon={Workflow} title="LLM Data Flow" /><div className="flow-list">{list(analytics.data_flows).map((item: any, index: number) => <div key={item.name}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.name}</strong><small>{item.count} calls</small></div>)}</div></div>
+      <div className="surface span-two"><SectionHead icon={FileClock} title="Call Audit" meta={`${summary.shown || 0} shown`} /><div className="call-table"><div><span>Time</span><span>Source / Model</span><span>Latency</span><span>Status</span><span /></div>{list(llm.data?.items).slice(0, 80).map((item: any) => <button key={item.id} onClick={() => setSelectedCall(item)}><span>{timeText(item.timestamp)}</span><span>{item.source}<small>{item.llm?.model_profile_id || item.llm?.model}{item.trace_id ? ` · ${String(item.trace_id).slice(0, 10)}` : ""}</small></span><span>{item.latency_ms || 0} ms</span><StatusPill status={item.status || "unknown"} /><Eye size={14} /></button>)}</div></div>
+      {selectedCall && <div className="surface span-three"><SectionHead icon={Eye} title="Call Details" meta={selectedCall.id} action={<button className="ghost tiny" onClick={() => setSelectedCall(null)}>Close</button>} /><div className="call-detail-grid"><div><span>Input Scope</span><pre>{JSON.stringify(selectedCall.metadata || selectedCall.input, null, 2)}</pre></div><div><span>Agent Chain</span><pre>{JSON.stringify(selectedCall.chain || [], null, 2)}</pre></div><div><span>Output Summary</span><pre>{JSON.stringify(selectedCall.output || {}, null, 2)}</pre></div></div></div>}
+      <div className="surface span-three"><SectionHead icon={HardDrive} title="Log Query" meta="Restricted LogQL with read-only access to Loki" /><div className="querybar"><input value={logQuery} onChange={(event) => setLogQuery(event.target.value)} /><button className="primary" onClick={queryLogs} disabled={logs.loading}>{logs.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}Query</button></div>{logs.error && <div className="inline-error">{logs.error}</div>}{list(logs.data?.streams).length ? <div className="log-view">{list(logs.data.streams).flatMap((stream: any) => list(stream.values).map((value: any[], index: number) => <div key={`${value[0]}-${index}`}><span>{value[0]}</span><code>{value[1]}</code></div>)).slice(0, 120)}</div> : <Empty text="After configuring Loki, you can search correlated logs here; no data is fabricated when it is not connected" />}</div>
+      <div className="surface span-three"><SectionHead icon={GitBranch} title="Trace Query" meta="Tempo / TraceQL backend" /><div className="querybar"><input value={traceService} onChange={(event) => setTraceService(event.target.value)} placeholder="service.name, or leave blank to view recent traces" /><button className="primary" onClick={queryTraces} disabled={traces.loading}>{traces.loading ? <Loader2 className="spin" size={15} /> : <Search size={15} />}Query</button></div>{traces.error && <div className="inline-error">{traces.error}</div>}{list(traces.data?.traces).length ? <div className="trace-list">{list(traces.data.traces).map((trace: any, index: number) => <div key={trace.traceID || index}><strong>{trace.rootServiceName || trace.serviceName || "trace"}</strong><code>{trace.traceID}</code><span>{trace.durationMs || trace.duration || "-"} ms</span></div>)}</div> : <Empty text="After configuring Tempo and sending OTLP Traces, you can search correlated call chains here" />}</div>
     </section>
   </div>;
 }
@@ -750,25 +750,25 @@ export function IntegrationsPage() {
   const [testing, setTesting] = useState("");
   const [feedback, setFeedback] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
   const groups = [
-    ["infrastructure", "基础设施", Network],
-    ["observability", "可观测", Activity],
-    ["collaboration", "协作通道", MessageSquareText],
-    ["ai", "AI 与知识", BrainCircuit],
+    ["infrastructure", "Infrastructure", Network],
+    ["observability", "Observability", Activity],
+    ["collaboration", "Collaboration Channels", MessageSquareText],
+    ["ai", "AI and Knowledge", BrainCircuit],
   ] as const;
   async function testChannel(channel: string) {
     setTesting(channel); setFeedback(null);
     try {
       await apiPost("/api/integrations/notify/test", { channel });
-      setFeedback({ tone: "ok", text: `${channel} 测试通知已送达` });
+      setFeedback({ tone: "ok", text: `${channel} test notification delivered` });
     } catch (error: any) {
       setFeedback({ tone: "warn", text: error.message });
     } finally { setTesting(""); }
   }
   const cloudAdapters = list(cloud.data?.available || cloud.data?.adapters);
-  return <div className="unified-page"><div className="page-commandbar"><div className="quiet-note"><ShieldCheck size={15} />凭据由 K8s Secret 托管，前端只显示健康状态</div>{feedback && <span className={`channel-feedback ${feedback.tone}`}>{feedback.text}</span>}<button className="ghost" onClick={refresh}><RefreshCcw size={15} />检测</button></div>
-    <div className="integration-groups">{groups.map(([id, title, Icon]) => <section className="surface" key={id}><SectionHead icon={Icon} title={title} /><div className="integration-cards">{list(state.data?.items).filter((item: any) => item.category === id).map((item: any) => <div key={item.id}><span className="resource-icon"><CloudCog size={16} /></span><div><strong>{item.name}</strong><p>{item.capability}</p><small>{item.configuration_hint}</small></div><div className="integration-actions"><StatusPill status={item.status} />{id === "collaboration" && item.status === "configured" && <button className="channel-test" onClick={() => testChannel(item.id)} disabled={testing === item.id} title={`发送 ${item.name} 测试通知`}>{testing === item.id ? <Loader2 className="spin" size={13} /> : <Send size={13} />}</button>}</div></div>)}</div></section>)}</div>
-    <section className="surface"><SectionHead icon={GitBranch} title="云资源适配器" meta="Rancher · Generic CSI Storage · Virtualization Platform · Public Cloud" /><div className="capability-grid">{cloudAdapters.length ? cloudAdapters.map((item: any) => <div className="capability-card" key={item.id || item.provider}><span>{item.enabled ? "enabled" : "available"}</span><strong>{item.display_name || item.name || item.provider}</strong><p>{list(item.capabilities).join(" · ") || item.description}</p><small>{item.auth_mode} · {item.inventory_scope}</small></div>) : <Empty text="通过 CLOUD_ADAPTERS_JSON 接入阿里云、通用 CSI 存储、虚拟化平台或其他云适配器" />}</div></section>
-    <section className="surface"><SectionHead icon={CheckCircle2} title="能力覆盖" meta="对标 OnGrid 已发布能力，同时保留 Flawless 的差异化能力" /><div className="coverage-table"><div><strong>能力</strong><strong>本系统</strong><strong>说明</strong></div>{list(state.data?.coverage).map((item: any) => <div key={item.capability}><span>{item.capability}</span><StatusPill status={item.status} /><small>{item.detail}</small></div>)}</div></section>
+  return <div className="unified-page"><div className="page-commandbar"><div className="quiet-note"><ShieldCheck size={15} />Credentials are managed by K8s Secrets; the frontend shows only health status</div>{feedback && <span className={`channel-feedback ${feedback.tone}`}>{feedback.text}</span>}<button className="ghost" onClick={refresh}><RefreshCcw size={15} />Check</button></div>
+    <div className="integration-groups">{groups.map(([id, title, Icon]) => <section className="surface" key={id}><SectionHead icon={Icon} title={title} /><div className="integration-cards">{list(state.data?.items).filter((item: any) => item.category === id).map((item: any) => <div key={item.id}><span className="resource-icon"><CloudCog size={16} /></span><div><strong>{item.name}</strong><p>{item.capability}</p><small>{item.configuration_hint}</small></div><div className="integration-actions"><StatusPill status={item.status} />{id === "collaboration" && item.status === "configured" && <button className="channel-test" onClick={() => testChannel(item.id)} disabled={testing === item.id} title={`Send ${item.name} test notification`}>{testing === item.id ? <Loader2 className="spin" size={13} /> : <Send size={13} />}</button>}</div></div>)}</div></section>)}</div>
+    <section className="surface"><SectionHead icon={GitBranch} title="Cloud Resource Adapters" meta="Rancher · Generic CSI Storage · Virtualization Platform · Public Cloud" /><div className="capability-grid">{cloudAdapters.length ? cloudAdapters.map((item: any) => <div className="capability-card" key={item.id || item.provider}><span>{item.enabled ? "enabled" : "available"}</span><strong>{item.display_name || item.name || item.provider}</strong><p>{list(item.capabilities).join(" · ") || item.description}</p><small>{item.auth_mode} · {item.inventory_scope}</small></div>) : <Empty text="Use CLOUD_ADAPTERS_JSON to integrate Alibaba Cloud, generic CSI storage, virtualization platforms, or other cloud adapters" />}</div></section>
+    <section className="surface"><SectionHead icon={CheckCircle2} title="Capability Coverage" meta="Aligned with capabilities already released in OnGrid while preserving Flawless differentiation" /><div className="coverage-table"><div><strong>Capability</strong><strong>This System</strong><strong>Description</strong></div>{list(state.data?.coverage).map((item: any) => <div key={item.capability}><span>{item.capability}</span><StatusPill status={item.status} /><small>{item.detail}</small></div>)}</div></section>
   </div>;
 }
 
@@ -781,15 +781,15 @@ type AssistantMessage = {
   sourceCount?: number;
 };
 
-const ASSISTANT_OPS_PATTERN = /pod|k8s|kubernetes|故障|排障|集群|网络|存储|告警|修复|巡检|拓扑|prometheus|cmdb|rancher|namespace|workload|deployment|statefulset/i;
+const ASSISTANT_OPS_PATTERN = /pod|k8s|kubernetes|fault|troubleshoot|cluster|network|storage|alert|repair|inspection|topology|prometheus|cmdb|rancher|namespace|workload|deployment|statefulset|\u6545\u969c|\u6392\u969c|\u96c6\u7fa4|\u7f51\u7edc|\u5b58\u50a8|\u544a\u8b66|\u4fee\u590d|\u5de1\u68c0|\u62d3\u6251/i;
 
 function assistantSuggestions(page: string) {
-  if (page.includes("SRE")) return ["这次诊断如何安全执行？", "帮我把回答整理成操作步骤", "如果修复失败下一步做什么？"];
-  if (page.includes("巡检")) return ["如何只看新增风险？", "生产模式会检查哪些隐患？", "怎样开启人工确认修复？"];
-  if (page.includes("拓扑")) return ["怎么读懂影响范围？", "解释关键路径和放大系数", "Kafka/ELK 数据流在哪里看？"];
-  if (page.includes("模型")) return ["怎么接入 OAuth 模型？", "怎么比较模型运维能力？", "如何做影子测评？"];
-  if (page.includes("知识")) return ["Runbook 应该怎么沉淀？", "产品使用知识和运维知识区别？", "如何让助手使用这些知识？"];
-  return ["当前页面怎么用？", "给我推荐下一步", "遇到异常先看哪里？"];
+  if (page.includes("SRE")) return ["How can this diagnosis be executed safely?", "Help me turn the answer into action steps", "What should I do next if the fix fails?"];
+  if (page.includes("Inspection")) return ["How can I view only newly added risks?", "What hidden risks are checked in production mode?", "How do I enable human-approved remediation?"];
+  if (page.includes("Topology")) return ["How do I understand the impact scope?", "Explain the critical path and amplification factor", "Where can I view the Kafka/ELK data flow?"];
+  if (page.includes("Model")) return ["How do I integrate an OAuth model?", "How do I compare model operations capabilities?", "How do I run a shadow evaluation?"];
+  if (page.includes("Knowledge")) return ["How should Runbooks be accumulated?", "What is the difference between product knowledge and operations knowledge?", "How do I make the assistant use this knowledge?"];
+  return ["How do I use this page?", "Recommend the next step for me", "Where should I look first when an anomaly occurs?"];
 }
 
 function assistantDomain(question: string, page: string): "app" | "ops" {
@@ -821,45 +821,45 @@ export function AssistantDock({ page }: { page: string }) {
     setMessages((current) => [...current, { role: "user", text: question, at: Date.now(), page, domain }]);
     try {
       const data = await apiPost<any>("/api/knowledge/ask", {
-        question: `当前页面：${page}\n用户问题：${question}`,
+        question: `Current page: ${page}\nUser question: ${question}`,
         domain,
-        include_principle: /原理|机制|为什么|principle/i.test(question),
+        include_principle: /(?:\u539f\u7406|\u673a\u5236|\u4e3a\u4ec0\u4e48|principle|mechanism|why)/i.test(question),
       });
-      setMessages((current) => [...current, { role: "assistant", text: data.answer || "没有检索到答案。", at: Date.now(), page, domain, sourceCount: list(data.sources).length }]);
+      setMessages((current) => [...current, { role: "assistant", text: data.answer || "No answer was retrieved.", at: Date.now(), page, domain, sourceCount: list(data.sources).length }]);
     } catch (error: any) {
-      setMessages((current) => [...current, { role: "assistant", text: `助手暂时不可用：${error.message}`, at: Date.now(), page, domain }]);
+      setMessages((current) => [...current, { role: "assistant", text: `The assistant is temporarily unavailable: ${error.message}`, at: Date.now(), page, domain }]);
     } finally { setLoading(false); }
   }
   return <>
-    <button className="assistant-launcher" onClick={() => setOpen(true)} title="打开 Flawless 助手"><Bot size={19} /><span>助手</span><kbd>⌘K</kbd></button>
+    <button className="assistant-launcher" onClick={() => setOpen(true)} title="Open Flawless Assistant"><Bot size={19} /><span>Assistant</span><kbd>⌘K</kbd></button>
     <aside className={`assistant-drawer ${open ? "open" : ""}`} aria-hidden={!open}>
       <header>
-        <div><span className="assistant-mark"><Bot size={18} /></span><div><strong>Flawless 助手</strong><small>当前页面：{page}</small></div></div>
+        <div><span className="assistant-mark"><Bot size={18} /></span><div><strong>Flawless Assistant</strong><small>Current page: {page}</small></div></div>
         <div className="assistant-header-actions">
-          <button onClick={() => setMessages([])} title="清空对话"><RefreshCcw size={15} /></button>
-          <button onClick={() => setOpen(false)} title="关闭"><X size={18} /></button>
+          <button onClick={() => setMessages([])} title="Clear conversation"><RefreshCcw size={15} /></button>
+          <button onClick={() => setOpen(false)} title="Close"><X size={18} /></button>
         </div>
       </header>
       <div className="assistant-context">
-        <span><BrainCircuit size={14} />知识库路由</span>
-        <strong>{ASSISTANT_OPS_PATTERN.test(page) ? "运维 Runbook" : "产品使用 + 运维 RAG"}</strong>
+        <span><BrainCircuit size={14} />Knowledge Base Route</span>
+        <strong>{ASSISTANT_OPS_PATTERN.test(page) ? "Operations Runbook" : "Product Usage + Operations RAG"}</strong>
       </div>
       <div className="assistant-suggestions">
         {suggestions.map((item) => <button key={item} onClick={() => ask(item)} disabled={loading}>{item}</button>)}
       </div>
       <div className="assistant-messages" ref={scroller}>
         {messages.length ? messages.map((item, index) => <div className={`assistant-message ${item.role}`} key={`${item.at}-${index}`}>
-          <span>{item.role === "assistant" ? "Flawless" : "你"}{item.page ? ` · ${item.page}` : ""}{item.domain ? ` · ${item.domain === "ops" ? "运维知识" : "产品知识"}` : ""}</span>
+          <span>{item.role === "assistant" ? "Flawless" : "You"}{item.page ? ` · ${item.page}` : ""}{item.domain ? ` · ${item.domain === "ops" ? "Operations Knowledge" : "Product Knowledge"}` : ""}</span>
           <p>{item.text}</p>
-          {item.role === "assistant" && typeof item.sourceCount === "number" && <small>{item.sourceCount} 个知识片段参与回答</small>}
-        </div>) : <div className="assistant-welcome"><BrainCircuit size={24} /><strong>需要我帮你怎么用这套系统？</strong><p>我会结合当前页面、产品知识库和运维 Runbook 给出下一步。</p></div>}
-        {loading && <div className="assistant-thinking"><i /><i /><i />正在检索知识库</div>}
+          {item.role === "assistant" && typeof item.sourceCount === "number" && <small>{item.sourceCount} knowledge snippets contributed to this answer</small>}
+        </div>) : <div className="assistant-welcome"><BrainCircuit size={24} /><strong>How can I help you use this system?</strong><p>I will combine the current page, the product knowledge base, and the operations Runbook to suggest the next step.</p></div>}
+        {loading && <div className="assistant-thinking"><i /><i /><i />Searching the knowledge base</div>}
       </div>
       <footer>
-        <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder="问产品用法、运维 Runbook 或当前页面下一步" />
+        <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder="Ask about product usage, the operations Runbook, or the next step on this page" />
         <button onClick={() => ask()} disabled={loading || !input.trim()}><Send size={16} /></button>
       </footer>
     </aside>
-    {open && <button className="assistant-backdrop" onClick={() => setOpen(false)} aria-label="关闭助手遮罩" />}
+    {open && <button className="assistant-backdrop" onClick={() => setOpen(false)} aria-label="Close assistant overlay" />}
   </>;
 }

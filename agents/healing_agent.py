@@ -110,8 +110,8 @@ def _execute_structured_change(change: dict, default_namespace: str, dry_run: bo
 @app.post("/a2a/tasks")
 async def handle_task(message: A2AMessage):
     """
-    Healing Agent 接收 SRE Agent 派发的修复任务。
-    真实环境中这里可以调用 MCP Server 或者 Kubernetes API。
+    The Healing Agent receives remediation tasks dispatched by the SRE Agent.
+    In a real environment, this can call an MCP Server or the Kubernetes API.
     """
 
     payload = message.payload
