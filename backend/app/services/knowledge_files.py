@@ -1,7 +1,8 @@
-"""安全提取上传到知识库的文件文本。
+"""Safely extract text from files uploaded to the knowledge base.
 
-本模块不负责持久化或调用 LLM，只校验文件类型、在进程内抽取文本并返回
-标准化文档类型，后续分块与向量化策略由知识库服务统一处理。
+This module does not handle persistence or call an LLM. It only validates file
+types, extracts text in-process, and returns a normalized document type. Later
+chunking and vectorization strategies are handled uniformly by the knowledge base service.
 """
 from __future__ import annotations
 
@@ -88,7 +89,7 @@ def _extract_open_document(data: bytes, extension: str) -> str:
                 if archive.getinfo(name).file_size <= 12 * 1024 * 1024:
                     parts.extend(_xml_text(archive.read(name), include_values=include_values))
     except (zipfile.BadZipFile, KeyError) as exc:
-        raise HTTPException(status_code=422, detail=f"Office 文档结构无效：{type(exc).__name__}") from exc
+        raise HTTPException(status_code=422, detail=f"Invalid Office document structure: {type(exc).__name__}") from exc
     return "\n".join(parts)
 
 
@@ -96,14 +97,14 @@ def _extract_pdf(data: bytes) -> str:
     try:
         from pypdf import PdfReader
     except ImportError as exc:
-        raise HTTPException(status_code=503, detail="PDF 解析组件未安装，请使用更新后的项目镜像") from exc
+        raise HTTPException(status_code=503, detail="PDF parsing component is not installed; use an updated project image") from exc
     try:
         reader = PdfReader(io.BytesIO(data), strict=False)
         if reader.is_encrypted:
             try:
                 reader.decrypt("")
             except Exception as exc:
-                raise HTTPException(status_code=422, detail="PDF 已加密，无法抽取文本") from exc
+                raise HTTPException(status_code=422, detail="PDF is encrypted and text cannot be extracted") from exc
         pages: list[str] = []
         for page in reader.pages[:500]:
             text = (page.extract_text() or "").strip()
@@ -113,7 +114,7 @@ def _extract_pdf(data: bytes) -> str:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"PDF 文本抽取失败：{type(exc).__name__}: {str(exc)[:120]}") from exc
+        raise HTTPException(status_code=422, detail=f"PDF text extraction failed: {type(exc).__name__}: {str(exc)[:120]}") from exc
 
 
 def extract_knowledge_file(data: bytes, filename: str) -> tuple[str, str]:
@@ -121,7 +122,7 @@ def extract_knowledge_file(data: bytes, filename: str) -> tuple[str, str]:
     extension = Path(filename).suffix.lower()
     if extension not in KNOWLEDGE_FILE_EXTENSIONS:
         supported = ", ".join(sorted(KNOWLEDGE_FILE_EXTENSIONS))
-        raise HTTPException(status_code=415, detail=f"不支持 {extension or '无扩展名'} 文件；支持：{supported}")
+        raise HTTPException(status_code=415, detail=f"Unsupported file type {extension or 'without extension'}; supported: {supported}")
     if extension == ".pdf":
         content = _extract_pdf(data)
     elif extension in {".docx", ".pptx", ".xlsx", ".odt"}:
@@ -139,6 +140,6 @@ def extract_knowledge_file(data: bytes, filename: str) -> tuple[str, str]:
     content = re.sub(r"[ \t]+", " ", content)
     content = re.sub(r"\n{3,}", "\n\n", content).strip()
     if not content:
-        raise HTTPException(status_code=422, detail="文档中没有可抽取的文本；扫描版 PDF 需要先经过企业 OCR")
+        raise HTTPException(status_code=422, detail="No extractable text was found in the document; scanned PDFs must go through enterprise OCR first")
     max_chars = int(os.getenv("KNOWLEDGE_MAX_EXTRACTED_CHARS", "2000000"))
     return content[:max_chars], extension.lstrip(".")

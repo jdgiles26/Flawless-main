@@ -22,7 +22,7 @@ async def llm_health(profile_id: str = ""):
     try:
         profile = select_model_profile(profile_id or None)
         token_length = 0 if (profile.auth_type or "").lower() in {"none", "noauth", "anonymous"} else len(profile.api_key or profile.client_secret or "configured")
-        response = get_llm(max_tokens=64, profile_id=profile.id).invoke("只返回两个字：成功")
+        response = get_llm(max_tokens=64, profile_id=profile.id).invoke("Reply with only one word: success")
         return {
             "status": "ok",
             "profile_id": profile.id,
@@ -87,7 +87,7 @@ async def chat(req: ChatRequest):
         result = await sre_graph.ainvoke(initial_state)
     except Exception as e:
         return {
-            "answer": f"SRE 对话处理失败：{type(e).__name__}: {e}",
+            "answer": f"SRE conversation processing failed: {type(e).__name__}: {e}",
             "postmortem": None,
             "raw": {
                 "error": f"{type(e).__name__}: {e}",

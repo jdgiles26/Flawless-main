@@ -1,8 +1,9 @@
-"""Agent Skills 标准目录包的编解码与安全导入导出。
+"""Encoding/decoding and secure import/export for standard Agent Skills directory packages.
 
-标准 ``SKILL.md`` 保持跨智能体可读；Flawless 专有的证据、动作和恢复门禁放在
-``references/ops-policy.yaml``。平台不会直接执行导入包中的脚本，脚本执行仍只能
-引用企业批准目录中的 ``script_id``。
+The standard ``SKILL.md`` remains readable across agents; Flawless-specific evidence,
+action, and recovery gates live in ``references/ops-policy.yaml``. The platform does
+not directly execute scripts from imported packages; script execution can only reference
+``script_id`` values from the enterprise-approved catalog.
 """
 
 from __future__ import annotations
@@ -36,18 +37,18 @@ SECRET_PATTERNS = (
 
 
 class AgentSkillPackageError(ValueError):
-    """Skill 包格式或安全检查失败。"""
+    """Skill package format or security validation failed."""
 
 
 def normalize_skill_name(value: str, *, fallback: str = "ops-skill") -> str:
-    """转换为 Agent Skills 规范允许的目录名。"""
+    """Convert to a directory name allowed by the Agent Skills spec."""
     raw = str(value or fallback).strip().lower()
     raw = re.sub(r"[^a-z0-9]+", "-", raw).strip("-")
     raw = re.sub(r"-{2,}", "-", raw)[:64].rstrip("-")
     if not raw:
         raw = fallback
     if not SKILL_NAME_PATTERN.fullmatch(raw):
-        raise AgentSkillPackageError("Skill name 必须只包含小写字母、数字和单连字符")
+        raise AgentSkillPackageError("Skill name must contain only lowercase letters, numbers, and single hyphens")
     return raw
 
 
@@ -72,7 +73,7 @@ def _yaml_frontmatter(name: str, description: str) -> str:
 
 
 def render_skill_md(skill: dict[str, Any]) -> str:
-    """生成兼容 Agent Skills 的主说明文件。"""
+    """Generate the main description file compatible with Agent Skills."""
     name = normalize_skill_name(str(skill.get("id") or skill.get("name") or "ops-skill"))
     title = str(skill.get("name") or name).strip()
     summary = str(skill.get("summary") or _description(skill)).strip()
@@ -140,7 +141,7 @@ Imported scripts are not trusted automatically; use only scripts explicitly appr
 
 
 def render_ops_policy(skill: dict[str, Any]) -> str:
-    """生成可选的 Flawless 机器可读扩展。"""
+    """Generate the optional Flawless machine-readable extension."""
     payload = {
         "schema": OPS_POLICY_SCHEMA,
         "identity": {
@@ -187,7 +188,7 @@ def render_ops_policy(skill: dict[str, Any]) -> str:
 def render_openai_yaml(skill: dict[str, Any]) -> str:
     name = normalize_skill_name(str(skill.get("id") or skill.get("name") or "ops-skill"))
     title = str(skill.get("name") or name)[:48]
-    summary = str(skill.get("summary") or "基于证据完成诊断、受控变更和恢复验证")
+    summary = str(skill.get("summary") or "Complete diagnosis, controlled changes, and recovery verification based on evidence")
     payload = {
         "interface": {
             "display_name": title,
@@ -201,35 +202,35 @@ def render_openai_yaml(skill: dict[str, Any]) -> str:
 
 def _parse_skill_md(content: str, directory_name: str) -> tuple[dict[str, Any], str]:
     if not content.startswith("---\n"):
-        raise AgentSkillPackageError("SKILL.md 必须以 YAML frontmatter 开始")
+        raise AgentSkillPackageError("SKILL.md must start with YAML frontmatter")
     match = re.match(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", content, flags=re.S)
     if not match:
-        raise AgentSkillPackageError("SKILL.md frontmatter 未正确闭合")
+        raise AgentSkillPackageError("SKILL.md frontmatter is not properly closed")
     try:
         metadata = yaml.safe_load(match.group(1)) or {}
     except yaml.YAMLError as exc:
-        raise AgentSkillPackageError(f"SKILL.md frontmatter 不是有效 YAML：{exc}") from exc
+        raise AgentSkillPackageError(f"SKILL.md frontmatter is not valid YAML: {exc}") from exc
     name = str(metadata.get("name") or "")
     description = str(metadata.get("description") or "").strip()
     if not SKILL_NAME_PATTERN.fullmatch(name) or name != directory_name:
-        raise AgentSkillPackageError("SKILL.md name 必须符合规范并与父目录名称一致")
+        raise AgentSkillPackageError("SKILL.md name must match the spec and the parent directory name")
     if not description or len(description) > 1024:
-        raise AgentSkillPackageError("SKILL.md description 必须为 1-1024 个字符")
+        raise AgentSkillPackageError("SKILL.md description must be 1-1024 characters")
     return {"name": name, "description": description, **metadata}, match.group(2).strip()
 
 
 def _declared_skill_name(content: str) -> str:
-    """读取根目录 ZIP 的声明名称，用于补齐被压缩软件剥离的顶层目录。"""
+    """Read the declared name from a root ZIP to restore a stripped top-level directory."""
     match = re.match(r"^---\s*\n(.*?)\n---", content, flags=re.S)
     if not match:
-        raise AgentSkillPackageError("SKILL.md frontmatter 未正确闭合")
+        raise AgentSkillPackageError("SKILL.md frontmatter is not properly closed")
     try:
         metadata = yaml.safe_load(match.group(1)) or {}
     except yaml.YAMLError as exc:
-        raise AgentSkillPackageError(f"SKILL.md frontmatter 不是有效 YAML：{exc}") from exc
+        raise AgentSkillPackageError(f"SKILL.md frontmatter is not valid YAML: {exc}") from exc
     name = str(metadata.get("name") or "")
     if not SKILL_NAME_PATTERN.fullmatch(name):
-        raise AgentSkillPackageError("SKILL.md name 不符合 Agent Skills 规范")
+        raise AgentSkillPackageError("SKILL.md name does not comply with the Agent Skills spec")
     return name
 
 
@@ -239,21 +240,21 @@ def _load_policy(path: Path) -> dict[str, Any]:
     try:
         value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
-        raise AgentSkillPackageError(f"ops-policy.yaml 无法读取：{exc}") from exc
+        raise AgentSkillPackageError(f"ops-policy.yaml could not be read: {exc}") from exc
     if not isinstance(value, dict):
-        raise AgentSkillPackageError("ops-policy.yaml 必须是 YAML 对象")
+        raise AgentSkillPackageError("ops-policy.yaml must be a YAML object")
     return value
 
 
 def read_package(package_dir: Path) -> dict[str, Any]:
-    """把标准目录包解析为运行时注册表记录。"""
+    """Parse a standard directory package into a runtime registry record."""
     skill_md = package_dir / "SKILL.md"
     if not skill_md.is_file():
-        raise AgentSkillPackageError(f"{package_dir.name} 缺少 SKILL.md")
+        raise AgentSkillPackageError(f"{package_dir.name} is missing SKILL.md")
     try:
         content = skill_md.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
-        raise AgentSkillPackageError(f"SKILL.md 无法读取：{exc}") from exc
+        raise AgentSkillPackageError(f"SKILL.md could not be read: {exc}") from exc
     metadata, body = _parse_skill_md(content, package_dir.name)
     policy = _load_policy(package_dir / "references" / "ops-policy.yaml")
     identity = policy.get("identity") or {}
@@ -302,12 +303,12 @@ def read_package(package_dir: Path) -> dict[str, Any]:
 
 
 def write_package(root: Path, skill: dict[str, Any]) -> Path:
-    """原子写入一个标准 Skill 目录，并保留已有的额外资源文件。"""
+    """Atomically write a standard Skill directory and keep existing extra resource files."""
     name = normalize_skill_name(str(skill.get("id") or skill.get("name") or "ops-skill"))
     root.mkdir(parents=True, exist_ok=True)
     target = root / name
     if target.exists() and not target.is_dir():
-        raise AgentSkillPackageError(f"Skill 目标路径不是目录：{target}")
+        raise AgentSkillPackageError(f"Skill target path is not a directory: {target}")
     target.mkdir(parents=True, exist_ok=True)
     (target / "references").mkdir(exist_ok=True)
     (target / "agents").mkdir(exist_ok=True)
@@ -331,11 +332,11 @@ def delete_package(root: Path, skill_id: str) -> None:
 
 
 def export_package(root: Path, skill_id: str) -> tuple[str, bytes]:
-    """导出单个目录包，ZIP 内保留顶层 Skill 文件夹。"""
+    """Export a single directory package and preserve the top-level Skill folder in the ZIP."""
     name = normalize_skill_name(skill_id)
     package_dir = root / name
     if not package_dir.is_dir():
-        raise AgentSkillPackageError("Skill 目录包不存在")
+        raise AgentSkillPackageError("Skill directory package does not exist")
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for path in sorted(package_dir.rglob("*")):
@@ -349,10 +350,10 @@ def _safe_archive_member(info: zipfile.ZipInfo) -> PurePosixPath | None:
     if not info.filename or info.is_dir() or path.name in {".DS_Store", "Thumbs.db"}:
         return None
     if path.is_absolute() or ".." in path.parts or any(part in {".git", "node_modules", "__pycache__"} for part in path.parts):
-        raise AgentSkillPackageError(f"ZIP 包含不安全路径：{info.filename}")
+        raise AgentSkillPackageError(f"ZIP contains an unsafe path: {info.filename}")
     mode = (info.external_attr >> 16) & 0xFFFF
     if mode and stat.S_ISLNK(mode):
-        raise AgentSkillPackageError(f"ZIP 不允许符号链接：{info.filename}")
+        raise AgentSkillPackageError(f"ZIP does not allow symbolic links: {info.filename}")
     return path
 
 
@@ -361,25 +362,25 @@ def _scan_text_secrets(filename: str, data: bytes) -> None:
         return
     text = data.decode("utf-8", errors="ignore")
     if any(pattern.search(text) for pattern in SECRET_PATTERNS):
-        raise AgentSkillPackageError(f"{filename} 疑似包含凭据或私钥，请移除后再导入")
+        raise AgentSkillPackageError(f"{filename} appears to contain credentials or a private key; remove it before importing")
 
 
 def import_archive(root: Path, filename: str, data: bytes) -> list[dict[str, Any]]:
-    """安全导入一个 ZIP；允许其中包含一个或多个标准 Skill 顶层目录。"""
+    """Securely import a ZIP that may contain one or more standard top-level Skill directories."""
     if not filename.lower().endswith(".zip"):
-        raise AgentSkillPackageError("请上传 .zip 格式的 Agent Skill 包")
+        raise AgentSkillPackageError("Please upload an Agent Skill package in .zip format")
     if not data or len(data) > MAX_PACKAGE_BYTES:
-        raise AgentSkillPackageError(f"Skill ZIP 必须小于 {MAX_PACKAGE_BYTES // 1024 // 1024} MiB")
+        raise AgentSkillPackageError(f"Skill ZIP must be smaller than {MAX_PACKAGE_BYTES // 1024 // 1024} MiB")
     try:
         archive = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile as exc:
-        raise AgentSkillPackageError("上传文件不是有效 ZIP") from exc
+        raise AgentSkillPackageError("Uploaded file is not a valid ZIP") from exc
     with archive:
         members = [item for item in archive.infolist() if _safe_archive_member(item)]
         if len(members) > MAX_PACKAGE_FILES:
-            raise AgentSkillPackageError(f"Skill ZIP 文件数不能超过 {MAX_PACKAGE_FILES}")
+            raise AgentSkillPackageError(f"Skill ZIP cannot contain more than {MAX_PACKAGE_FILES} files")
         if sum(item.file_size for item in members) > MAX_PACKAGE_BYTES:
-            raise AgentSkillPackageError("Skill ZIP 解压后体积超过限制")
+            raise AgentSkillPackageError("Extracted Skill ZIP size exceeds the limit")
         with tempfile.TemporaryDirectory(prefix="luxyai-skill-import-") as directory:
             base = Path(directory)
             staging = base / "extract"
@@ -404,7 +405,7 @@ def import_archive(root: Path, filename: str, data: bytes) -> list[dict[str, Any
             else:
                 skill_files = sorted(staging.rglob("SKILL.md"))
             if not skill_files:
-                raise AgentSkillPackageError("ZIP 中未找到 SKILL.md")
+                raise AgentSkillPackageError("SKILL.md was not found in the ZIP")
             parsed: list[tuple[Path, dict[str, Any]]] = []
             for skill_file in skill_files:
                 package_dir = skill_file.parent
