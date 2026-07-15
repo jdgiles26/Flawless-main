@@ -1,8 +1,9 @@
 # ============================================================
-# RBAC — k8s-agent namespace + 跨 namespace 操作权限
+# RBAC — k8s-agent namespace + cross-namespace operation permissions
 #
-# k8s-agent-sa 需要对集群内常见 K8S 资源具备只读和受控 patch 权限。
-# 实际可操作 namespace 仍由应用侧 ALLOWED_NAMESPACES 二次保护。
+# k8s-agent-sa needs read-only and controlled patch permissions for common K8s resources
+# across the cluster. The namespaces that can actually be operated on remain protected by the
+# application-side ALLOWED_NAMESPACES as a second layer.
 # ============================================================
 
 ---
@@ -26,7 +27,7 @@ metadata:
 
 ---
 # ============================================================
-# ClusterRole — 所有 namespace 只读发现权限
+# ClusterRole — read-only discovery permissions across all namespaces
 # ============================================================
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -109,7 +110,7 @@ rules:
     verbs: [get, list]
 
 ---
-# ClusterRoleBinding — 绑定到 k8s-agent-sa
+# ClusterRoleBinding — bound to k8s-agent-sa
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -124,8 +125,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
-# 修复权限不做 ClusterRoleBinding。每个获批 namespace 必须单独创建 RoleBinding，
-# 示例见 remediation-rolebinding.example.yaml。
+# Remediation permissions are not granted via a ClusterRoleBinding. Each approved namespace
+# must have its own RoleBinding created individually; see remediation-rolebinding.example.yaml
+# for an example.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -215,7 +217,8 @@ rules:
     verbs: [get, create, patch]
 
 ---
-# 仅允许平台在自己的 namespace 做自愈；业务 namespace 需显式授权。
+# Only allow the platform to self-heal in its own namespace; business namespaces require
+# explicit authorization.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

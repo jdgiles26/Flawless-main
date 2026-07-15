@@ -1,4 +1,4 @@
-"""长时间运维任务使用的有界异步执行、心跳与超时原语。"""
+"""Bounded async execution, heartbeat, and timeout primitives used by long-running ops tasks."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 
 
 class StageTimeoutError(TimeoutError):
-    """单个可观测执行阶段超过硬超时时间。"""
+    """A single observable execution phase exceeded its hard timeout."""
 
     def __init__(self, stage: str, timeout_seconds: float):
         self.stage = stage

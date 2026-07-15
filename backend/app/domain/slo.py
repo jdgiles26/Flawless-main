@@ -1,4 +1,4 @@
-"""供运维和发布治理共同使用的 SLO 与错误预算策略。"""
+"""SLO and error budget policies shared by operations and release governance."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def _number(value: Any, default: float = 0.0) -> float:
 
 
 def evaluate_error_budget(objective: dict[str, Any]) -> dict[str, Any]:
-    """根据请求失败率或停机证据计算可用性错误预算。"""
+    """Calculate the availability error budget from request failure rates or downtime evidence."""
 
     target_percent = min(99.999, max(50.0, _number(objective.get("target_percent"), 99.9)))
     window_days = min(365, max(1, int(_number(objective.get("window_days"), 30))))
@@ -73,7 +73,7 @@ def evaluate_error_budget(objective: dict[str, Any]) -> dict[str, Any]:
         "burn_rate": round(burn_rate, 4),
         "state": state,
         "freeze_changes": exhausted,
-        "freeze_reason": "错误预算已耗尽：冻结新功能和常规变更，优先恢复稳定性。" if exhausted else "",
+        "freeze_reason": "Error budget exhausted: freeze new features and routine changes, and prioritize restoring stability." if exhausted else "",
         "evidence_mode": evidence_mode,
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
     }

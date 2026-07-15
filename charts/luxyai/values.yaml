@@ -3,7 +3,7 @@ fullnameOverride: ""
 namespaceOverride: ""
 
 image:
-  repository: ghcr.io/william-lu-stack/flawless
+  repository: ghcr.io/luxyai/luxyai
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -46,7 +46,7 @@ serviceAccount:
 
 rbac:
   create: true
-  # controlled: 读取全集群并允许平台动作目录中的受控写操作；cluster-admin 仅用于隔离测试。
+  # controlled: read access across the whole cluster and allows controlled write operations from the platform action catalog; cluster-admin is only for isolated testing.
   mode: controlled
 
 secrets:

@@ -1,6 +1,7 @@
-"""按产品功能拆分的 FastAPI 路由入口。
+"""FastAPI route entry points organized by product capability.
 
-这里的每个文件只声明一个功能域的 HTTP 契约。业务算法放在 domain，
-外部系统调用与任务执行放在 services，避免路由、算法和基础设施相互缠绕。
+Each file here declares the HTTP contract for exactly one functional domain. Keep
+business algorithms in domain and external system calls and task execution in
+services to prevent routes, algorithms, and infrastructure from becoming tangled.
 """
 

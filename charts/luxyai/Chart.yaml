@@ -5,6 +5,6 @@ type: application
 version: 0.3.0
 appVersion: "3.2.0"
 kubeVersion: ">=1.25.0-0"
-home: https://github.com/William-Lu-stack/Flawless
+home: https://github.com/jdgiles26/Flawless-main
 maintainers:
-  - name: Xuanyu Lu
+  - name: jdgiles26

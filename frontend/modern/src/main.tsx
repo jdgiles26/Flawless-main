@@ -105,21 +105,21 @@ type ModelProfile = {
 };
 
 const navItems = [
-  { key: "chat", label: "SRE 对话", group: "核心", icon: MessageSquareText },
-  { key: "inspection", label: "AI 巡检", group: "核心", icon: Search },
-  { key: "topology", label: "拓扑影响", group: "核心", icon: Network },
-  { key: "dashboard", label: "运行总览", group: "运维闭环", icon: LayoutDashboard },
-  { key: "opsHub", label: "资源事件", group: "运维闭环", icon: PackageSearch },
-  { key: "skills", label: "Skill 库", group: "运维闭环", icon: BrainCircuit },
-  { key: "reliability", label: "发布治理", group: "运维", icon: ShieldCheck },
-  { key: "effectiveness", label: "运维成效", group: "运维", icon: LineChart },
-  { key: "platform", label: "平台能力", group: "平台", icon: Settings2 }
+  { key: "chat", label: "SRE Chat", group: "Core", icon: MessageSquareText },
+  { key: "inspection", label: "AI Inspection", group: "Core", icon: Search },
+  { key: "topology", label: "Topology Impact", group: "Core", icon: Network },
+  { key: "dashboard", label: "Runtime Overview", group: "Ops Loop", icon: LayoutDashboard },
+  { key: "opsHub", label: "Resources & Events", group: "Ops Loop", icon: PackageSearch },
+  { key: "skills", label: "Skill Library", group: "Ops Loop", icon: BrainCircuit },
+  { key: "reliability", label: "Release Governance", group: "Operations", icon: ShieldCheck },
+  { key: "effectiveness", label: "Ops Effectiveness", group: "Operations", icon: LineChart },
+  { key: "platform", label: "Platform Capabilities", group: "Platform", icon: Settings2 }
 ] as const;
 
 const quickPrompts = [
-  "值班巡检：先看所有 P0/P1 异常",
-  "定位 CrashLoop 根因并生成可执行修复",
-  "检查最近发布后的异常影响面"
+  "Shift inspection: show all P0/P1 anomalies first",
+  "Find the root cause of the CrashLoop and generate an executable fix",
+  "Check the blast radius of anomalies after the latest release"
 ];
 
 const highRiskOpsActions = new Set([
@@ -206,14 +206,14 @@ function App() {
     setAdminCredentials(adminUser.trim(), adminPassword);
     try {
       const verified = await apiGet<any>(`/api/session?verify=${Date.now()}`);
-      if (verified.role !== "admin") throw new Error(verified.admin_mode ? "用户名或密码不正确" : "服务端 CONSOLE_ADMIN_MODE 尚未开启");
+      if (verified.role !== "admin") throw new Error(verified.admin_mode ? "Incorrect username or password" : "Server-side CONSOLE_ADMIN_MODE is not enabled");
       setAdminPassword("");
       setAdminDialog(false);
       refreshSession();
       refreshRegistry();
     } catch (error: any) {
       clearAdminCredentials();
-      setAdminError(error.message || "管理员身份校验失败");
+      setAdminError(error.message || "Admin authentication failed");
     } finally {
       setAdminBusy(false);
     }
@@ -271,7 +271,7 @@ function App() {
               <span key={name} className={cx("health-dot", value?.status === "up" ? "ok" : "warn")} title={name} />
             ))}
           </div>
-          <button className="ghost tiny" onClick={refreshHealth}><RefreshCcw size={13} />刷新状态</button>
+          <button className="ghost tiny" onClick={refreshHealth}><RefreshCcw size={13} />Refresh status</button>
         </div>
         <div className="author-watermark" title="Created by the maintainer">
           <span>Created by</span>
@@ -284,7 +284,7 @@ function App() {
           <h1>{navItems.find((x) => x.key === page)?.label}</h1>
           <div className="top-actions">
             <label className="top-model">
-              <span>当前模型</span>
+              <span>Current model</span>
               <select value={activeModelId} onChange={(e) => activateModel(e.target.value)}>
                 {asList(registry.data?.profiles).filter((p: ModelProfile) => p.enabled !== false).map((profile: ModelProfile) => (
                   <option key={profile.id} value={profile.id}>{profile.id}</option>
@@ -293,15 +293,15 @@ function App() {
             </label>
             <button className="ghost" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}> 
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-              {theme === "dark" ? "日间" : "夜间"}
+              {theme === "dark" ? "Light" : "Dark"}
             </button>
             <button
               className={cx("ghost", session.data?.role === "admin" && "admin-active")}
               onClick={() => session.data?.role === "admin" ? leaveAdminMode() : setAdminDialog(true)}
-              title={session.data?.role === "admin" ? "退出管理员配置模式" : "进入管理员配置模式"}
+              title={session.data?.role === "admin" ? "Exit admin configuration mode" : "Enter admin configuration mode"}
             >
               <KeyRound size={16} />
-              {session.data?.role === "admin" ? "Admin 已启用" : "管理员"}
+              {session.data?.role === "admin" ? "Admin enabled" : "Admin"}
             </button>
           </div>
         </header>
@@ -319,12 +319,12 @@ function App() {
       </main>
       <AssistantDock page={navItems.find((item) => item.key === page)?.label || page} />
       {adminDialog && <div className="admin-dialog-backdrop" role="presentation" onMouseDown={() => setAdminDialog(false)}>
-        <section className="admin-dialog" role="dialog" aria-modal="true" aria-label="管理员配置模式" onMouseDown={(event) => event.stopPropagation()}>
-          <header><KeyRound size={18} /><div><strong>管理员配置模式</strong><span>凭据只保存在当前浏览器会话，不写入前端配置或仓库。</span></div></header>
-          <label>用户名<input value={adminUser} onChange={(event) => setAdminUser(event.target.value)} autoComplete="username" /></label>
-          <label>密码<input type="password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} autoComplete="current-password" onKeyDown={(event) => { if (event.key === "Enter") void enterAdminMode(); }} /></label>
+        <section className="admin-dialog" role="dialog" aria-modal="true" aria-label="Admin configuration mode" onMouseDown={(event) => event.stopPropagation()}>
+          <header><KeyRound size={18} /><div><strong>Admin configuration mode</strong><span>Credentials are stored only in this browser session and are not written to frontend config or the repository.</span></div></header>
+          <label>Username<input value={adminUser} onChange={(event) => setAdminUser(event.target.value)} autoComplete="username" /></label>
+          <label>Password<input type="password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} autoComplete="current-password" onKeyDown={(event) => { if (event.key === "Enter") void enterAdminMode(); }} /></label>
           {adminError && <div className="inline-error">{adminError}</div>}
-          <footer><button className="ghost" onClick={() => setAdminDialog(false)}>取消</button><button className="primary" disabled={adminBusy || !adminUser || !adminPassword} onClick={enterAdminMode}>{adminBusy ? <Loader2 className="spin" size={15} /> : <ShieldCheck size={15} />}验证并进入</button></footer>
+          <footer><button className="ghost" onClick={() => setAdminDialog(false)}>Cancel</button><button className="primary" disabled={adminBusy || !adminUser || !adminPassword} onClick={enterAdminMode}>{adminBusy ? <Loader2 className="spin" size={15} /> : <ShieldCheck size={15} />}Verify and enter</button></footer>
         </section>
       </div>}
     </div>
@@ -336,8 +336,8 @@ function OpsHubPage() {
   return (
     <section className="hub-page">
       <div className="hub-tabs">
-        <button className={tab === "resources" ? "active" : ""} onClick={() => setTab("resources")}><PackageSearch size={15} />资源浏览</button>
-        <button className={tab === "operations" ? "active" : ""} onClick={() => setTab("operations")}><Wrench size={15} />事件与工具</button>
+        <button className={tab === "resources" ? "active" : ""} onClick={() => setTab("resources")}><PackageSearch size={15} />Resource Browser</button>
+        <button className={tab === "operations" ? "active" : ""} onClick={() => setTab("operations")}><Wrench size={15} />Events & Tools</button>
       </div>
       {tab === "resources" ? <ResourcesPage /> : <OperationsPage />}
     </section>
@@ -359,12 +359,12 @@ function PlatformPage({
   return (
     <section className="hub-page">
       <div className="hub-tabs platform-tabs">
-        <button className={tab === "models" ? "active" : ""} onClick={() => setTab("models")}><Beaker size={15} />模型实验室</button>
-        <button className={tab === "knowledge" ? "active" : ""} onClick={() => setTab("knowledge")}><BookOpen size={15} />知识库</button>
-        <button className={tab === "observability" ? "active" : ""} onClick={() => setTab("observability")}><Activity size={15} />可观测</button>
-        <button className={tab === "algorithms" ? "active" : ""} onClick={() => setTab("algorithms")}><Workflow size={15} />算法决策</button>
-        <button className={tab === "infrastructure" ? "active" : ""} onClick={() => setTab("infrastructure")}><Database size={15} />全栈资源</button>
-        <button className={tab === "integrations" ? "active" : ""} onClick={() => setTab("integrations")}><Cable size={15} />集成</button>
+        <button className={tab === "models" ? "active" : ""} onClick={() => setTab("models")}><Beaker size={15} />Model Lab</button>
+        <button className={tab === "knowledge" ? "active" : ""} onClick={() => setTab("knowledge")}><BookOpen size={15} />Knowledge Base</button>
+        <button className={tab === "observability" ? "active" : ""} onClick={() => setTab("observability")}><Activity size={15} />Observability</button>
+        <button className={tab === "algorithms" ? "active" : ""} onClick={() => setTab("algorithms")}><Workflow size={15} />Algorithm Decisions</button>
+        <button className={tab === "infrastructure" ? "active" : ""} onClick={() => setTab("infrastructure")}><Database size={15} />Full-Stack Resources</button>
+        <button className={tab === "integrations" ? "active" : ""} onClick={() => setTab("integrations")}><Cable size={15} />Integrations</button>
       </div>
       {tab === "models" && <ModelLabPage activeModelId={activeModelId} onActivate={onActivate} refreshRegistry={refreshRegistry} registry={registry} />}
       {tab === "knowledge" && <KnowledgePage activeModelId={activeModelId} />}
@@ -392,7 +392,7 @@ function ChatPage({ activeModelId }: { activeModelId: string }) {
   const [inventory, refreshInventory] = useAsync<any>(() => apiGet("/api/rancher/inventory").catch(() => ({ clusters: [], inventory: [] })), []);
   const clusters = asList(inventory.data?.clusters);
   const selectedCluster = clusters.find((item: any) => cluster === item.id || cluster === item.name);
-  const selectedClusterLabel = cluster === "all" ? "所有集群" : selectedCluster?.name || selectedCluster?.id || cluster;
+  const selectedClusterLabel = cluster === "all" ? "All clusters" : selectedCluster?.name || selectedCluster?.id || cluster;
   const scopedInventory = useMemo(() => cluster === "all" ? asList(inventory.data?.inventory) : asList(inventory.data?.inventory).filter((item: any) => cluster === item.cluster?.id || cluster === item.cluster?.name), [cluster, inventory.data]);
   const namespaces = useMemo(() => Array.from(new Set(scopedInventory.flatMap((item: any) => asList(item.namespaces).map((entry: any) => String(entry.name))))).sort(), [scopedInventory]);
   const workloads = useMemo(() => scopedInventory.flatMap((scope: any) => asList(scope.workloads).map((item: any) => ({
@@ -531,7 +531,7 @@ function ChatPage({ activeModelId }: { activeModelId: string }) {
       setRiskRankRationales(response.rationales || {});
       setRiskRankSource(response.source || "evidence_ranker");
     } catch (error: any) {
-      setRiskRankSource(`排序失败：${error.message}`);
+      setRiskRankSource(`Ranking failed: ${error.message}`);
     } finally {
       setRiskRankLoading(false);
     }
@@ -548,11 +548,11 @@ function ChatPage({ activeModelId }: { activeModelId: string }) {
       target_id: item.key,
     };
     if (item.type === "workload") {
-      const podEvidence = asList(item.pods).length ? `，关联异常 Pod：${asList(item.pods).join("、")}` : "";
-      send(`请诊断 ${item.cluster || selectedClusterLabel} 集群 ${item.namespace} namespace 下 ${item.kind}/${item.name} 的高风险问题${podEvidence}。先追溯所有关联 Pod、日志、Events、rollout、配置、存储和依赖，再匹配最适合的运维 Skill，给出可确认执行的修复方案。`, target);
+      const podEvidence = asList(item.pods).length ? `, related abnormal Pods: ${asList(item.pods).join(", ")}` : "";
+      send(`Please diagnose the high-risk issue affecting ${item.kind}/${item.name} in cluster ${item.cluster || selectedClusterLabel}, namespace ${item.namespace}${podEvidence}. First trace all related Pods, logs, Events, rollout history, configuration, storage, and dependencies, then match the most appropriate operations Skill and provide a repair plan that can be reviewed and executed.`, target);
       return;
     }
-    send(`请诊断 ${item.cluster || cluster} 集群 ${item.namespace} namespace 下没有上游 Workload 的 Pod ${item.name}。先读取日志、Events、Pod 配置和节点状态，再匹配最适合的运维 Skill，给出可确认执行的修复方案。`, target);
+    send(`Please diagnose Pod ${item.name}, which has no upstream Workload, in cluster ${item.cluster || cluster}, namespace ${item.namespace}. First read the logs, Events, Pod configuration, and node status, then match the most appropriate operations Skill and provide a repair plan that can be reviewed and executed.`, target);
   }
 
   useEffect(() => {
@@ -630,9 +630,9 @@ function ChatPage({ activeModelId }: { activeModelId: string }) {
       setMessages((old) => old.map((m) => (m.id === assistant.id ? { ...m, status: "done" } : m)));
     } catch (error: any) {
       if (controller.signal.aborted || error?.name === "AbortError") {
-        setMessages((old) => old.map((m) => (m.id === assistant.id ? { ...m, status: "stopped", text: m.text || "已由你中断本次回答。", activity: [] } : m)));
+        setMessages((old) => old.map((m) => (m.id === assistant.id ? { ...m, status: "stopped", text: m.text || "You stopped this response.", activity: [] } : m)));
       } else {
-        setMessages((old) => old.map((m) => (m.id === assistant.id ? { ...m, status: "error", text: m.text || `请求失败：${error.message}` } : m)));
+        setMessages((old) => old.map((m) => (m.id === assistant.id ? { ...m, status: "error", text: m.text || `Request failed: ${error.message}` } : m)));
       }
     } finally {
       if (streamControllerRef.current === controller) streamControllerRef.current = null;
@@ -650,40 +650,40 @@ function ChatPage({ activeModelId }: { activeModelId: string }) {
       <div className="conversation" ref={conversationRef}>
         {messages.length === 0 ? <div className="welcome-panel">
           <div className="welcome-orbit"><Bot size={24} /></div>
-          <h2>今天要处理什么？</h2>
-          <p>描述现象或目标。我会先读取真实集群证据，再给出可预演、可审批、可验证的处置计划。</p>
+          <h2>What needs attention today?</h2>
+          <p>Describe the symptom or goal. I will read real cluster evidence first, then provide a remediation plan that can be rehearsed, approved, and verified.</p>
           <div className="ops-scope-bar">
             <div className="ops-scope-selects">
-              <label><span>集群</span><select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); setWorkload(""); }}>
-                <option value="all">所有集群</option>
+              <label><span>Cluster</span><select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); setWorkload(""); }}>
+                <option value="all">All clusters</option>
                 {clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}
               </select></label>
               <label><span>Namespace</span><select value={namespace} onChange={(e) => { setNamespace(e.target.value); setWorkload(""); }} disabled={inventory.loading}>
-                <option value="all">所有 Namespace</option>
+                <option value="all">All namespaces</option>
                 {namespaces.map((item) => <option key={item} value={item}>{item}</option>)}
               </select></label>
               <label><span>Workload</span><select value={workload} onChange={(e) => setWorkload(e.target.value)} disabled={inventory.loading}>
-                <option value="">所有 Workload</option>
+                <option value="">All Workloads</option>
                 {workloads.map((item: any) => <option key={workloadIdentity(item)} value={workloadIdentity(item)}>{item.kind}/{item.name}</option>)}
               </select></label>
             </div>
             <button className="ghost tiny" onClick={refreshInventory} disabled={inventory.loading}>
               {inventory.loading ? <Loader2 className="spin" size={13} /> : <RefreshCcw size={13} />}
-              刷新异常数
+              Refresh anomaly counts
             </button>
           </div>
           <div className={cx("ops-brief", inventory.loading && "loading")}>
-            <div><span>当前范围</span><strong>{inventory.loading ? "读取中" : selectedClusterLabel}</strong><small>{namespace === "all" ? "所有 Namespace" : namespace}{selectedWorkload ? ` / ${selectedWorkload.kind}/${selectedWorkload.name}` : ""}</small></div>
-            <div><span>异常 Pod</span><strong>{inventory.loading ? <Loader2 className="spin" size={17} /> : problemPods.length}</strong><small>未就绪 / 重启 / Events</small></div>
-            <div><span>异常 Workload</span><strong>{inventory.loading ? <Loader2 className="spin" size={17} /> : riskyWorkloads.length}</strong><small>Ready 副本不足</small></div>
+            <div><span>Current scope</span><strong>{inventory.loading ? "Loading" : selectedClusterLabel}</strong><small>{namespace === "all" ? "All namespaces" : namespace}{selectedWorkload ? ` / ${selectedWorkload.kind}/${selectedWorkload.name}` : ""}</small></div>
+            <div><span>Problem Pods</span><strong>{inventory.loading ? <Loader2 className="spin" size={17} /> : problemPods.length}</strong><small>NotReady / Restarts / Events</small></div>
+            <div><span>Problem Workloads</span><strong>{inventory.loading ? <Loader2 className="spin" size={17} /> : riskyWorkloads.length}</strong><small>Insufficient ready replicas</small></div>
           </div>
-          {inventory.error && <div className="error-box">集群资源读取失败：{inventory.error}</div>}
-          {!inventory.loading && displayedRisks.length === 0 && <div className="notice-box">当前范围暂未发现异常 Pod 或 Ready 副本不足的 Workload。</div>}
+          {inventory.error && <div className="error-box">Failed to read cluster resources: {inventory.error}</div>}
+          {!inventory.loading && displayedRisks.length === 0 && <div className="notice-box">No problem Pods or Workloads with insufficient ready replicas were found in the current scope.</div>}
           {displayedRisks.length > 0 && <div className="ops-hotlist">
             {displayedRisks.map((item: any) => <button key={item.key} onClick={() => diagnoseRisk(item)} disabled={streaming}>
-              <span>{item.severity} · {asList(item.reasons)[0] || "高风险"}</span>
+              <span>{item.severity} · {asList(item.reasons)[0] || "High risk"}</span>
               <strong>{item.type === "workload" ? `${item.kind}/${item.name}` : `Pod/${item.name}`}</strong>
-              <small>{item.cluster || cluster} / {item.namespace}{asList(item.pods).length ? ` · ${asList(item.pods).length} 个异常 Pod` : ""}</small>
+              <small>{item.cluster || cluster} / {item.namespace}{asList(item.pods).length ? ` · ${asList(item.pods).length}  problem Pods` : ""}</small>
             </button>)}
           </div>}
           <div className="prompt-grid">
@@ -694,15 +694,15 @@ function ChatPage({ activeModelId }: { activeModelId: string }) {
         </div> : messages.map((message) => <MessageBubble key={message.id} message={message} />)}
       </div>
       {messages.length > 0 && <aside className="chat-risk-rail">
-        <div className="risk-rail-head"><div><span>当前范围高风险</span><strong>{selectedClusterLabel}</strong><small>{namespace === "all" ? "所有 Namespace" : namespace} · Top {displayedRisks.length}/6</small></div><button className="row-icon-button" onClick={refreshInventory} disabled={inventory.loading} title="刷新风险">{inventory.loading ? <Loader2 className="spin" size={14} /> : <RefreshCcw size={14} />}</button></div>
-        <div className="risk-rail-stats"><span><b>{problemPods.length}</b>异常 Pod</span><span><b>{riskyWorkloads.length}</b>异常 Workload</span></div>
+        <div className="risk-rail-head"><div><span>High risk in current scope</span><strong>{selectedClusterLabel}</strong><small>{namespace === "all" ? "All namespaces" : namespace} · Top {displayedRisks.length}/6</small></div><button className="row-icon-button" onClick={refreshInventory} disabled={inventory.loading} title="Refresh risks">{inventory.loading ? <Loader2 className="spin" size={14} /> : <RefreshCcw size={14} />}</button></div>
+        <div className="risk-rail-stats"><span><b>{problemPods.length}</b>Problem Pods</span><span><b>{riskyWorkloads.length}</b>Problem Workloads</span></div>
         <div className="risk-rail-list">
           {displayedRisks.length ? displayedRisks.map((item: any, index: number) => <button key={item.key} onClick={() => diagnoseRisk(item)} disabled={streaming}>
-            <i>{index + 1}</i><div><span>{item.severity} · {item.type === "workload" ? "Workload" : "独立 Pod"}</span><strong>{item.type === "workload" ? `${item.kind}/${item.name}` : item.name}</strong><small>{riskRankRationales[item.key] || asList(item.reasons).join(" · ")}{item.restart_count ? ` · restart ${item.restart_count}` : ""}</small></div><ChevronRight size={14} />
-          </button>) : <div className="radar-empty">{inventory.loading ? "正在读取风险..." : "当前范围没有高风险资源"}</div>}
+            <i>{index + 1}</i><div><span>{item.severity} · {item.type === "workload" ? "Workload" : "Standalone Pod"}</span><strong>{item.type === "workload" ? `${item.kind}/${item.name}` : item.name}</strong><small>{riskRankRationales[item.key] || asList(item.reasons).join(" · ")}{item.restart_count ? ` · restart ${item.restart_count}` : ""}</small></div><ChevronRight size={14} />
+          </button>) : <div className="radar-empty">{inventory.loading ? "Loading risks..." : "No high-risk resources in the current scope"}</div>}
         </div>
-        {riskRankSource && <small className="risk-rank-source">{riskRankSource === "llm_constrained_ranking" ? "已按 AI 业务影响模型重新排序" : riskRankSource === "deterministic_fallback" ? "已按证据评分重新排序" : riskRankSource}</small>}
-        <button className="ghost risk-ai-rank" onClick={rerankRisks} disabled={riskRankLoading || !topRisks.length}>{riskRankLoading ? <Loader2 className="spin" size={14} /> : <Sparkles size={14} />}{riskRankLoading ? "正在重排..." : "AI 重新排序"}</button>
+        {riskRankSource && <small className="risk-rank-source">{riskRankSource === "llm_constrained_ranking" ? "Re-ranked by the AI business impact model" : riskRankSource === "deterministic_fallback" ? "Re-ranked by evidence score" : riskRankSource}</small>}
+        <button className="ghost risk-ai-rank" onClick={rerankRisks} disabled={riskRankLoading || !topRisks.length}>{riskRankLoading ? <Loader2 className="spin" size={14} /> : <Sparkles size={14} />}{riskRankLoading ? "Re-ranking..." : "AI re-rank"}</button>
       </aside>}
       </div>
       <div className="composer-wrap">
@@ -711,23 +711,23 @@ function ChatPage({ activeModelId }: { activeModelId: string }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }}
-          placeholder="描述集群现象、业务影响、Pod 名称或你想完成的操作..."
+          placeholder="Describe cluster symptoms, business impact, a Pod name, or the action you want to take..."
         />
         <div className="composer-footer">
           <div className="scope">
             <select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); setWorkload(""); }}>
-              <option value="all">所有集群</option>
+              <option value="all">All clusters</option>
               {clusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}
             </select>
-            <select value={namespace} onChange={(e) => { setNamespace(e.target.value); setWorkload(""); }}><option value="all">所有 Namespace</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-            <select value={workload} onChange={(e) => setWorkload(e.target.value)}><option value="">所有 Workload</option>{workloads.map((item: any) => <option key={workloadIdentity(item)} value={workloadIdentity(item)}>{item.kind}/{item.name}</option>)}</select>
+            <select value={namespace} onChange={(e) => { setNamespace(e.target.value); setWorkload(""); }}><option value="all">All namespaces</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+            <select value={workload} onChange={(e) => setWorkload(e.target.value)}><option value="">All Workloads</option>{workloads.map((item: any) => <option key={workloadIdentity(item)} value={workloadIdentity(item)}>{item.kind}/{item.name}</option>)}</select>
           </div>
-          <button className={cx("chat-send", streaming && "stop")} onClick={streaming ? stopStreaming : () => send()} disabled={!streaming && !input.trim()} title={streaming ? "中断回答" : "发送"}>
+          <button className={cx("chat-send", streaming && "stop")} onClick={streaming ? stopStreaming : () => send()} disabled={!streaming && !input.trim()} title={streaming ? "Stop response" : "Send"}>
             {streaming ? <Square size={14} fill="currentColor" /> : <Send size={17} />}
           </button>
         </div>
         </div>
-        <small className="composer-note">AI 可能出错；所有集群变更都会经过风险门禁和人工确认。</small>
+        <small className="composer-note">AI can make mistakes; all cluster changes go through risk gates and human confirmation.</small>
       </div>
     </section>
   );
@@ -747,18 +747,18 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   }
   return (
     <article className={cx("message", message.role, message.status === "streaming" && "streaming")}>
-      <div className="avatar">{message.role === "assistant" ? <Bot size={16} /> : "我"}</div>
+      <div className="avatar">{message.role === "assistant" ? <Bot size={16} /> : "You"}</div>
       <div className="bubble">
-        <div className="message-meta">{message.role === "assistant" ? "Flawless SRE" : "你"} {message.status === "streaming" && <span>正在生成</span>}{message.status === "stopped" && <span>已中断</span>}</div>
+        <div className="message-meta">{message.role === "assistant" ? "Flawless SRE" : "You"} {message.status === "streaming" && <span>Generating</span>}{message.status === "stopped" && <span>Stopped</span>}</div>
         {message.target && <div className="message-target"><CircleDot size={11} /><span>{message.target.cluster} / {message.target.namespace}</span><b>{message.target.workload_name ? `${message.target.workload_type}/${message.target.workload_name}` : `Pod/${message.target.pod_name}`}</b></div>}
         {message.role === "assistant" && activities.length > 0 && (
           <details className="agent-activity" open={message.status === "streaming"}>
-            <summary>{message.status === "streaming" ? <Loader2 className="spin" size={13} /> : <CheckCircle2 size={13} />}<span>{message.status === "streaming" ? latestActivity : `已完成 ${activities.length} 个分析阶段`}</span></summary>
+            <summary>{message.status === "streaming" ? <Loader2 className="spin" size={13} /> : <CheckCircle2 size={13} />}<span>{message.status === "streaming" ? latestActivity : `Completed ${activities.length} analysis stages`}</span></summary>
             <div>{activities.map((item: any, index: number) => <span key={`${item.stage || "stage"}-${index}`}><i>{index + 1}</i>{item.message}</span>)}</div>
           </details>
         )}
         {message.text ? <div className="markdown" dangerouslySetInnerHTML={{ __html: markdownish(message.text) }} /> : message.status === "streaming" ? <div className="response-waiting"><i /><i /><i /></div> : null}
-        {message.role === "assistant" && message.text && message.status !== "streaming" && <div className="message-actions"><button className="row-icon-button" onClick={copyAnswer} title="复制回答">{copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}</button></div>}
+        {message.role === "assistant" && message.text && message.status !== "streaming" && <div className="message-actions"><button className="row-icon-button" onClick={copyAnswer} title="Copy answer">{copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}</button></div>}
         {plan && message.status !== "streaming" && <OpsPlanPanel plan={plan} />}
       </div>
     </article>
@@ -773,17 +773,17 @@ function chatPlanFromResponse(data: any) {
   const remediation = diagnosis.remediation_plan || {};
   const alert = raw.alert || {};
   const changes = asList(remediation.changes).length ? remediation.changes : asList(decision.proposed_changes).length ? decision.proposed_changes : diagnosis.proposed_changes;
-  const steps = asList(remediation.steps).length ? remediation.steps : asList(diagnosis.immediate_actions).map((item: any, index: number) => ({ id: `diagnostic-${index}`, title: typeof item === "string" ? item : item.title || item.action || `诊断步骤 ${index + 1}`, description: typeof item === "string" ? item : item.description || "" }));
+  const steps = asList(remediation.steps).length ? remediation.steps : asList(diagnosis.immediate_actions).map((item: any, index: number) => ({ id: `diagnostic-${index}`, title: typeof item === "string" ? item : item.title || item.action || `Diagnostic step ${index + 1}`, description: typeof item === "string" ? item : item.description || "" }));
   if (!steps.length && !asList(changes).length) return null;
   return {
     id: `chat-${makeId()}`,
-    title: "SRE 对话处置计划",
+    title: "SRE Chat Remediation Plan",
     cluster: alert.cluster || "all",
     cluster_id: alert.cluster_id || alert.cluster || "all",
     namespace: alert.namespace || "default",
     target: `${alert.workload_type || "Workload"}/${alert.workload_name || alert.deployment || "selected-target"}`,
     pod_name: alert.pod || "",
-    summary: diagnosis.root_cause || diagnosis.summary || "基于 SRE 对话证据生成的处置计划。",
+    summary: diagnosis.root_cause || diagnosis.summary || "Remediation plan generated from SRE chat evidence.",
     reason: remediation.reason || decision.reason || diagnosis.root_cause || "",
     evidence_gap: remediation.evidence_gap || diagnosis.evidence_gap || "",
     root_cause_hypotheses: remediation.hypotheses || diagnosis.root_cause_hypotheses || [],
@@ -897,9 +897,9 @@ function InspectionPage({ activeModelId }: { activeModelId: string }) {
             status: "failed",
             stage: "failed",
             poll_failures: failures,
-            message: `任务状态连续读取失败，已停止等待：${error.message}`,
+            message: `Failed to read task status repeatedly; stopped waiting: ${error.message}`,
             updated_at: new Date().toISOString(),
-            events: [...asList(job.events), { timestamp: new Date().toISOString(), stage: "failed", level: "error", message: `任务状态接口不可达：${error.message}` }],
+            events: [...asList(job.events), { timestamp: new Date().toISOString(), stage: "failed", level: "error", message: `Task status API unreachable: ${error.message}` }],
           };
         }
       }));
@@ -913,59 +913,59 @@ function InspectionPage({ activeModelId }: { activeModelId: string }) {
   return (
     <section className="workspace-grid inspection-workspace">
       <Panel className="control-panel">
-        <PanelTitle icon={Search} title="巡检范围" action={<button className="primary" onClick={() => run("manual")} disabled={result.loading}>{result.loading ? <Loader2 className="spin" size={16} /> : <Play size={16} />}立即巡检</button>} />
+        <PanelTitle icon={Search} title="Inspection scope" action={<button className="primary" onClick={() => run("manual")} disabled={result.loading}>{result.loading ? <Loader2 className="spin" size={16} /> : <Play size={16} />}Run inspection now</button>} />
         <div className="form-grid">
-          <label>集群<select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); }}><option value="all">所有集群</option>{inspectionClusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></label>
-          <label>Namespace<select value={namespace} onChange={(e) => setNamespace(e.target.value)}><option value="all">所有 Namespace</option>{inspectionNamespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label>定时巡检<select value={schedulePreset} onChange={(e) => setSchedulePreset(e.target.value)}><option value="30">每 30 分钟</option><option value="60">每 1 小时</option><option value="120">每 2 小时</option><option value="360">每 6 小时</option><option value="custom">自定义分钟</option></select></label>
-          {schedulePreset === "custom" && <label>自定义分钟<input type="number" min={30} step={10} value={customMinutes} onChange={(e) => setCustomMinutes(e.target.value)} /></label>}
-          <label className="toggle"><input type="checkbox" checked={autoOps} onChange={(e) => setAutoOps(e.target.checked)} />启用自动运维（仅通过门禁的计划）</label>
-          <label className="toggle"><input type="checkbox" checked={productionMode} onChange={(e) => setProductionMode(e.target.checked)} />生产模式</label>
-          <label className="toggle"><input type="checkbox" checked={scheduled} onChange={(e) => setScheduled(e.target.checked)} />开启定时巡检（最小 30 分钟）</label>
+          <label>Cluster<select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); }}><option value="all">All clusters</option>{inspectionClusters.map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></label>
+          <label>Namespace<select value={namespace} onChange={(e) => setNamespace(e.target.value)}><option value="all">All namespaces</option>{inspectionNamespaces.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label>Scheduled inspection<select value={schedulePreset} onChange={(e) => setSchedulePreset(e.target.value)}><option value="30">Every 30 minutes</option><option value="60">Every 1 hour</option><option value="120">Every 2 hours</option><option value="360">Every 6 hours</option><option value="custom">Custom minutes</option></select></label>
+          {schedulePreset === "custom" && <label>Custom minutes<input type="number" min={30} step={10} value={customMinutes} onChange={(e) => setCustomMinutes(e.target.value)} /></label>}
+          <label className="toggle"><input type="checkbox" checked={autoOps} onChange={(e) => setAutoOps(e.target.checked)} />Enable autonomous operations (only for plans that pass the gate)</label>
+          <label className="toggle"><input type="checkbox" checked={productionMode} onChange={(e) => setProductionMode(e.target.checked)} />Production mode</label>
+          <label className="toggle"><input type="checkbox" checked={scheduled} onChange={(e) => setScheduled(e.target.checked)} />Enable scheduled inspection (minimum 30 minutes)</label>
         </div>
         <div className="ops-event-chips">
-          <span><RefreshCcw size={12} /> 周期 {scheduleMinutes} 分钟</span>
-          <span>{scheduled ? "定时已开启" : "定时未开启"}</span>
-          {lastScheduledAt && <span>上次自动巡检 {lastScheduledAt}</span>}
+          <span><RefreshCcw size={12} /> Interval {scheduleMinutes} minutes</span>
+          <span>{scheduled ? "Schedule enabled" : "Schedule disabled"}</span>
+          {lastScheduledAt && <span>Last automated inspection {lastScheduledAt}</span>}
         </div>
       </Panel>
       <div className="metric-strip">
-        <Metric title="发现问题" value={summary.total ?? findings.length} />
+        <Metric title="Issues found" value={summary.total ?? findings.length} />
         <Metric title="P0/P1" value={(findings.filter((f: any) => ["P0", "P1"].includes(f.severity)).length)} tone="danger" />
-        <Metric title="可执行计划" value={findings.filter((f: any) => f.ops_plan).length} />
-        <Metric title="Skill 路由" value={summary.skill_routed || 0} />
+        <Metric title="Executable plans" value={findings.filter((f: any) => f.ops_plan).length} />
+        <Metric title="Skill routing" value={summary.skill_routed || 0} />
       </div>
       <Panel className="span-all">
-        <PanelTitle icon={ShieldCheck} title="异常队列" subtitle="每一项都可查看根因证据、预演步骤、变更差异和恢复判据" />
+        <PanelTitle icon={ShieldCheck} title="Anomaly queue" subtitle="Each item shows root-cause evidence, rehearsal steps, change diffs, and recovery criteria" />
         {result.error && <div className="error-box">{result.error}</div>}
-        {!findings.length && !result.loading ? <EmptyState text="尚未执行巡检，或当前范围没有新问题。" /> : (
+        {!findings.length && !result.loading ? <EmptyState text="No inspection has been run yet, or there are no new issues in the current scope." /> : (
           <div className="finding-list">
             {findings.map((f: any) => (
               <div className="finding" key={f.id || f.title}>
                 <div>
-                  <strong>{f.title || f.summary || "异常项"}</strong>
-                  <p>{f.summary || f.reason || "等待 AI 补充诊断。"}</p>
+                  <strong>{f.title || f.summary || "Issue"}</strong>
+                  <p>{f.summary || f.reason || "Waiting for AI to add diagnosis."}</p>
                   <div className="chips"><span>{f.cluster || cluster}</span><span>{f.namespace || namespace}</span><span>{f.category || "runtime"}</span>{asList(f.matched_skills).slice(0, 2).map((skill: any) => <span key={skill.id}>Skill · {skill.name}</span>)}</div>
                 </div>
-                <div className="finding-actions"><span className={cx("severity", f.severity === "P0" || f.severity === "P1" ? "hot" : "")}>{f.severity || "P2"}</span><button className="ghost tiny" onClick={() => previewFinding(f)} disabled={previewState.loading}>{previewingId === String(f.id) ? <Loader2 className="spin" size={14} /> : <Eye size={14} />}{previewingId === String(f.id) ? "实时取证" : "AI 预演"}</button></div>
+                <div className="finding-actions"><span className={cx("severity", f.severity === "P0" || f.severity === "P1" ? "hot" : "")}>{f.severity || "P2"}</span><button className="ghost tiny" onClick={() => previewFinding(f)} disabled={previewState.loading}>{previewingId === String(f.id) ? <Loader2 className="spin" size={14} /> : <Eye size={14} />}{previewingId === String(f.id) ? "Live evidence" : "AI preview"}</button></div>
               </div>
             ))}
           </div>
         )}
       </Panel>
-      {previewState.error && <Panel className="span-all inspection-plan-panel"><div className="error-box">AI 预演失败：{previewState.error}</div></Panel>}
-      {selectedPlan && <Panel className="span-all inspection-plan-panel"><PanelTitle icon={TerminalSquare} title="实时 AI 运维预演" subtitle="已重新读取实时证据并完成 Skill、根因、动作与恢复判据校验；确认前不会修改集群" /><OpsPlanPanel plan={selectedPlan} /></Panel>}
-      {pendingApprovalPlans.length > 0 && <Panel className="span-all"><PanelTitle icon={ShieldCheck} title="高风险计划待确认" subtitle="自动运维不会绕过高风险门禁；请逐项核对并执行，每个真实变更步骤还可再次暂停确认" /><div className="inspection-approval-queue">{pendingApprovalPlans.map((plan: any) => <OpsPlanPanel key={plan.id || plan.target} plan={plan} autonomous={false} />)}</div></Panel>}
-      {autoJobs.length > 0 && <Panel className="span-all"><PanelTitle icon={Activity} title="自动运维执行流" subtitle="任务在切换页面后仍会继续运行，可随时中断" /><div className="auto-job-grid detailed">{autoJobs.map((job) => <OpsJobProgress key={job.id} job={job} compact onCancel={["queued", "running", "awaiting_approval", "cancelling"].includes(job.status) ? async () => { const next = await apiPost(`/api/ops/jobs/${encodeURIComponent(job.id)}/cancel`, {}); setAutoJobs((items) => items.map((item) => item.id === job.id ? next : item)); } : undefined} />)}</div></Panel>}
+      {previewState.error && <Panel className="span-all inspection-plan-panel"><div className="error-box">AI preview failed: {previewState.error}</div></Panel>}
+      {selectedPlan && <Panel className="span-all inspection-plan-panel"><PanelTitle icon={TerminalSquare} title="Real-time AI operations preview" subtitle="Live evidence has been re-read and Skills, root cause, actions, and recovery criteria have been validated; the cluster will not be modified before confirmation" /><OpsPlanPanel plan={selectedPlan} /></Panel>}
+      {pendingApprovalPlans.length > 0 && <Panel className="span-all"><PanelTitle icon={ShieldCheck} title="High-risk plans awaiting confirmation" subtitle="Autonomous operations will not bypass high-risk gates; review and execute each plan one by one, and each real change step can still be paused for confirmation" /><div className="inspection-approval-queue">{pendingApprovalPlans.map((plan: any) => <OpsPlanPanel key={plan.id || plan.target} plan={plan} autonomous={false} />)}</div></Panel>}
+      {autoJobs.length > 0 && <Panel className="span-all"><PanelTitle icon={Activity} title="Autonomous operations execution flow" subtitle="Tasks continue running after page switches and can be interrupted at any time" /><div className="auto-job-grid detailed">{autoJobs.map((job) => <OpsJobProgress key={job.id} job={job} compact onCancel={["queued", "running", "awaiting_approval", "cancelling"].includes(job.status) ? async () => { const next = await apiPost(`/api/ops/jobs/${encodeURIComponent(job.id)}/cancel`, {}); setAutoJobs((items) => items.map((item) => item.id === job.id ? next : item)); } : undefined} />)}</div></Panel>}
     </section>
   );
 }
 
 function flowDirectionLabel(direction: string) {
-  if (direction === "ingress") return "入站";
-  if (direction === "egress") return "出站";
-  if (direction === "cross_cluster") return "跨集群";
-  return direction || "未知";
+  if (direction === "ingress") return "Ingress";
+  if (direction === "egress") return "Egress";
+  if (direction === "cross_cluster") return "Cross-cluster";
+  return direction || "Unknown";
 }
 
 function flowEndpointLabel(endpoint: any) {
@@ -1036,49 +1036,49 @@ function ExternalTrafficPage() {
   return (
     <section className="traffic-page">
       <Panel className="traffic-command">
-        <PanelTitle icon={Cable} title="外部数据流" subtitle="只展示集群边界外或跨集群的数据流，方向、目的地和证据分开呈现。" action={<button className="ghost" onClick={() => { refreshInventory(); runTraffic(); }}><RefreshCcw size={15} />刷新</button>} />
+        <PanelTitle icon={Cable} title="External Data Flows" subtitle="Show only flows outside the cluster boundary or across clusters, with direction, destination, and evidence presented separately." action={<button className="ghost" onClick={() => { refreshInventory(); runTraffic(); }}><RefreshCcw size={15} />Refresh</button>} />
         <div className="traffic-filters">
-          <label>集群<select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); setWorkload(""); }}>
-            <option value="all">所有集群</option>
+          <label>Cluster<select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); setWorkload(""); }}>
+            <option value="all">All clusters</option>
             {clusters.map((item: any) => <option value={item.id || item.name} key={item.id || item.name}>{item.name || item.id}</option>)}
           </select></label>
           <label>Namespace<select value={namespace} onChange={(e) => { setNamespace(e.target.value); setWorkload(""); }}>
-            <option value="all">所有 Namespace</option>
+            <option value="all">All namespaces</option>
             {namespaces.map((item) => <option value={item} key={item}>{item}</option>)}
           </select></label>
           <label>Workload<select value={workload} onChange={(e) => setWorkload(e.target.value)}>
-            <option value="">所有 Workload</option>
+            <option value="">All Workloads</option>
             {workloads.map((item: any) => <option value={item.name} key={item.id}>{item.label}</option>)}
           </select></label>
-          <label>窗口<select value={windowSize} onChange={(e) => setWindowSize(e.target.value)}>
-            <option value="15m">15 分钟</option>
-            <option value="30m">30 分钟</option>
-            <option value="1h">1 小时</option>
-            <option value="6h">6 小时</option>
+          <label>Window<select value={windowSize} onChange={(e) => setWindowSize(e.target.value)}>
+            <option value="15m">15 minutes</option>
+            <option value="30m">30 minutes</option>
+            <option value="1h">1 hour</option>
+            <option value="6h">6 hours</option>
           </select></label>
-          <label>来源<select value={source} onChange={(e) => setSource(e.target.value)}>
-            <option value="auto">自动</option>
-            <option value="observed">真实观测优先</option>
-            <option value="static">只看配置推断</option>
+          <label>Source<select value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value="auto">Auto</option>
+            <option value="observed">Prefer observed traffic</option>
+            <option value="static">Configuration inference only</option>
           </select></label>
-          <button className="primary" onClick={runTraffic} disabled={traffic.loading}>{traffic.loading ? <Loader2 className="spin" size={15} /> : <Play size={15} />}分析数据流</button>
+          <button className="primary" onClick={runTraffic} disabled={traffic.loading}>{traffic.loading ? <Loader2 className="spin" size={15} /> : <Play size={15} />}Analyze data flows</button>
         </div>
       </Panel>
 
       <div className="traffic-kpis">
-        <Metric title="边界流" value={traffic.loading ? "..." : summary.total || 0} />
-        <Metric title="入站" value={summary.ingress || 0} />
-        <Metric title="出站" value={summary.egress || 0} />
-        <Metric title="跨集群" value={summary.cross_cluster || 0} />
-        <Metric title="真实观测" value={summary.observed || 0} tone={summary.observed ? "good" : undefined} />
-        <Metric title="推断流" value={summary.inferred || 0} />
+        <Metric title="Boundary flows" value={traffic.loading ? "..." : summary.total || 0} />
+        <Metric title="Ingress" value={summary.ingress || 0} />
+        <Metric title="Egress" value={summary.egress || 0} />
+        <Metric title="Cross-cluster" value={summary.cross_cluster || 0} />
+        <Metric title="Observed" value={summary.observed || 0} tone={summary.observed ? "good" : undefined} />
+        <Metric title="Inferred flows" value={summary.inferred || 0} />
       </div>
 
       {traffic.error && <div className="error-box">{traffic.error}</div>}
 
       <div className="traffic-layout">
         <Panel className="traffic-map-panel">
-          <PanelTitle icon={Network} title="方向雷达" subtitle={traffic.data?.message || "点击分析后展示外部入站、出站与跨集群流向。"} />
+          <PanelTitle icon={Network} title="Direction radar" subtitle={traffic.data?.message || "Click Analyze to show inbound, outbound, and cross-cluster flows."} />
           <div className="traffic-radar">
             <div className="traffic-radar-center">
               <Network size={22} />
@@ -1086,15 +1086,15 @@ function ExternalTrafficPage() {
               <span>{cluster === "all" ? "all clusters" : cluster}</span>
             </div>
             <div className="traffic-lane ingress">
-              <b>外部进入</b>
+              <b>External inbound</b>
               {flows.filter((f: any) => f.direction === "ingress").slice(0, 6).map((flow: any) => <span key={flow.id}>{flowEndpointLabel(flow.source)} → {flowEndpointLabel(flow.destination)}</span>)}
             </div>
             <div className="traffic-lane egress">
-              <b>向外输出</b>
+              <b>Outbound</b>
               {flows.filter((f: any) => f.direction === "egress").slice(0, 6).map((flow: any) => <span key={flow.id}>{flowEndpointLabel(flow.source)} → {flowEndpointLabel(flow.destination)}</span>)}
             </div>
             <div className="traffic-lane cross">
-              <b>跨集群</b>
+              <b>Cross-cluster</b>
               {flows.filter((f: any) => f.direction === "cross_cluster").slice(0, 6).map((flow: any) => <span key={flow.id}>{flowEndpointLabel(flow.source)} → {flowEndpointLabel(flow.destination)}</span>)}
             </div>
           </div>
@@ -1104,8 +1104,8 @@ function ExternalTrafficPage() {
         </Panel>
 
         <Panel className="traffic-table-panel">
-          <PanelTitle icon={Activity} title="边界流列表" subtitle={`${flows.length} 条，点击方向筛选可快速定位。`} action={<div className="segmented"><button className={direction === "all" ? "active" : ""} onClick={() => setDirection("all")}>全部</button><button className={direction === "ingress" ? "active" : ""} onClick={() => setDirection("ingress")}>入站</button><button className={direction === "egress" ? "active" : ""} onClick={() => setDirection("egress")}>出站</button><button className={direction === "cross_cluster" ? "active" : ""} onClick={() => setDirection("cross_cluster")}>跨集群</button></div>} />
-          {traffic.loading ? <EmptyState text="正在梳理 Pod、Service、Ingress、Endpoint、CMDB 与可选流量观测数据..." /> : flows.length ? (
+          <PanelTitle icon={Activity} title="Boundary flow list" subtitle={`${flows.length}  flows; use the direction filters to narrow them quickly.`} action={<div className="segmented"><button className={direction === "all" ? "active" : ""} onClick={() => setDirection("all")}>All</button><button className={direction === "ingress" ? "active" : ""} onClick={() => setDirection("ingress")}>Ingress</button><button className={direction === "egress" ? "active" : ""} onClick={() => setDirection("egress")}>Egress</button><button className={direction === "cross_cluster" ? "active" : ""} onClick={() => setDirection("cross_cluster")}>Cross-cluster</button></div>} />
+          {traffic.loading ? <EmptyState text="Analyzing Pods, Services, Ingresses, Endpoints, CMDB data, and optional traffic observations..." /> : flows.length ? (
             <div className="traffic-flow-list">
               {flows.map((flow: any) => <article className={cx("traffic-flow-card", flow.direction)} key={flow.id}>
                 <header>
@@ -1116,26 +1116,26 @@ function ExternalTrafficPage() {
                 <div className="traffic-flow-meta">
                   <span>{flow.source?.cluster || "-"} / {flow.source?.namespace || "-"}</span>
                   <span>{flow.protocol || "unknown"} {flow.port ? `:${flow.port}` : ""}</span>
-                  <span>{flow.observed ? "真实观测" : "配置推断"} · {flow.source_system}</span>
+                  <span>{flow.observed ? "Observed" : "Configuration inference"} · {flow.source_system}</span>
                   {(flow.bytes || flow.rps) && <span>{flow.bytes ? `${prettyNumber(flow.bytes)} bytes` : ""} {flow.rps ? `${prettyNumber(flow.rps)} rps` : ""}</span>}
                 </div>
                 <details>
-                  <summary>查看证据</summary>
+                  <summary>View evidence</summary>
                   <div>{asList(flow.evidence).map((item: string, index: number) => <p key={`${flow.id}-${index}`}>{item}</p>)}</div>
                 </details>
               </article>)}
             </div>
-          ) : <EmptyState text="当前范围没有发现集群外/跨集群数据流；如果要看真实流量，请接入 Hubble、Kiali 或自研 Flow Observation。 " />}
+          ) : <EmptyState text="No external or cross-cluster data flows were found in the current scope. To view real traffic, connect Hubble, Kiali, or your in-house Flow Observation system. " />}
         </Panel>
       </div>
 
       <Panel className="traffic-graph-facts">
-        <PanelTitle icon={GitBranch} title="图谱事实" subtitle="供拓扑影响、爆炸半径和后续 AI SRE 根因分析复用。" />
+        <PanelTitle icon={GitBranch} title="Graph facts" subtitle="Reused by topology impact, blast radius, and subsequent AI SRE root-cause analysis." />
         <div className="traffic-fact-grid">
-          <Metric title="图节点" value={asList(graph.nodes).length} />
-          <Metric title="图关系" value={asList(graph.edges).length} />
-          <Metric title="外部端点" value={summary.external_endpoints || 0} />
-          <Metric title="数据源" value={asList(traffic.data?.data_sources).join(" / ") || "-"} />
+          <Metric title="Graph nodes" value={asList(graph.nodes).length} />
+          <Metric title="Graph edges" value={asList(graph.edges).length} />
+          <Metric title="External endpoints" value={summary.external_endpoints || 0} />
+          <Metric title="Data sources" value={asList(traffic.data?.data_sources).join(" / ") || "-"} />
         </div>
       </Panel>
     </section>
@@ -1177,56 +1177,56 @@ function ExternalTrafficEmbedded({ cluster, namespace, workload = "" }: { cluste
     <div className="topology-traffic-embed">
       <div className="topology-traffic-head">
         <div>
-          <span><Cable size={13} />外部数据流</span>
-          <strong>集群边界与跨集群数据流</strong>
-          <p>只聚合流入、流出和跨集群关系，供影响面分析判断“故障会不会传出去”。</p>
+          <span><Cable size={13} />External Data Flows</span>
+          <strong>Cluster boundary and cross-cluster data flows</strong>
+          <p>Aggregates only inbound, outbound, and cross-cluster relationships to help impact analysis determine whether a failure will propagate.</p>
         </div>
         <button className="ghost tiny" onClick={runTraffic} disabled={traffic.loading}>
           {traffic.loading ? <Loader2 className="spin" size={13} /> : <Play size={13} />}
-          分析边界流
+          Analyze boundary flows
         </button>
       </div>
       <div className="topology-traffic-controls">
         <select value={windowSize} onChange={(e) => setWindowSize(e.target.value)}>
-          <option value="15m">15 分钟</option>
-          <option value="30m">30 分钟</option>
-          <option value="1h">1 小时</option>
-          <option value="6h">6 小时</option>
+          <option value="15m">15 minutes</option>
+          <option value="30m">30 minutes</option>
+          <option value="1h">1 hour</option>
+          <option value="6h">6 hours</option>
         </select>
         <select value={source} onChange={(e) => setSource(e.target.value)}>
-          <option value="auto">自动证据</option>
-          <option value="observed">观测优先</option>
-          <option value="static">配置推断</option>
+          <option value="auto">Auto evidence</option>
+          <option value="observed">Prefer observed</option>
+          <option value="static">Configuration inference</option>
         </select>
         <div className="segmented compact">
-          <button className={direction === "all" ? "active" : ""} onClick={() => setDirection("all")}>全部</button>
-          <button className={direction === "ingress" ? "active" : ""} onClick={() => setDirection("ingress")}>入站</button>
-          <button className={direction === "egress" ? "active" : ""} onClick={() => setDirection("egress")}>出站</button>
-          <button className={direction === "cross_cluster" ? "active" : ""} onClick={() => setDirection("cross_cluster")}>跨集群</button>
+          <button className={direction === "all" ? "active" : ""} onClick={() => setDirection("all")}>All</button>
+          <button className={direction === "ingress" ? "active" : ""} onClick={() => setDirection("ingress")}>Ingress</button>
+          <button className={direction === "egress" ? "active" : ""} onClick={() => setDirection("egress")}>Egress</button>
+          <button className={direction === "cross_cluster" ? "active" : ""} onClick={() => setDirection("cross_cluster")}>Cross-cluster</button>
         </div>
       </div>
       <div className="topology-traffic-kpis">
-        <Metric title="边界流" value={traffic.loading ? "..." : summary.total || 0} />
-        <Metric title="入站" value={summary.ingress || 0} />
-        <Metric title="出站" value={summary.egress || 0} />
-        <Metric title="跨集群" value={summary.cross_cluster || 0} />
-        <Metric title="真实观测" value={summary.observed || 0} tone={summary.observed ? "good" : undefined} />
+        <Metric title="Boundary flows" value={traffic.loading ? "..." : summary.total || 0} />
+        <Metric title="Ingress" value={summary.ingress || 0} />
+        <Metric title="Egress" value={summary.egress || 0} />
+        <Metric title="Cross-cluster" value={summary.cross_cluster || 0} />
+        <Metric title="Observed" value={summary.observed || 0} tone={summary.observed ? "good" : undefined} />
       </div>
       {traffic.error && <div className="error-box">{traffic.error}</div>}
       {traffic.loading ? (
-        <div className="topology-flow-empty">正在汇总 Service、Ingress、Endpoint、CMDB 与可观测流量...</div>
+        <div className="topology-flow-empty">Aggregating Service, Ingress, Endpoint, CMDB, and observability traffic...</div>
       ) : flows.length ? (
         <div className="topology-flow-strip">
           {flows.slice(0, 6).map((flow: any) => (
             <article className={cx("topology-flow-card", flow.direction)} key={flow.id}>
               <span>{flowDirectionLabel(flow.direction)}</span>
               <strong>{flowEndpointLabel(flow.source)} <ChevronRight size={12} /> {flowEndpointLabel(flow.destination)}</strong>
-              <small>{flow.observed ? "真实观测" : "配置推断"} · {Math.round(Number(flow.confidence || 0) * 100)}%</small>
+              <small>{flow.observed ? "Observed" : "Configuration inference"} · {Math.round(Number(flow.confidence || 0) * 100)}%</small>
             </article>
           ))}
         </div>
       ) : (
-        <div className="topology-flow-empty">点击“分析边界流”后展示该拓扑范围内的集群外/跨集群数据流。</div>
+        <div className="topology-flow-empty">Click "Analyze boundary flows" to show external and cross-cluster data flows within this topology scope.</div>
       )}
     </div>
   );
@@ -1273,72 +1273,72 @@ function TrafficFlow3DPanel({ cluster, namespace, workload }: { cluster: string;
     <div className="flow-module">
       <div className="flow-module-head">
         <div>
-          <span><Cable size={14} />eBPF 数据流</span>
-          <strong>{workload ? `只看 ${workload} 的边界流` : "集群边界入站/出站/跨集群流"}</strong>
-          <p>优先使用 eBPF / Hubble / Calico Flow / Beyla 真实观测；缺失时用 CMDB 和 K8s 配置推断兜底。</p>
+          <span><Cable size={14} />eBPF Data Flows</span>
+          <strong>{workload ? `Only show boundary flows for ${workload}` : "Cluster boundary ingress/egress/cross-cluster flows"}</strong>
+          <p>Prefer real observations from eBPF / Hubble / Calico Flow / Beyla; fall back to CMDB and Kubernetes configuration inference when unavailable.</p>
         </div>
         <div className="flow-controls">
           <select value={windowSize} onChange={(event) => setWindowSize(event.target.value)}>
-            <option value="15m">15 分钟</option>
-            <option value="30m">30 分钟</option>
-            <option value="1h">1 小时</option>
-            <option value="6h">6 小时</option>
+            <option value="15m">15 minutes</option>
+            <option value="30m">30 minutes</option>
+            <option value="1h">1 hour</option>
+            <option value="6h">6 hours</option>
           </select>
           <select value={source} onChange={(event) => setSource(event.target.value)}>
-            <option value="auto">自动证据</option>
-            <option value="observed">观测优先</option>
-            <option value="static">配置推断</option>
+            <option value="auto">Auto evidence</option>
+            <option value="observed">Prefer observed</option>
+            <option value="static">Configuration inference</option>
           </select>
           <button className="primary tiny" onClick={runTraffic} disabled={traffic.loading}>
             {traffic.loading ? <Loader2 className="spin" size={13} /> : <Play size={13} />}
-            重新分析
+            Reanalyze
           </button>
         </div>
       </div>
       <div className="flow-source-strip">
         {sourceStatus.map((item: any) => (
           <span key={item.id} className={cx("status-pill", item.status === "connected" || item.status === "ok" ? "ok" : item.status === "failed" ? "warn" : "muted")}>
-            <i />{item.id}: {item.status}{typeof item.flows === "number" ? ` · ${item.flows} 条` : ""}
+            <i />{item.id}: {item.status}{typeof item.flows === "number" ? ` · ${item.flows}  flows` : ""}
           </span>
         ))}
       </div>
       <div className="flow-kpi-row">
-        <Metric title="边界流" value={traffic.loading ? "..." : summary.total || 0} />
-        <Metric title="eBPF 真实观测" value={summary.ebpf_observed || 0} tone={summary.ebpf_observed ? "good" : undefined} />
-        <Metric title="入站" value={summary.ingress || 0} />
-        <Metric title="出站" value={summary.egress || 0} />
-        <Metric title="跨集群" value={summary.cross_cluster || 0} />
-        <Metric title="外部端点" value={summary.external_endpoints || 0} />
+        <Metric title="Boundary flows" value={traffic.loading ? "..." : summary.total || 0} />
+        <Metric title="eBPF Observed" value={summary.ebpf_observed || 0} tone={summary.ebpf_observed ? "good" : undefined} />
+        <Metric title="Ingress" value={summary.ingress || 0} />
+        <Metric title="Egress" value={summary.egress || 0} />
+        <Metric title="Cross-cluster" value={summary.cross_cluster || 0} />
+        <Metric title="External endpoints" value={summary.external_endpoints || 0} />
       </div>
       {traffic.error && <div className="error-box">{traffic.error}</div>}
       <div className="flow-module-grid">
         <div className="flow-3d-shell">
           {traffic.loading ? (
-            <EmptyState text="正在读取 eBPF、CMDB、Service、Ingress 和 Endpoint 证据..." />
+            <EmptyState text="Reading eBPF, CMDB, Service, Ingress, and Endpoint evidence..." />
           ) : flows.length ? (
             <TrafficFlowCanvas graph={traffic.data?.graph || { nodes: [], edges: [] }} flows={flows} />
           ) : (
-            <EmptyState text="当前范围未发现边界数据流。若希望看到真实字节级流量，请确认 eBPF Collector 已写入 Loki/Flow API。" />
+            <EmptyState text="No boundary data flows found in the current scope. To see real byte-level traffic, make sure the eBPF Collector is writing to Loki/Flow API." />
           )}
         </div>
         <div className="flow-trace-panel">
           <div className="segmented compact">
-            <button className={direction === "all" ? "active" : ""} onClick={() => setDirection("all")}>全部</button>
-            <button className={direction === "ingress" ? "active" : ""} onClick={() => setDirection("ingress")}>入站</button>
-            <button className={direction === "egress" ? "active" : ""} onClick={() => setDirection("egress")}>出站</button>
-            <button className={direction === "cross_cluster" ? "active" : ""} onClick={() => setDirection("cross_cluster")}>跨集群</button>
+            <button className={direction === "all" ? "active" : ""} onClick={() => setDirection("all")}>All</button>
+            <button className={direction === "ingress" ? "active" : ""} onClick={() => setDirection("ingress")}>Ingress</button>
+            <button className={direction === "egress" ? "active" : ""} onClick={() => setDirection("egress")}>Egress</button>
+            <button className={direction === "cross_cluster" ? "active" : ""} onClick={() => setDirection("cross_cluster")}>Cross-cluster</button>
           </div>
           <div className="flow-trace-list">
             {flows.slice(0, 18).map((flow: any) => (
               <article className={cx("flow-trace-card", flow.direction)} key={flow.id}>
                 <header>
                   <span>{flowDirectionLabel(flow.direction)}</span>
-                  <b>{flow.observed ? "真实观测" : "配置推断"}</b>
+                  <b>{flow.observed ? "Observed" : "Configuration inference"}</b>
                 </header>
                 <strong>{flowEndpointLabel(flow.source)} <ChevronRight size={13} /> {flowEndpointLabel(flow.destination)}</strong>
                 <p>{flow.source?.cluster || "-"} / {flow.source?.namespace || "-"} · {flow.protocol || "unknown"} {flow.port ? `:${flow.port}` : ""} · {flow.source_system}</p>
                 <details>
-                  <summary>溯源证据</summary>
+                  <summary>Trace evidence</summary>
                   {asList(flow.evidence).map((item: string, index: number) => <small key={`${flow.id}-${index}`}>{item}</small>)}
                 </details>
               </article>
@@ -1491,7 +1491,7 @@ function TrafficFlowCanvas({ graph, flows }: { graph: any; flows: any[] }) {
         });
       };
     })().catch((error) => {
-      if (!disposed) setCanvasError(`3D 数据流初始化失败：${error instanceof Error ? error.message : String(error)}`);
+      if (!disposed) setCanvasError(`3D data flow initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     });
 
     return () => {
@@ -1672,33 +1672,33 @@ function TopologyPage() {
       <Panel className="topology-map">
         <PanelTitle
           icon={GitBranch}
-          title={view === "2d" ? "有向依赖拓扑" : "3D 集群世界"}
-          subtitle="节点与边严格来自同一份 CMDB 数据"
-          action={<button className="ghost" onClick={refreshTopology}><RefreshCcw size={15} />刷新</button>}
+          title={view === "2d" ? "Directed Dependency Topology" : "3D Cluster World"}
+          subtitle="Nodes and edges come strictly from the same CMDB dataset"
+          action={<button className="ghost" onClick={refreshTopology}><RefreshCcw size={15} />Refresh</button>}
         />
         <div className="topology-tools">
           <div className="segmented topology-view-switch">
-            <button className={view === "2d" ? "active" : ""} onClick={() => setView("2d")}><Workflow size={14} />依赖图</button>
-            <button className={view === "3d" ? "active" : ""} onClick={() => setView("3d")}><Network size={14} />3D 世界</button>
+            <button className={view === "2d" ? "active" : ""} onClick={() => setView("2d")}><Workflow size={14} />Dependency Graph</button>
+            <button className={view === "3d" ? "active" : ""} onClick={() => setView("3d")}><Network size={14} />3D World</button>
           </div>
           <div className="segmented topology-module-switch">
-            <button className={module === "relation" ? "active" : ""} onClick={() => setModule("relation")}><GitBranch size={14} />关系模块</button>
-            <button className={module === "flow" ? "active" : ""} onClick={() => setModule("flow")}><Cable size={14} />数据流模块</button>
+            <button className={module === "relation" ? "active" : ""} onClick={() => setModule("relation")}><GitBranch size={14} />Relation Module</button>
+            <button className={module === "flow" ? "active" : ""} onClick={() => setModule("flow")}><Cable size={14} />Data Flow Module</button>
           </div>
           <select value={cluster} onChange={(e) => { setCluster(e.target.value); setNamespace("all"); setWorkloadFilter(""); }}>
-            {clusters.map((item) => <option value={item} key={item}>{item === "all" ? "所有集群" : item}</option>)}
+            {clusters.map((item) => <option value={item} key={item}>{item === "all" ? "All clusters" : item}</option>)}
           </select>
           <select value={namespace} onChange={(e) => { setNamespace(e.target.value); setWorkloadFilter(""); }}>
-            {namespaces.map((item) => <option value={item} key={item}>{item === "all" ? "所有 Namespace" : item}</option>)}
+            {namespaces.map((item) => <option value={item} key={item}>{item === "all" ? "All namespaces" : item}</option>)}
           </select>
           <select value={workloadFilter} onChange={(e) => setWorkloadFilter(e.target.value)}>
-            <option value="">所有 Workload / 端点</option>
+            <option value="">All Workloads / Endpoints</option>
             {workloadOptions.map((item) => <option value={item.value} key={item.id}>{item.label}</option>)}
           </select>
           {module === "relation" && <>
-            <button className="ghost tiny" onClick={() => canvasApiRef.current?.zoom(0.82)}><ZoomIn size={14} />放大</button>
-            <button className="ghost tiny" onClick={() => canvasApiRef.current?.zoom(1.18)}><ZoomOut size={14} />缩小</button>
-            <button className="ghost tiny" onClick={() => canvasApiRef.current?.reset()}><RefreshCcw size={14} />复位</button>
+            <button className="ghost tiny" onClick={() => canvasApiRef.current?.zoom(0.82)}><ZoomIn size={14} />Zoom in</button>
+            <button className="ghost tiny" onClick={() => canvasApiRef.current?.zoom(1.18)}><ZoomOut size={14} />Zoom out</button>
+            <button className="ghost tiny" onClick={() => canvasApiRef.current?.reset()}><RefreshCcw size={14} />Reset</button>
           </>}
           <div className="topology-legend-inline"><span className="workload">Workload</span><span className="pod">Pod</span><span className="service">Service</span><span className="data">Data</span><span className="risk">Risk</span></div>
         </div>
@@ -1709,7 +1709,7 @@ function TopologyPage() {
                 view === "2d" ? <Topology2D nodes={visibleGraph.nodes} edges={visibleGraph.edges} selectedId={selected?.id || ""} onSelect={setSelectedId} apiRef={canvasApiRef} /> :
                   <TopologyCanvas nodes={visibleGraph.nodes} edges={visibleGraph.edges} selectedId={selected?.id || ""} onSelect={setSelectedId} apiRef={canvasApiRef} />
               ) : (
-                <EmptyState text={topology.error || topology.data?.message || "CMDB 当前没有返回拓扑节点；请确认 CMDB 已接入 Rancher/Service/Kafka/ELK 数据。"} />
+                <EmptyState text={topology.error || topology.data?.message || "CMDB did not return any topology nodes. Please verify that CMDB is connected to Rancher/Service/Kafka/ELK data."} />
               )}
             </div>
             <ExternalTrafficEmbedded cluster={cluster} namespace={namespace} workload={workloadFilter} />
@@ -1719,34 +1719,34 @@ function TopologyPage() {
         )}
       </Panel>
       <Panel className="topology-insight">
-        <PanelTitle icon={BrainCircuit} title="AI 影响分析" action={<button className="primary" onClick={analyzeSelected} disabled={!selected || analysis.loading}>{analysis.loading ? <Loader2 className="spin" size={15} /> : <Play size={15} />}分析</button>} />
+        <PanelTitle icon={BrainCircuit} title="AI Impact Analysis" action={<button className="primary" onClick={analyzeSelected} disabled={!selected || analysis.loading}>{analysis.loading ? <Loader2 className="spin" size={15} /> : <Play size={15} />}Analyze</button>} />
         <div className="insight-stack">
-          <Metric title="拓扑节点" value={visibleGraph.nodes.length} />
-          <Metric title="关系边" value={visibleGraph.edges.length} />
-          <Metric title="CMDB 状态" value={topology.data?.status || "unknown"} />
+          <Metric title="Topology nodes" value={visibleGraph.nodes.length} />
+          <Metric title="Edges" value={visibleGraph.edges.length} />
+          <Metric title="CMDB status" value={topology.data?.status || "unknown"} />
         </div>
         {selected && (
           <div className="analysis-card selected-node">
             <span>{selected.type || "node"} · {selected.cluster}</span>
             <strong>{selected.title}</strong>
-            <p>{selected.namespace || "global"} · 风险状态 {selected.risk || "normal"}</p>
+            <p>{selected.namespace || "global"} · Risk status {selected.risk || "normal"}</p>
           </div>
         )}
         {analysis.error && <div className="error-box">{analysis.error}</div>}
         {analysis.data ? (
           <div className="analysis-card">
             <div className="score-grid">
-              <span>等级 {policy.impact_level || "-"}</span>
+              <span>Level {policy.impact_level || "-"}</span>
               <span>score {policy.impact_score ?? "-"}</span>
               <span>Amp {policy.amplification_factor ?? "-"}</span>
-              <span>路径 {asList(blast.critical_paths).length}</span>
+              <span>Paths {asList(blast.critical_paths).length}</span>
             </div>
-            <div className="markdown" dangerouslySetInnerHTML={{ __html: markdownish(analysis.data.analysis || "暂无分析结果。") }} />
+            <div className="markdown" dangerouslySetInnerHTML={{ __html: markdownish(analysis.data.analysis || "No analysis results yet.") }} />
           </div>
         ) : (
           <div className="analysis-card">
-            <strong>选择节点开始分析</strong>
-            <p>系统会计算上游、下游、关键路径与变更风险。</p>
+            <strong>Select a node to start analysis</strong>
+            <p>The system will calculate upstreams, downstreams, critical paths, and change risk.</p>
           </div>
         )}
       </Panel>
@@ -2155,7 +2155,7 @@ function TopologyCanvas({
         });
       };
     })().catch((error) => {
-      if (!disposed) setCanvasError(`3D 拓扑初始化失败：${error instanceof Error ? error.message : String(error)}`);
+      if (!disposed) setCanvasError(`3D topology initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     });
 
     return () => {
@@ -2239,18 +2239,18 @@ function ReleaseReportPanel({ report }: { report: any }) {
   return <div className="release-report">
     <div className="release-report-head">
       <ShieldCheck size={15} />
-      <div><strong>{report.headline || "发布风险摘要"}</strong><span>{report.risk_decision || "需要人工复核后执行。"}</span></div>
+      <div><strong>{report.headline || "Release Risk Summary"}</strong><span>{report.risk_decision || "Requires human review before execution."}</span></div>
     </div>
     <div className="release-report-grid">
-      <section><b>灰度允许范围</b><p>{report.allowed_scope || "未生成灰度建议。"}</p></section>
-      <section><b>爆炸半径</b><p>{report.blast_radius || "拓扑证据不足，建议先补充 CMDB/调用链数据。"}</p></section>
-      <section><b>镜像检查</b><p>{report.image_check || "未发现镜像变更。"}</p></section>
+      <section><b>Allowed canary scope</b><p>{report.allowed_scope || "No canary recommendation generated."}</p></section>
+      <section><b>Blast radius</b><p>{report.blast_radius || "Topology evidence is insufficient; add CMDB/distributed tracing data first."}</p></section>
+      <section><b>Image check</b><p>{report.image_check || "No image changes found."}</p></section>
     </div>
     <div className="release-report-columns">
-      <section><b>短期风险</b>{shortRisks.slice(0, 3).map((item: any) => <p key={item}>{item}</p>)}</section>
-      <section><b>长期风险</b>{longRisks.slice(0, 3).map((item: any) => <p key={item}>{item}</p>)}</section>
-      <section><b>变更建议</b>{recommendations.slice(0, 4).map((item: any) => <p key={item}>{item}</p>)}</section>
-      <section><b>判定依据</b>{evidence.slice(0, 5).map((item: any) => <p key={item}>{item}</p>)}</section>
+      <section><b>Short-term risks</b>{shortRisks.slice(0, 3).map((item: any) => <p key={item}>{item}</p>)}</section>
+      <section><b>Long-term risks</b>{longRisks.slice(0, 3).map((item: any) => <p key={item}>{item}</p>)}</section>
+      <section><b>Change recommendations</b>{recommendations.slice(0, 4).map((item: any) => <p key={item}>{item}</p>)}</section>
+      <section><b>Basis for decision</b>{evidence.slice(0, 5).map((item: any) => <p key={item}>{item}</p>)}</section>
     </div>
   </div>;
 }
@@ -2311,39 +2311,39 @@ function ReliabilityPage() {
     };
     if (payload.release_mode === "existing" && !payload.workload_name) {
       setBusy("");
-      setError("请选择要变更的现有 Workload；如果是新应用，请切换到“发布新应用”并提交完整 YAML。");
+      setError('Select the existing Workload to change. If this is a new application, switch to "Release new application" and submit the complete YAML.');
       return;
     }
     const emergency = payload.change_channel === "emergency_recovery";
     if (emergency && payload.emergency_reason.trim().length < 8) {
       setBusy("");
-      setError("紧急修复必须填写故障现象、业务影响或恢复理由，至少 8 个字符。");
+      setError("Emergency repair requires a fault description, business impact, or recovery rationale of at least 8 characters.");
       return;
     }
     if (emergency && payload.emergency_action === "rollback" && !payload.image) {
       setBusy("");
-      setError("回滚到稳定版本必须填写上一稳定镜像版本或 digest。");
+      setError("To roll back to a stable version, provide the previous stable image tag or digest.");
       return;
     }
     if (emergency && payload.emergency_action === "restore_config" && !payload.manifest_yaml) {
       setBusy("");
-      setError("恢复误删配置必须提交完整的期望状态 YAML。");
+      setError("To restore accidentally deleted configuration, submit the complete desired-state YAML.");
       return;
     }
     if (payload.release_mode === "existing" && !payload.image && !payload.manifest_yaml && !(emergency && payload.emergency_action === "restart_component")) {
       setBusy("");
-      setError("现有 Workload 发布至少要填写不可变镜像，或提交完整期望状态 YAML；否则平台无法判断你要变更什么。");
+      setError("For an existing Workload release, specify at least an immutable image or submit the full desired-state YAML; otherwise the platform cannot determine what you want to change.");
       return;
     }
     if (payload.image && !payload.container_name) {
       setBusy("");
-      setError("镜像发布必须指定 Container 名称，避免改错同 Pod 内其他容器。");
+      setError("Image releases must specify the Container name to avoid changing the wrong container in the same Pod.");
       return;
     }
     try {
       const response = await apiPost<any>("/api/releases", payload);
       refreshReleases();
-      setNotice(`风险判定已生成：${response.release?.status || "awaiting_approval"}。通过后会在下方出现“批准”，批准后出现“执行发布”。`);
+      setNotice(`Risk decision generated: ${response.release?.status || "awaiting_approval"}. After it passes, an "Approve" button will appear below; after approval, "Execute Release" will appear.`);
     } catch (requestError: any) { setError(requestError.message); }
     finally { setBusy(""); }
   }
@@ -2352,9 +2352,9 @@ function ReliabilityPage() {
     const id = item.id;
     setBusy(id); setError(""); setNotice("");
     const comment = item.change_channel === "emergency_recovery"
-      ? `已复核紧急修复动作 ${item.emergency_action}、影响范围和回退条件`
-      : "已核对 SLO、影响面和发布目标";
-    try { await apiPost(`/api/releases/${encodeURIComponent(id)}/approve`, { confirm: true, comment }); refreshReleases(); setNotice("已批准该发布申请，现在可以执行发布。"); }
+      ? `Reviewed emergency repair action ${item.emergency_action}, impact scope, and rollback conditions`
+      : "Verified the SLO, blast radius, and release objective";
+    try { await apiPost(`/api/releases/${encodeURIComponent(id)}/approve`, { confirm: true, comment }); refreshReleases(); setNotice("This release request has been approved. You can execute the release now."); }
     catch (requestError: any) { setError(requestError.message); }
     finally { setBusy(""); }
   }
@@ -2365,79 +2365,79 @@ function ReliabilityPage() {
       const response = await apiPost<any>(`/api/releases/${encodeURIComponent(id)}/execute`, {});
       setJobs((current) => ({ ...current, [id]: response.job }));
       refreshReleases();
-      setNotice("发布任务已提交到受控运维执行流，下方会持续展示步骤、回执和恢复验证。");
+      setNotice("The release job has been submitted to the controlled operations execution flow. Steps, receipts, and recovery verification will continue to appear below.");
     } catch (requestError: any) { setError(requestError.message); }
     finally { setBusy(""); }
   }
 
   return <section className="workspace-grid reliability-workspace">
     <div className="reliability-hero span-all">
-      <div><span><ShieldCheck size={16} />SRE 发布控制面</span><h2>稳定性决定发布速度</h2><p>默认 99.9% SLO 对应月度约 43.2 分钟错误预算。预算用完后冻结常规发布，只放行故障恢复和回滚。</p></div>
-      <div className={cx("budget-state", Number(summary.data?.summary?.exhausted || 0) > 0 && "frozen")}><strong>{summary.data?.summary?.changes_frozen || 0}</strong><span>冻结中的服务</span></div>
+      <div><span><ShieldCheck size={16} />SRE Release Control Plane</span><h2>Stability determines release velocity</h2><p>A default 99.9% SLO corresponds to about 43.2 minutes of monthly error budget. Once exhausted, standard releases are frozen and only recovery and rollback are allowed.</p></div>
+      <div className={cx("budget-state", Number(summary.data?.summary?.exhausted || 0) > 0 && "frozen")}><strong>{summary.data?.summary?.changes_frozen || 0}</strong><span>Frozen services</span></div>
     </div>
     <div className="metric-strip span-all">
-      <Metric title="SLO 服务" value={summary.data?.summary?.total || 0} />
-      <Metric title="预算健康" value={summary.data?.summary?.healthy || 0} tone="good" />
-      <Metric title="预算告急" value={summary.data?.summary?.at_risk || 0} />
-      <Metric title="预算耗尽" value={summary.data?.summary?.exhausted || 0} tone={summary.data?.summary?.exhausted ? "danger" : undefined} />
+      <Metric title="SLO services" value={summary.data?.summary?.total || 0} />
+      <Metric title="Budget healthy" value={summary.data?.summary?.healthy || 0} tone="good" />
+      <Metric title="Budget at risk" value={summary.data?.summary?.at_risk || 0} />
+      <Metric title="Budget exhausted" value={summary.data?.summary?.exhausted || 0} tone={summary.data?.summary?.exhausted ? "danger" : undefined} />
     </div>
-    {auditStorage.active_path && !auditStorage.durable && <div className="audit-storage-warning span-all"><ShieldCheck size={14} /><span>发布审计当前使用应急存储 <code>{auditStorage.active_path}</code>。提交仍可用，但 Pod 重建前应恢复 PVC 写入能力，确保审计长期保存。</span></div>}
+    {auditStorage.active_path && !auditStorage.durable && <div className="audit-storage-warning span-all"><ShieldCheck size={14} /><span>Release audit is currently using emergency storage <code>{auditStorage.active_path}</code>. Submissions still work, but restore PVC write capability before Pods are rebuilt to ensure long-term audit retention.</span></div>}
     <Panel className="span-all">
-      <PanelTitle icon={Gauge} title="错误预算" subtitle="同一份预算同时约束 SRE 自动变更与应用发布" action={<button className="ghost tiny" onClick={refreshSummary}><RefreshCcw size={13} />刷新</button>} />
+      <PanelTitle icon={Gauge} title="Error budget" subtitle="The same budget governs both automated SRE changes and application releases" action={<button className="ghost tiny" onClick={refreshSummary}><RefreshCcw size={13} />Refresh</button>} />
       <div className="budget-grid">
         {objectives.map((item: any) => {
           const budget = item.budget || {};
           const used = Math.min(100, Number(budget.consumed_ratio || 0) * 100);
           return <article className={cx("budget-card", budget.state)} key={item.id}>
-            <header><div><strong>{item.service}</strong><span>{item.cluster || "all"} / {item.namespace || "all"}</span></div><b>{budget.state === "exhausted" ? "变更冻结" : budget.state === "at_risk" ? "预算告急" : "健康"}</b></header>
-            <div className="budget-value"><strong>{budget.target_percent}%</strong><span>SLO · {budget.error_budget_percent}% 错误预算</span></div>
+            <header><div><strong>{item.service}</strong><span>{item.cluster || "all"} / {item.namespace || "all"}</span></div><b>{budget.state === "exhausted" ? "Change frozen" : budget.state === "at_risk" ? "Budget at risk" : "Healthy"}</b></header>
+            <div className="budget-value"><strong>{budget.target_percent}%</strong><span>SLO · {budget.error_budget_percent}% Error budget</span></div>
             <div className="budget-bar"><i style={{ width: `${used}%` }} /></div>
-            <footer><span>已消耗 {used.toFixed(1)}%</span><span>剩余 {budget.remaining_downtime_minutes ?? 0} 分钟</span><span>燃烧率 {budget.burn_rate ?? 0}x</span></footer>
+            <footer><span>Used {used.toFixed(1)}%</span><span>Remaining {budget.remaining_downtime_minutes ?? 0} minutes</span><span>Burn rate {budget.burn_rate ?? 0}x</span></footer>
           </article>;
         })}
       </div>
     </Panel>
     <Panel>
-      <PanelTitle icon={Settings2} title="定义 SLO" subtitle="可由监控同步作业调用同一 API 持续更新可用率证据" />
+      <PanelTitle icon={Settings2} title="Define SLO" subtitle="The same API can be called by monitoring sync jobs to continuously update availability evidence" />
       <form className="governance-form" onSubmit={saveObjective}>
-        <label>应用<input value={objective.service} onChange={(e) => setObjective({ ...objective, service: e.target.value })} /></label>
-        <div className="form-pair"><label>SLO 目标 %<input type="number" step="0.01" min="50" max="99.999" value={objective.target_percent} onChange={(e) => setObjective({ ...objective, target_percent: e.target.value })} /></label><label>窗口 天<input type="number" min="1" value={objective.window_days} onChange={(e) => setObjective({ ...objective, window_days: e.target.value })} /></label></div>
-        <div className="form-pair"><label>实际可用率 %<input type="number" step="0.001" min="0" max="100" value={objective.observed_availability_percent} onChange={(e) => setObjective({ ...objective, observed_availability_percent: e.target.value })} /></label><label>故障分钟<input type="number" min="0" value={objective.downtime_minutes} onChange={(e) => setObjective({ ...objective, downtime_minutes: e.target.value })} /></label></div>
-        <button className="primary" disabled={busy === "objective"}><Save size={15} />保存并重算预算</button>
+        <label>Application<input value={objective.service} onChange={(e) => setObjective({ ...objective, service: e.target.value })} /></label>
+        <div className="form-pair"><label>SLO target %<input type="number" step="0.01" min="50" max="99.999" value={objective.target_percent} onChange={(e) => setObjective({ ...objective, target_percent: e.target.value })} /></label><label>Window (days)<input type="number" min="1" value={objective.window_days} onChange={(e) => setObjective({ ...objective, window_days: e.target.value })} /></label></div>
+        <div className="form-pair"><label>Observed availability %<input type="number" step="0.001" min="0" max="100" value={objective.observed_availability_percent} onChange={(e) => setObjective({ ...objective, observed_availability_percent: e.target.value })} /></label><label>Downtime minutes<input type="number" min="0" value={objective.downtime_minutes} onChange={(e) => setObjective({ ...objective, downtime_minutes: e.target.value })} /></label></div>
+        <button className="primary" disabled={busy === "objective"}><Save size={15} />Save and recalculate budget</button>
       </form>
     </Panel>
     <Panel>
-      <PanelTitle icon={GitBranch} title="提交应用变更" subtitle="选择真实目标或新建 Workload，提交期望 YAML 后执行安全校验、风险门禁与人工审批" />
+      <PanelTitle icon={GitBranch} title="Submit application change" subtitle="Select a real target or create a new Workload, then submit desired-state YAML for security checks, risk gating, and human approval" />
       <form className="governance-form" onSubmit={submitRelease}>
-        <div className="release-channel-switch"><button type="button" className={release.change_channel === "standard" ? "active" : ""} onClick={() => setRelease({ ...release, change_channel: "standard", emergency_reason: "" })}><GitBranch size={13} />常规发布</button><button type="button" className={release.change_channel === "emergency_recovery" ? "active emergency" : ""} onClick={() => setRelease({ ...release, change_channel: "emergency_recovery", release_mode: "existing", emergency_action: "rollback", workload_name: "", image: "", manifest_yaml: "" })}><Activity size={13} />紧急修复通道</button></div>
-        {release.change_channel === "standard" ? <div className="release-mode-switch"><button type="button" className={release.release_mode === "existing" ? "active" : ""} onClick={() => setRelease({ ...release, release_mode: "existing", workload_name: "", manifest_yaml: "" })}>变更现有应用</button><button type="button" className={release.release_mode === "new" ? "active" : ""} onClick={() => setRelease({ ...release, release_mode: "new", workload_name: "", manifest_yaml: "" })}>发布新应用</button></div> : <div className="emergency-policy-note"><ShieldCheck size={14} /><span>只允许恢复稳定性的限定动作。错误预算耗尽时可进入审批，但不会跳过安全校验、审计、人工确认和恢复验证。</span></div>}
-        {release.change_channel === "emergency_recovery" && <label>紧急动作<select value={release.emergency_action} onChange={(e) => setRelease({ ...release, emergency_action: e.target.value, image: "", manifest_yaml: "" })}><option value="rollback">回滚到上一稳定版本</option><option value="restore_config">恢复被误删的配置</option><option value="restart_component">重启故障组件</option></select></label>}
-        <label>应用标识<input value={release.service} onChange={(e) => setRelease({ ...release, service: e.target.value })} placeholder="用于匹配 SLO，输入业务应用名" /></label>
+        <div className="release-channel-switch"><button type="button" className={release.change_channel === "standard" ? "active" : ""} onClick={() => setRelease({ ...release, change_channel: "standard", emergency_reason: "" })}><GitBranch size={13} />Standard release</button><button type="button" className={release.change_channel === "emergency_recovery" ? "active emergency" : ""} onClick={() => setRelease({ ...release, change_channel: "emergency_recovery", release_mode: "existing", emergency_action: "rollback", workload_name: "", image: "", manifest_yaml: "" })}><Activity size={13} />Emergency repair channel</button></div>
+        {release.change_channel === "standard" ? <div className="release-mode-switch"><button type="button" className={release.release_mode === "existing" ? "active" : ""} onClick={() => setRelease({ ...release, release_mode: "existing", workload_name: "", manifest_yaml: "" })}>Modify existing application</button><button type="button" className={release.release_mode === "new" ? "active" : ""} onClick={() => setRelease({ ...release, release_mode: "new", workload_name: "", manifest_yaml: "" })}>Release new application</button></div> : <div className="emergency-policy-note"><ShieldCheck size={14} /><span>Only limited stability-restoring actions are allowed. When the error budget is exhausted, the request may still enter approval, but it will not bypass security checks, audit, human confirmation, or recovery verification.</span></div>}
+        {release.change_channel === "emergency_recovery" && <label>Emergency action<select value={release.emergency_action} onChange={(e) => setRelease({ ...release, emergency_action: e.target.value, image: "", manifest_yaml: "" })}><option value="rollback">Roll back to previous stable version</option><option value="restore_config">Restore accidentally deleted configuration</option><option value="restart_component">Restart failed component</option></select></label>}
+        <label>Application identifier<input value={release.service} onChange={(e) => setRelease({ ...release, service: e.target.value })} placeholder="Used to match the SLO; enter the business application name" /></label>
         <div className="form-pair">
-          <label>集群<select value={release.cluster} onChange={(e) => setRelease({ ...release, cluster: e.target.value || "local", namespace: e.target.value === "local" ? "default" : "", workload_name: "" })}><option value="local">本地 Agent 集群</option>{clusters.filter((item: any) => item.id !== "local").map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></label>
-          <label>Namespace<select value={release.namespace} onChange={(e) => setRelease({ ...release, namespace: e.target.value || "default", workload_name: "" })}><option value="">选择 Namespace</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}{release.cluster === "local" && !namespaces.includes("default") && <option value="default">default</option>}</select></label>
+          <label>Cluster<select value={release.cluster} onChange={(e) => setRelease({ ...release, cluster: e.target.value || "local", namespace: e.target.value === "local" ? "default" : "", workload_name: "" })}><option value="local">Local agent cluster</option>{clusters.filter((item: any) => item.id !== "local").map((item: any) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}</select></label>
+          <label>Namespace<select value={release.namespace} onChange={(e) => setRelease({ ...release, namespace: e.target.value || "default", workload_name: "" })}><option value="">Select namespace</option>{namespaces.map((item) => <option key={item} value={item}>{item}</option>)}{release.cluster === "local" && !namespaces.includes("default") && <option value="default">default</option>}</select></label>
         </div>
-        {release.release_mode === "existing" ? <label>现有 Workload<select value={release.workload_name ? `${release.workload_kind}|${release.workload_name}` : ""} onChange={(e) => { const [kind, name] = e.target.value.split("|"); setRelease({ ...release, workload_kind: kind || "Deployment", workload_name: name || "", service: release.service || name || "" }); }}><option value="">选择 Workload</option>{workloads.map((item: any) => <option key={`${item.namespace}-${item.kind}-${item.name}`} value={`${item.kind}|${item.name}`}>{item.kind}/{item.name}</option>)}</select></label> : <div className="form-pair"><label>资源类型<select value={release.workload_kind} onChange={(e) => setRelease({ ...release, workload_kind: e.target.value })}><option>Deployment</option><option>StatefulSet</option><option>DaemonSet</option></select></label><label>新 Workload 名称<input value={release.workload_name} onChange={(e) => setRelease({ ...release, workload_name: e.target.value, service: release.service || e.target.value })} placeholder="new-application" /></label></div>}
-        {(release.change_channel === "standard" || release.emergency_action === "rollback") && <div className="form-pair"><label>Container<input value={release.container_name} onChange={(e) => setRelease({ ...release, container_name: e.target.value })} /></label><label>{release.change_channel === "emergency_recovery" ? "上一稳定镜像" : "不可变镜像"}<input placeholder="registry/app:v1.2.3" value={release.image} onChange={(e) => setRelease({ ...release, image: e.target.value })} /></label></div>}
-        {(release.change_channel === "standard" || release.emergency_action === "restore_config") && <label className="manifest-editor-label"><span>{release.emergency_action === "restore_config" ? "恢复后的期望状态 YAML" : "期望状态 YAML"} <button type="button" className="ghost tiny" onClick={generateManifest}><FileUp size={13} />生成生产模板</button></span><textarea className="manifest-editor" value={release.manifest_yaml} onChange={(e) => setRelease({ ...release, manifest_yaml: e.target.value })} placeholder={release.release_mode === "new" ? "新应用必须提交完整 apps/v1 Workload YAML" : "提交完整期望 YAML；平台会校验并生成可审计差异"} /></label>}
-        <div className="manifest-policy"><ShieldCheck size={14} /><span>提交前检查：目标一致性、不可变镜像、非特权运行、ServiceAccount Token、hostPath、Linux capabilities。Secret 不允许进入该入口。</span></div>
-        {release.change_channel === "emergency_recovery" && <label>紧急修复理由<textarea value={release.emergency_reason} onChange={(e) => setRelease({ ...release, emergency_reason: e.target.value })} placeholder="说明当前故障、业务影响、为什么必须立即恢复，以及失败时如何停止或回退" /></label>}
-        <label>变更说明<textarea value={release.change_summary} onChange={(e) => setRelease({ ...release, change_summary: e.target.value })} placeholder="说明业务目标、风险和回滚条件" /></label>
-        <button className={release.change_channel === "emergency_recovery" ? "primary emergency-submit" : "primary"} disabled={busy === "release"}><ShieldCheck size={15} />{release.change_channel === "emergency_recovery" ? "提交紧急修复判定" : "提交风险判定"}</button>
-        <div className="form-hint">流程：风险判定通过后进入“发布审计链”显示批准按钮；人工批准后显示执行发布按钮，并进入可中断的运维执行流。</div>
+        {release.release_mode === "existing" ? <label>Existing Workload<select value={release.workload_name ? `${release.workload_kind}|${release.workload_name}` : ""} onChange={(e) => { const [kind, name] = e.target.value.split("|"); setRelease({ ...release, workload_kind: kind || "Deployment", workload_name: name || "", service: release.service || name || "" }); }}><option value="">Select Workload</option>{workloads.map((item: any) => <option key={`${item.namespace}-${item.kind}-${item.name}`} value={`${item.kind}|${item.name}`}>{item.kind}/{item.name}</option>)}</select></label> : <div className="form-pair"><label>Resource type<select value={release.workload_kind} onChange={(e) => setRelease({ ...release, workload_kind: e.target.value })}><option>Deployment</option><option>StatefulSet</option><option>DaemonSet</option></select></label><label>New Workload name<input value={release.workload_name} onChange={(e) => setRelease({ ...release, workload_name: e.target.value, service: release.service || e.target.value })} placeholder="new-application" /></label></div>}
+        {(release.change_channel === "standard" || release.emergency_action === "rollback") && <div className="form-pair"><label>Container<input value={release.container_name} onChange={(e) => setRelease({ ...release, container_name: e.target.value })} /></label><label>{release.change_channel === "emergency_recovery" ? "Previous stable image" : "Immutable image"}<input placeholder="registry/app:v1.2.3" value={release.image} onChange={(e) => setRelease({ ...release, image: e.target.value })} /></label></div>}
+        {(release.change_channel === "standard" || release.emergency_action === "restore_config") && <label className="manifest-editor-label"><span>{release.emergency_action === "restore_config" ? "Restored desired-state YAML" : "Desired-state YAML"} <button type="button" className="ghost tiny" onClick={generateManifest}><FileUp size={13} />Generate production template</button></span><textarea className="manifest-editor" value={release.manifest_yaml} onChange={(e) => setRelease({ ...release, manifest_yaml: e.target.value })} placeholder={release.release_mode === "new" ? "New applications must submit a complete apps/v1 Workload YAML" : "Submit the complete desired-state YAML; the platform will validate it and generate auditable diffs"} /></label>}
+        <div className="manifest-policy"><ShieldCheck size={14} /><span>Pre-submit checks: target consistency, immutable images, non-privileged execution, ServiceAccount token, hostPath, and Linux capabilities. Secrets are not allowed through this entry point.</span></div>
+        {release.change_channel === "emergency_recovery" && <label>Emergency repair reason<textarea value={release.emergency_reason} onChange={(e) => setRelease({ ...release, emergency_reason: e.target.value })} placeholder="Describe the current failure, business impact, why immediate recovery is required, and how to stop or roll back if it fails" /></label>}
+        <label>Change summary<textarea value={release.change_summary} onChange={(e) => setRelease({ ...release, change_summary: e.target.value })} placeholder="Describe the business goal, risks, and rollback conditions" /></label>
+        <button className={release.change_channel === "emergency_recovery" ? "primary emergency-submit" : "primary"} disabled={busy === "release"}><ShieldCheck size={15} />{release.change_channel === "emergency_recovery" ? "Submit emergency repair decision" : "Submit risk decision"}</button>
+        <div className="form-hint">Workflow: after the risk decision passes, the "Release Audit Chain" shows an Approve button; after human approval, an Execute Release button appears and the request enters an interruptible operations execution flow.</div>
       </form>
     </Panel>
     <Panel className="span-all">
-      <PanelTitle icon={Workflow} title="发布审计链" subtitle="申请、预算快照、算法判定、审批和执行任务可追溯" action={<button className="ghost tiny" onClick={refreshReleases}><RefreshCcw size={13} />刷新</button>} />
+      <PanelTitle icon={Workflow} title="Release Audit Chain" subtitle="Requests, budget snapshots, algorithm decisions, approvals, and execution jobs are traceable" action={<button className="ghost tiny" onClick={refreshReleases}><RefreshCcw size={13} />Refresh</button>} />
       <div className="release-list">
         {releases.map((item: any) => <article className="release-row" key={item.id}>
-          <div className="release-main"><div className="release-badges"><span className={cx("release-status", item.status)}>{item.status}</span>{item.change_channel === "emergency_recovery" && <span className="release-status emergency">紧急修复 · {item.emergency_action}</span>}</div><strong>{item.service} · {item.workload_kind}/{item.workload_name}</strong><small>{item.cluster}/{item.namespace} · {item.release_mode === "new" ? "新建" : "变更"} · {item.manifest_validation ? `YAML 已校验 ${item.manifest_validation.digest}` : item.image || (item.emergency_action === "restart_component" ? "受控重启" : "配置变更")}</small></div>
-          <div className="release-decision"><b>{item.gate?.verdict || "-"}</b><span>风险 {item.gate?.risk?.diff_risk ?? item.gate?.risk?.amplification_factor ?? "-"} · 预算剩余 {Math.round(Number(item.error_budget?.remaining_ratio || 0) * 100)}%</span><small>{item.gate?.reason}</small></div>
-          <div className="release-actions">{item.status === "awaiting_approval" && <button className="ghost" disabled={busy === item.id} onClick={() => approve(item)}><CheckCircle2 size={14} />批准</button>}{item.status === "approved" && <button className="primary" disabled={busy === item.id} onClick={() => execute(item.id)}><Play size={14} />{item.change_channel === "emergency_recovery" ? "执行修复" : "执行发布"}</button>}{item.status === "blocked" && <span className="release-block-note">门禁阻断</span>}</div>
+          <div className="release-main"><div className="release-badges"><span className={cx("release-status", item.status)}>{item.status}</span>{item.change_channel === "emergency_recovery" && <span className="release-status emergency">Emergency repair · {item.emergency_action}</span>}</div><strong>{item.service} · {item.workload_kind}/{item.workload_name}</strong><small>{item.cluster}/{item.namespace} · {item.release_mode === "new" ? "New" : "Change"} · {item.manifest_validation ? `YAML validated ${item.manifest_validation.digest}` : item.image || (item.emergency_action === "restart_component" ? "Controlled restart" : "Configuration change")}</small></div>
+          <div className="release-decision"><b>{item.gate?.verdict || "-"}</b><span>Risk {item.gate?.risk?.diff_risk ?? item.gate?.risk?.amplification_factor ?? "-"} · Budget remaining {Math.round(Number(item.error_budget?.remaining_ratio || 0) * 100)}%</span><small>{item.gate?.reason}</small></div>
+          <div className="release-actions">{item.status === "awaiting_approval" && <button className="ghost" disabled={busy === item.id} onClick={() => approve(item)}><CheckCircle2 size={14} />Approve</button>}{item.status === "approved" && <button className="primary" disabled={busy === item.id} onClick={() => execute(item.id)}><Play size={14} />{item.change_channel === "emergency_recovery" ? "Execute repair" : "Execute release"}</button>}{item.status === "blocked" && <span className="release-block-note">Blocked by gate</span>}</div>
           <ReleaseReportPanel report={item.report} />
           {jobs[item.id] && <div className="release-job"><ReleaseJobTracker initial={jobs[item.id]} /></div>}
         </article>)}
-        {!releases.length && <EmptyState text="还没有发布申请。提交第一条变更后，门禁证据会显示在这里。" />}
+        {!releases.length && <EmptyState text="No release requests yet. After you submit the first change, gating evidence will appear here." />}
       </div>
     </Panel>
     {notice && <div className="notice-box span-all">{notice}</div>}
@@ -2455,42 +2455,42 @@ function EffectivenessPage() {
   return (
     <section className="workspace-grid">
       <div className="metric-strip effectiveness-metrics span-all">
-        <Metric title="巡检次数" value={summary.inspection_runs || 0} />
-        <Metric title="变更成功率" value={`${Math.round((summary.change_success_rate || 0) * 100)}%`} />
-        <Metric title="恢复 Pod" value={summary.pods_recovered || 0} tone="good" />
-        <Metric title="风险降低率" value={`${Math.round((summary.risk_reduction_rate || 0) * 100)}%`} />
-        <Metric title="记录存储" value={storage.durable ? "PVC" : storage.path ? "临时" : "加载中"} tone={storage.durable ? "good" : undefined} />
+        <Metric title="Inspection runs" value={summary.inspection_runs || 0} />
+        <Metric title="Change success rate" value={`${Math.round((summary.change_success_rate || 0) * 100)}%`} />
+        <Metric title="Pods recovered" value={summary.pods_recovered || 0} tone="good" />
+        <Metric title="Risk reduction rate" value={`${Math.round((summary.risk_reduction_rate || 0) * 100)}%`} />
+        <Metric title="Record storage" value={storage.durable ? "PVC" : storage.path ? "Temporary" : "Loading"} tone={storage.durable ? "good" : undefined} />
       </div>
       <Panel>
-        <PanelTitle icon={Gauge} title="模型效果对比" action={<button className="ghost" onClick={refresh}><RefreshCcw size={15} />刷新</button>} />
-        {state.loading && <div className="quiet-empty">正在读取模型效果和运维审计...</div>}
+        <PanelTitle icon={Gauge} title="Model performance comparison" action={<button className="ghost" onClick={refresh}><RefreshCcw size={15} />Refresh</button>} />
+        {state.loading && <div className="quiet-empty">Loading model performance and operations audit...</div>}
         {state.error && <div className="error-box">{state.error}</div>}
         <div className="model-list">
-          {models.length ? models.map((m: any) => <div className="model-row" key={m.model_id}><strong>{m.model_id}</strong><span>变更 {m.successful_changes || 0}/{m.changes_total || 0}</span><span>恢复 {m.pods_recovered || 0} Pod</span><button className="ghost tiny" onClick={() => setSelectedRecord((m.records || [])[0] || m)}>查看记录</button></div>) : <EmptyState text="暂无模型效果记录；执行一次 AI 巡检或 SRE 运维后会自动生成。" />}
+          {models.length ? models.map((m: any) => <div className="model-row" key={m.model_id}><strong>{m.model_id}</strong><span>Change {m.successful_changes || 0}/{m.changes_total || 0}</span><span>Recovered {m.pods_recovered || 0} Pods</span><button className="ghost tiny" onClick={() => setSelectedRecord((m.records || [])[0] || m)}>View record</button></div>) : <EmptyState text="No model performance records yet; they will be generated automatically after an AI inspection or SRE operation runs." />}
         </div>
       </Panel>
       <Panel>
-        <PanelTitle icon={TerminalSquare} title="最近 AI 改动记录" />
+        <PanelTitle icon={TerminalSquare} title="Recent AI change records" />
         <div className="record-list">
-          {records.length ? records.slice().reverse().map((r: any) => <div className="record" key={r.id}><strong>{r.target || "诊断任务"}</strong><p>{r.cluster}/{r.namespace} · {r.status} · 故障链第 {r.lineage_attempt || 1} 轮 · 变更 {r.changes_succeeded}/{r.changes_total} · 恢复 {r.pods_recovered || 0} Pod</p><button className="ghost tiny" onClick={() => setSelectedRecord(r)}>查看详情</button></div>) : <EmptyState text="暂无变更审计记录；只读诊断、门禁阻断和执行失败也会从现在开始进入这里。" />}
+          {records.length ? records.slice().reverse().map((r: any) => <div className="record" key={r.id}><strong>{r.target || "Diagnostic task"}</strong><p>{r.cluster}/{r.namespace} · {r.status} · Incident lineage round {r.lineage_attempt || 1} · Change {r.changes_succeeded}/{r.changes_total} · Recovered {r.pods_recovered || 0} Pods</p><button className="ghost tiny" onClick={() => setSelectedRecord(r)}>View details</button></div>) : <EmptyState text="No change audit records yet; read-only diagnoses, gate blocks, and execution failures will also appear here from now on." />}
         </div>
       </Panel>
       {selectedRecord && <Panel className="span-all">
-        <PanelTitle icon={FileUp} title="运维记录详情" subtitle={selectedRecord.id || selectedRecord.model_id || "record"} action={<button className="ghost tiny" onClick={() => setSelectedRecord(null)}>关闭</button>} />
+        <PanelTitle icon={FileUp} title="Operations record details" subtitle={selectedRecord.id || selectedRecord.model_id || "record"} action={<button className="ghost tiny" onClick={() => setSelectedRecord(null)}>Close</button>} />
         <div className="effectiveness-detail">
-          <div><span>目标</span><strong>{selectedRecord.target || selectedRecord.model_id || "-"}</strong></div>
-          <div><span>范围</span><strong>{selectedRecord.cluster || "-"} / {selectedRecord.namespace || "-"}</strong></div>
-          <div><span>状态</span><strong>{selectedRecord.status || "recorded"}</strong></div>
-          <div><span>变更</span><strong>{selectedRecord.changes_succeeded ?? selectedRecord.successful_changes ?? 0}/{selectedRecord.changes_total ?? 0}</strong></div>
-          <div><span>故障链</span><strong>{selectedRecord.lineage_id || "单轮任务"}</strong></div>
-          <div><span>策略轮次</span><strong>第 {selectedRecord.lineage_attempt || 1} 轮</strong></div>
+          <div><span>Target</span><strong>{selectedRecord.target || selectedRecord.model_id || "-"}</strong></div>
+          <div><span>Scope</span><strong>{selectedRecord.cluster || "-"} / {selectedRecord.namespace || "-"}</strong></div>
+          <div><span>Status</span><strong>{selectedRecord.status || "recorded"}</strong></div>
+          <div><span>Change</span><strong>{selectedRecord.changes_succeeded ?? selectedRecord.successful_changes ?? 0}/{selectedRecord.changes_total ?? 0}</strong></div>
+          <div><span>Incident lineage</span><strong>{selectedRecord.lineage_id || "Single-round task"}</strong></div>
+          <div><span>Strategy round</span><strong>Round {selectedRecord.lineage_attempt || 1}</strong></div>
         </div>
         {asList(selectedRecord.attempted_strategies).length > 0 && <details className="ops-lineage-history" open>
-          <summary>差异化策略历史</summary>
-          <div>{asList(selectedRecord.attempted_strategies).map((attempt: any, index: number) => <span key={`${attempt.fingerprint || attempt.strategy}-${index}`}><i>{attempt.attempt || index + 1}</i><b>{attempt.strategy || `策略 ${index + 1}`}</b><em>{attempt.recovered === true ? "已恢复" : attempt.status || "未恢复"}</em><small>{attempt.outcome || "本轮未取得恢复证据。"}</small>{asList(attempt.actions).length > 0 && <code>{asList(attempt.actions).join(" · ")}</code>}</span>)}</div>
+          <summary>Strategy variation history</summary>
+          <div>{asList(selectedRecord.attempted_strategies).map((attempt: any, index: number) => <span key={`${attempt.fingerprint || attempt.strategy}-${index}`}><i>{attempt.attempt || index + 1}</i><b>{attempt.strategy || `Strategy ${index + 1}`}</b><em>{attempt.recovered === true ? "Recovered" : attempt.status || "Not recovered"}</em><small>{attempt.outcome || "No recovery evidence was found in this round."}</small>{asList(attempt.actions).length > 0 && <code>{asList(attempt.actions).join(" · ")}</code>}</span>)}</div>
         </details>}
         {asList(selectedRecord.changes).length > 0 && <div className="record-evidence-list">{asList(selectedRecord.changes).map((change: any, index: number) => <article key={`${change.type}-${index}`}><b>{change.type} · {change.target}</b><span>{change.status} · {change.risk}</span><pre>{JSON.stringify(change.patch || change.payload || {}, null, 2)}</pre></article>)}</div>}
-        {selectedRecord.verification && <div className="analysis-card"><strong>恢复验证</strong><p>{selectedRecord.verification.message || selectedRecord.verification.proof || JSON.stringify(selectedRecord.verification)}</p></div>}
+        {selectedRecord.verification && <div className="analysis-card"><strong>Recovery verification</strong><p>{selectedRecord.verification.message || selectedRecord.verification.proof || JSON.stringify(selectedRecord.verification)}</p></div>}
       </Panel>}
     </section>
   );
@@ -2503,17 +2503,17 @@ function ObservabilityPage() {
   return (
     <section className="workspace-grid">
       <div className="metric-strip span-all">
-        <Metric title="调用次数" value={summary.total || 0} />
+        <Metric title="Calls" value={summary.total || 0} />
         <Metric title="Token" value={prettyNumber(summary.total_tokens)} />
-        <Metric title="平均延迟" value={`${summary.avg_latency_ms || 0}ms`} />
+        <Metric title="Avg latency" value={`${summary.avg_latency_ms || 0}ms`} />
         <Metric title="P95" value={`${summary.p95_latency_ms || 0}ms`} />
       </div>
       <Panel>
-        <PanelTitle icon={Activity} title="数据来源" action={<button className="ghost" onClick={refresh}><RefreshCcw size={15} />刷新</button>} />
+        <PanelTitle icon={Activity} title="Data sources" action={<button className="ghost" onClick={refresh}><RefreshCcw size={15} />Refresh</button>} />
         <Bars rows={asList(analytics.by_source)} />
       </Panel>
       <Panel>
-        <PanelTitle icon={Boxes} title="模型调用" />
+        <PanelTitle icon={Boxes} title="Model invocations" />
         <Bars rows={asList(analytics.by_model)} />
       </Panel>
     </section>
@@ -2567,7 +2567,7 @@ function ModelLabPage({
     setTestState({ loading: true });
     try {
       await apiPost("/api/model-registry", form);
-      setTestState({ loading: false, data: { status: "ok", answer: "模型配置已保存，secret 不会在前端回显。" } });
+      setTestState({ loading: false, data: { status: "ok", answer: "Model configuration saved. Secrets will not be shown again in the frontend." } });
       if (form.set_active) onActivate(form.id || `${form.provider}:${form.model}`);
       refreshRegistry();
     } catch (error: any) {
@@ -2607,9 +2607,9 @@ function ModelLabPage({
       <Panel className="span-all">
         <PanelTitle
           icon={Settings2}
-          title="可插拔 AI 模型"
-          subtitle="支持 Token URL + Base URL 的企业网关，也支持 Base URL + API Key 的 OpenAI-compatible 接入"
-          action={<button className="ghost" onClick={refreshRegistry}><RefreshCcw size={15} />刷新</button>}
+          title="Pluggable AI Models"
+          subtitle="Supports enterprise gateways with Token URL + Base URL, and OpenAI-compatible integrations with Base URL + API Key"
+          action={<button className="ghost" onClick={refreshRegistry}><RefreshCcw size={15} />Refresh</button>}
         />
         <div className="profile-grid">
           {profiles.map((profile) => (
@@ -2619,48 +2619,48 @@ function ModelLabPage({
                   <strong>{profile.id}</strong>
                   <span>{profile.provider} · {profile.model}</span>
                 </div>
-                {activeModelId === profile.id ? <CheckCircle2 size={18} /> : <button className="ghost tiny" onClick={() => onActivate(profile.id)}>启用</button>}
+                {activeModelId === profile.id ? <CheckCircle2 size={18} /> : <button className="ghost tiny" onClick={() => onActivate(profile.id)}>Activate</button>}
               </div>
               <p>{profile.description || profile.base_url}</p>
               <div className="chips"><span>{profile.auth_type}</span><span>{profile.role || "candidate"}</span></div>
             </div>
           ))}
-          {!profiles.length && <EmptyState text="还没有模型配置。可以从右侧新增一个企业网关或 API Key 模型。" />}
+          {!profiles.length && <EmptyState text="No model configurations yet. You can add an enterprise gateway or API key model on the right." />}
         </div>
       </Panel>
 
       <Panel>
-        <PanelTitle icon={KeyRound} title="新增 / 更新模型" />
+        <PanelTitle icon={KeyRound} title="Add / Update Model" />
         <div className="form-stack">
           <label>Profile ID<input value={form.id} onChange={(e) => updateForm("id", e.target.value)} placeholder="deepseek-prod" /></label>
           <div className="form-grid two">
             <label>Provider<input value={form.provider} onChange={(e) => updateForm("provider", e.target.value)} /></label>
             <label>Model<input value={form.model} onChange={(e) => updateForm("model", e.target.value)} placeholder="your-model" /></label>
           </div>
-          <label>Base URL<input value={form.base_url} onChange={(e) => updateForm("base_url", e.target.value)} placeholder="https://gateway/engines/xxx 或 .../chat/completions" /></label>
-          <label>鉴权方式<select value={form.auth_type} onChange={(e) => updateForm("auth_type", e.target.value)}>
+          <label>Base URL<input value={form.base_url} onChange={(e) => updateForm("base_url", e.target.value)} placeholder="https://gateway/engines/xxx or .../chat/completions" /></label>
+          <label>Authentication method<select value={form.auth_type} onChange={(e) => updateForm("auth_type", e.target.value)}>
             <option value="oauth_client_credentials">Token URL + Client Credentials</option>
             <option value="api_key">Base URL + API Key</option>
-            <option value="none">无鉴权 / 本地模型</option>
+            <option value="none">No authentication / local model</option>
           </select></label>
           {form.auth_type === "oauth_client_credentials" ? (
             <>
               <label>Token URL<input value={form.token_url} onChange={(e) => updateForm("token_url", e.target.value)} /></label>
               <div className="form-grid two">
                 <label>Client ID<input value={form.client_id} onChange={(e) => updateForm("client_id", e.target.value)} /></label>
-                <label>Client Secret<input type="password" value={form.client_secret} onChange={(e) => updateForm("client_secret", e.target.value)} placeholder="保存后不会回显" /></label>
+                <label>Client Secret<input type="password" value={form.client_secret} onChange={(e) => updateForm("client_secret", e.target.value)} placeholder="Won't be shown again after saving" /></label>
               </div>
             </>
           ) : form.auth_type === "api_key" ? (
-            <label>API Key<input type="password" value={form.api_key} onChange={(e) => updateForm("api_key", e.target.value)} placeholder="保存后不会回显" /></label>
+            <label>API Key<input type="password" value={form.api_key} onChange={(e) => updateForm("api_key", e.target.value)} placeholder="Won't be shown again after saving" /></label>
           ) : null}
           <div className="form-grid two">
             <label>Max tokens<input type="number" value={form.max_tokens} onChange={(e) => updateForm("max_tokens", Number(e.target.value))} /></label>
-            <label className="toggle"><input type="checkbox" checked={form.verify_ssl} onChange={(e) => updateForm("verify_ssl", e.target.checked)} />校验证书</label>
+            <label className="toggle"><input type="checkbox" checked={form.verify_ssl} onChange={(e) => updateForm("verify_ssl", e.target.checked)} />Verify certificates</label>
           </div>
-          <label>说明<input value={form.description} onChange={(e) => updateForm("description", e.target.value)} placeholder="例如：生产诊断主模型 / 候选测评模型" /></label>
-          <label className="toggle"><input type="checkbox" checked={form.set_active} onChange={(e) => updateForm("set_active", e.target.checked)} />保存后设为当前模型</label>
-          <button className="primary" onClick={saveProfile}><Save size={16} />保存模型</button>
+          <label>Description<input value={form.description} onChange={(e) => updateForm("description", e.target.value)} placeholder="Example: primary production diagnosis model / benchmark candidate model" /></label>
+          <label className="toggle"><input type="checkbox" checked={form.set_active} onChange={(e) => updateForm("set_active", e.target.checked)} />Set as current model after saving</label>
+          <button className="primary" onClick={saveProfile}><Save size={16} />Save model</button>
           {testState.error && <div className="error-box">{testState.error}</div>}
           {testState.data && <div className="success-box">{testState.data.answer || testState.data.status}{testState.data.latency_ms ? ` · ${testState.data.latency_ms}ms` : ""}</div>}
         </div>
@@ -2669,16 +2669,16 @@ function ModelLabPage({
       <Panel>
         <PanelTitle
           icon={Beaker}
-          title="运维能力测评"
-          subtitle="同一批巡检证据给多个模型，比较根因覆盖、动作可执行性、安全门禁、延迟和 token 成本"
-          action={<button className="primary" onClick={runBenchmark} disabled={runState.loading}>{runState.loading ? <Loader2 className="spin" size={16} /> : <Play size={16} />}开始测评</button>}
+          title="Operations Capability Benchmark"
+          subtitle="Give the same inspection evidence to multiple models and compare root-cause coverage, action executability, security gating, latency, and token cost"
+          action={<button className="primary" onClick={runBenchmark} disabled={runState.loading}>{runState.loading ? <Loader2 className="spin" size={16} /> : <Play size={16} />}Start benchmark</button>}
         />
         <div className="benchmark-standard">
-          <header><ShieldCheck size={16} /><div><strong>{rubric.name || "FrontierSRE-Production-Rubric"}</strong><span>公开、可审计的生产 SRE 代理标准，不冒充任何组织未公开的内部标准</span></div></header>
+          <header><ShieldCheck size={16} /><div><strong>{rubric.name || "FrontierSRE-Production-Rubric"}</strong><span>An open, auditable production SRE agent standard that does not pretend to be any organization's unpublished internal benchmark</span></div></header>
           <div className="benchmark-weight-grid">
-            {Object.entries(rubric.weights || { "证据落地": 22, "根因推理": 20, "修复深度": 22, "安全变更": 16, "恢复验证": 12, "响应效率": 8 }).map(([name, weight]) => <div key={name}><b>{Number(weight)}%</b><span>{name}</span></div>)}
+            {Object.entries(rubric.weights || { "Evidence grounding": 22, "Root-cause reasoning": 20, "Remediation depth": 22, "Safe changes": 16, "Recovery verification": 12, "Response efficiency": 8 }).map(([name, weight]) => <div key={name}><b>{Number(weight)}%</b><span>{name}</span></div>)}
           </div>
-          <details><summary>评分如何计算</summary><p>{rubric.formula || "总分 = Σ(维度得分 × 维度权重)。"} 离线测评检查回答是否引用真实证据、是否给出可执行且可回滚的动作、是否具备安全门禁和恢复验证；线上“运维成效”另行记录真实变更成功率、恢复 Pod 与风险降低率，避免把会说误当成会修。</p><p>依据：{asList(rubric.basis).join("；") || "SLO/错误预算、Kubernetes 安全变更、DORA 成效与 OpenTelemetry 证据链。"}</p></details>
+          <details><summary>How scoring works</summary><p>{rubric.formula || "Total score = Σ(dimension score × dimension weight)."} Offline benchmarking checks whether answers cite real evidence, whether actions are executable and reversible, and whether safety gates and recovery verification are included. The live "Ops Effectiveness" view separately tracks real change success rates, recovered Pods, and risk reduction so eloquence is not mistaken for repair ability.</p><p>Basis: {asList(rubric.basis).join("; ") || "SLO/error budgets, safe Kubernetes changes, DORA effectiveness, and the OpenTelemetry evidence chain."}</p></details>
         </div>
         <div className="check-list">
           {profiles.map((profile) => (
@@ -2689,7 +2689,7 @@ function ModelLabPage({
                 onChange={(e) => setSelected((old) => e.target.checked ? [...old, profile.id] : old.filter((x) => x !== profile.id))}
               />
               <span><strong>{profile.id}</strong><small>{profile.model}</small></span>
-              <button type="button" className="ghost tiny" onClick={() => testProfile(profile.id)}>测试</button>
+              <button type="button" className="ghost tiny" onClick={() => testProfile(profile.id)}>Test</button>
             </label>
           ))}
         </div>
@@ -2699,16 +2699,16 @@ function ModelLabPage({
           {asList(benchmark.data?.leaderboard).map((row: any, index: number) => (
             <div className="rank-row" key={row.profile_id}>
               <strong>#{index + 1} {row.profile_id}</strong>
-              <span>平均分 {row.avg_score}</span>
+              <span>Avg score {row.avg_score}</span>
               <span>{row.avg_latency_ms}ms</span>
             </div>
           ))}
-          {!asList(benchmark.data?.leaderboard).length && <EmptyState text="暂无测评记录。先执行一次测评，就能看到模型排行榜。" />}
+          {!asList(benchmark.data?.leaderboard).length && <EmptyState text="No benchmark records yet. Run a benchmark to see the model leaderboard." />}
         </div>
       </Panel>
 
       <Panel className="span-all">
-        <PanelTitle icon={TerminalSquare} title="最近测评报告" subtitle="每一分都有维度权重、命中证据、缺失项和改进建议" />
+        <PanelTitle icon={TerminalSquare} title="Recent benchmark reports" subtitle="Every score includes dimension weights, matched evidence, missing items, and improvement suggestions" />
         <div className="benchmark-runs">
           {latestResults.map((result: any) => (
             <div className="benchmark-card" key={result.profile_id}>
@@ -2716,12 +2716,12 @@ function ModelLabPage({
                 <div><strong>{result.profile_id}</strong><span>{result.model || result.status}</span></div>
                 <div className="benchmark-grade"><b>{result.score?.grade || "-"}</b><strong>{result.score?.total || 0}</strong><small>/ 100</small></div>
               </div>
-              {result.error ? <p className="danger-text">{result.error}</p> : <div className="rubric-list">{asList(result.score?.criteria).map((criterion: any) => <div key={criterion.id}><header><strong>{criterion.label}</strong><span>{criterion.score} × {criterion.weight}% = {criterion.weighted_score}</span></header><i><b style={{ width: `${Math.min(100, Number(criterion.score || 0))}%` }} /></i><small>{asList(criterion.evidence).slice(0, 3).join(" · ") || "未命中有效证据"}</small></div>)}</div>}
-              {!result.error && <div className="benchmark-basis"><div><b>优势</b><span>{asList(result.score?.strengths).join("、") || "尚未形成明显优势"}</span></div><div><b>主要缺口</b><span>{asList(result.score?.gaps).join("；") || "未发现关键缺口"}</span></div><div><b>提升建议</b><span>{asList(result.score?.recommendations).join("；") || "保持当前策略"}</span></div></div>}
-              {!result.error && <details className="benchmark-answer"><summary>查看模型原始回答</summary><p>{result.answer_preview}</p></details>}
+              {result.error ? <p className="danger-text">{result.error}</p> : <div className="rubric-list">{asList(result.score?.criteria).map((criterion: any) => <div key={criterion.id}><header><strong>{criterion.label}</strong><span>{criterion.score} × {criterion.weight}% = {criterion.weighted_score}</span></header><i><b style={{ width: `${Math.min(100, Number(criterion.score || 0))}%` }} /></i><small>{asList(criterion.evidence).slice(0, 3).join(" · ") || "No valid evidence matched"}</small></div>)}</div>}
+              {!result.error && <div className="benchmark-basis"><div><b>Strengths</b><span>{asList(result.score?.strengths).join(", ") || "No clear strengths yet"}</span></div><div><b>Key gaps</b><span>{asList(result.score?.gaps).join("; ") || "No key gaps found"}</span></div><div><b>Improvement suggestions</b><span>{asList(result.score?.recommendations).join("; ") || "Maintain current strategy"}</span></div></div>}
+              {!result.error && <details className="benchmark-answer"><summary>View raw model response</summary><p>{result.answer_preview}</p></details>}
             </div>
           ))}
-          {!latestResults.length && <EmptyState text="运行一次测评后，这里会生成完整的六维能力报告。" />}
+          {!latestResults.length && <EmptyState text="After you run a benchmark, a complete six-dimension capability report will appear here." />}
         </div>
       </Panel>
     </section>
@@ -2730,7 +2730,7 @@ function ModelLabPage({
 
 function KnowledgePage({ activeModelId }: { activeModelId: string }) {
   const [domain, setDomain] = useState("app");
-  const [question, setQuestion] = useState("AI 巡检发现生产风险后我应该怎么执行修复？");
+  const [question, setQuestion] = useState("After AI inspection finds a production risk, how should I execute the repair?");
   const [includePrinciple, setIncludePrinciple] = useState(false);
   const [state, setState] = useState<ApiState<any>>({ loading: false });
   const [ingestState, setIngestState] = useState<ApiState<any>>({ loading: false });
@@ -2769,7 +2769,7 @@ function KnowledgePage({ activeModelId }: { activeModelId: string }) {
 
   async function addKnowledge() {
     if (!ingestForm.content.trim()) {
-      setIngestState({ loading: false, error: "请先填写知识内容" });
+      setIngestState({ loading: false, error: "Please enter knowledge content first" });
       return;
     }
     setIngestState({ loading: true });
@@ -2790,7 +2790,7 @@ function KnowledgePage({ activeModelId }: { activeModelId: string }) {
 
   async function uploadKnowledge() {
     if (!uploadFile) {
-      setIngestState({ loading: false, error: "请先选择要导入的文档" });
+      setIngestState({ loading: false, error: "Please select a document to import first" });
       return;
     }
     setIngestState({ loading: true });
@@ -2818,7 +2818,7 @@ function KnowledgePage({ activeModelId }: { activeModelId: string }) {
     setIngestState({ loading: true });
     try {
       const data = await apiPost<any>("/api/knowledge/reindex", { domain, force: true });
-      setIngestState({ loading: false, data: { status: data.status, message: `重建索引完成：${data.reindexed || 0} 个文档，失败 ${data.failed || 0} 个` } });
+      setIngestState({ loading: false, data: { status: data.status, message: `Reindex complete: ${data.reindexed || 0} documents, ${data.failed || 0} failed` } });
       refreshSources();
       refreshDocuments();
     } catch (error: any) {
@@ -2832,7 +2832,7 @@ function KnowledgePage({ activeModelId }: { activeModelId: string }) {
       const res = await fetch(`/api/knowledge/documents/${encodeURIComponent(documentId)}`, { method: "DELETE", headers: adminAuthHeaders({ Accept: "application/json" }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || data.error || `${res.status} ${res.statusText}`);
-      setIngestState({ loading: false, data: { status: "ok", message: "知识条目已删除" } });
+      setIngestState({ loading: false, data: { status: "ok", message: "Knowledge entry deleted" } });
       refreshSources();
       refreshDocuments();
     } catch (error: any) {
@@ -2843,20 +2843,20 @@ function KnowledgePage({ activeModelId }: { activeModelId: string }) {
   return (
     <section className="knowledge-layout">
       <Panel>
-        <PanelTitle icon={BookOpen} title="运维 RAG 知识库" subtitle="给小助手和运维人员使用：问系统怎么用，也问复杂故障怎么排。" />
+        <PanelTitle icon={BookOpen} title="Operations RAG Knowledge Base" subtitle="For assistants and operators: ask how to use the system or how to troubleshoot complex failures." />
         <div className="form-stack">
-          <label>知识域<select value={domain} onChange={(e) => setDomain(e.target.value)}>
-            <option value="app">应用使用知识库</option>
-            <option value="ops">运维 Runbook 知识库</option>
+          <label>Knowledge domain<select value={domain} onChange={(e) => setDomain(e.target.value)}>
+            <option value="app">Application usage knowledge base</option>
+            <option value="ops">Operations runbook knowledge base</option>
           </select></label>
-          <textarea className="knowledge-input" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="问我这个系统怎么用，或者问某类 K8s 问题怎么处理..." />
-          <label className="toggle"><input type="checkbox" checked={includePrinciple} onChange={(e) => setIncludePrinciple(e.target.checked)} />同时解释原理</label>
-          <button className="primary" onClick={ask} disabled={state.loading}>{state.loading ? <Loader2 className="spin" size={16} /> : <Send size={16} />}提问</button>
+          <textarea className="knowledge-input" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask how to use this system or how to handle a certain kind of K8s issue..." />
+          <label className="toggle"><input type="checkbox" checked={includePrinciple} onChange={(e) => setIncludePrinciple(e.target.checked)} />Explain the principles too</label>
+          <button className="primary" onClick={ask} disabled={state.loading}>{state.loading ? <Loader2 className="spin" size={16} /> : <Send size={16} />}Ask</button>
           {state.error && <div className="error-box">{state.error}</div>}
         </div>
       </Panel>
       <Panel>
-        <PanelTitle icon={BrainCircuit} title="助手回答" />
+        <PanelTitle icon={BrainCircuit} title="Assistant answer" />
         {state.data ? (
           <div className="knowledge-answer">
             <div className="chips"><span>{state.data.source}</span><span>{state.data.status}</span></div>
@@ -2871,38 +2871,38 @@ function KnowledgePage({ activeModelId }: { activeModelId: string }) {
               ))}
             </div>
           </div>
-        ) : <EmptyState text="可以把它当成会说话的产品手册和运维手册。LLM 不可用时也会给出检索兜底答案。" />}
+        ) : <EmptyState text="Think of it as a talking product manual and operations manual. When the LLM is unavailable, it will still provide a retrieval-based fallback answer." />}
       </Panel>
       <Panel>
-        <PanelTitle icon={Database} title="新增知识" subtitle="上传文件或粘贴正文，系统会抽取内容、自动切片并调用 embedding 入库。" />
+        <PanelTitle icon={Database} title="Add knowledge" subtitle="Upload a file or paste text. The system will extract content, chunk it automatically, and call embeddings to store it." />
         <div className="form-stack">
           <div className="form-grid two">
-            <label>知识域<select value={ingestForm.domain} onChange={(e) => updateIngest("domain", e.target.value)}>
-              <option value="auto">自动识别</option>
-              <option value="app">应用使用知识</option>
-              <option value="ops">运维 Runbook</option>
+            <label>Knowledge domain<select value={ingestForm.domain} onChange={(e) => updateIngest("domain", e.target.value)}>
+              <option value="auto">Auto-detect</option>
+              <option value="app">Application usage knowledge</option>
+              <option value="ops">Operations runbook</option>
             </select></label>
-            <label className="toggle"><input type="checkbox" checked={ingestForm.embed} onChange={(e) => updateIngest("embed", e.target.checked)} />保存后向量化</label>
+            <label className="toggle"><input type="checkbox" checked={ingestForm.embed} onChange={(e) => updateIngest("embed", e.target.checked)} />Vectorize after saving</label>
           </div>
-          <label>标题<input value={ingestForm.title} onChange={(e) => updateIngest("title", e.target.value)} placeholder="例如：NFS PVC 权限问题处理 Runbook" /></label>
-          <label>标签<input value={ingestForm.tags} onChange={(e) => updateIngest("tags", e.target.value)} placeholder="crashloop, pvc, rancher；留空会自动识别" /></label>
+          <label>Title<input value={ingestForm.title} onChange={(e) => updateIngest("title", e.target.value)} placeholder="Example: NFS PVC permission issue handling runbook" /></label>
+          <label>Tags<input value={ingestForm.tags} onChange={(e) => updateIngest("tags", e.target.value)} placeholder="crashloop, pvc, rancher; leave blank for auto-detection" /></label>
           <label className="knowledge-dropzone">
             <FileUp size={21} />
-            <span><strong>{uploadFile ? uploadFile.name : "选择知识库文件"}</strong><small>支持 PDF、Word、PowerPoint、Excel、CSV、Markdown、HTML、JSON、YAML、日志和纯文本</small></span>
+            <span><strong>{uploadFile ? uploadFile.name : "Select knowledge base file"}</strong><small>Supports PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML, JSON, YAML, logs, and plain text</small></span>
             <input type="file" accept=".pdf,.docx,.pptx,.xlsx,.odt,.csv,.md,.markdown,.txt,.log,.json,.yaml,.yml,.html,.htm,.xml,.rtf" onChange={(event) => setUploadFile(event.target.files?.[0] || null)} />
           </label>
-          <textarea className="knowledge-input knowledge-ingest-input" value={ingestForm.content} onChange={(e) => updateIngest("content", e.target.value)} placeholder="粘贴知识正文。系统会自动识别应用/运维知识域，按段落切片，并调用 embedding 模型生成向量。" />
+          <textarea className="knowledge-input knowledge-ingest-input" value={ingestForm.content} onChange={(e) => updateIngest("content", e.target.value)} placeholder="Paste the knowledge text. The system will automatically detect the application/operations domain, chunk by paragraph, and use the embedding model to generate vectors." />
           <div className="knowledge-actions">
-            <button className="primary" onClick={uploadKnowledge} disabled={ingestState.loading || !uploadFile}><FileUp size={16} />导入文件</button>
-            <button className="primary" onClick={addKnowledge} disabled={ingestState.loading}>{ingestState.loading ? <Loader2 className="spin" size={16} /> : <Save size={16} />}保存知识</button>
-            <button className="ghost" onClick={reindexKnowledge} disabled={ingestState.loading}><RefreshCcw size={15} />重建索引</button>
+            <button className="primary" onClick={uploadKnowledge} disabled={ingestState.loading || !uploadFile}><FileUp size={16} />Import file</button>
+            <button className="primary" onClick={addKnowledge} disabled={ingestState.loading}>{ingestState.loading ? <Loader2 className="spin" size={16} /> : <Save size={16} />}Save knowledge</button>
+            <button className="ghost" onClick={reindexKnowledge} disabled={ingestState.loading}><RefreshCcw size={15} />Rebuild index</button>
           </div>
           {ingestState.error && <div className="error-box">{ingestState.error}</div>}
           {ingestState.data && <div className="success-box">{ingestState.data.message || ingestState.data.status}</div>}
         </div>
       </Panel>
       <Panel>
-        <PanelTitle icon={Boxes} title="已添加知识" subtitle="这些知识会被小助手、知识库问答和后续运维 RAG 复用。" action={<button className="ghost" onClick={refreshDocuments}><RefreshCcw size={15} />刷新</button>} />
+        <PanelTitle icon={Boxes} title="Added knowledge" subtitle="This knowledge will be reused by the assistant, knowledge-base Q&A, and subsequent operations RAG workflows." action={<button className="ghost" onClick={refreshDocuments}><RefreshCcw size={15} />Refresh</button>} />
         <div className="knowledge-doc-list">
           {asList(documents.data?.documents).map((doc: any) => (
             <div className="knowledge-doc-card" key={doc.id}>
@@ -2912,23 +2912,23 @@ function KnowledgePage({ activeModelId }: { activeModelId: string }) {
               </div>
               <div className="chips">{asList(doc.tags).slice(0, 5).map((tag: string) => <span key={tag}>{tag}</span>)}</div>
               {doc.embedding_error && <p>{doc.embedding_error}</p>}
-              <button className="ghost tiny" onClick={() => deleteKnowledge(doc.id)}>删除</button>
+              <button className="ghost tiny" onClick={() => deleteKnowledge(doc.id)}>Delete</button>
             </div>
           ))}
-          {!asList(documents.data?.documents).length && <EmptyState text="还没有前端添加的知识。保存一条 Runbook 后，这里会显示切片和 embedding 状态。" />}
+          {!asList(documents.data?.documents).length && <EmptyState text="No knowledge has been added from the frontend yet. After you save a runbook, its chunks and embedding status will appear here." />}
         </div>
       </Panel>
       <Panel className="span-all">
-        <PanelTitle icon={Boxes} title="知识源状态" />
+        <PanelTitle icon={Boxes} title="Knowledge source status" />
         <div className="knowledge-meta">
-          <span>Embedding：{embedding.enabled ? "已启用" : "未启用"}</span>
-          <span>{embedding.model || "未配置模型"}</span>
-          <span>{embedding.runtime_documents || 0} 文档 / {embedding.runtime_chunks || 0} 向量片段</span>
+          <span>Embedding: {embedding.enabled ? "Enabled" : "Disabled"}</span>
+          <span>{embedding.model || "No model configured"}</span>
+          <span>{embedding.runtime_documents || 0} documents / {embedding.runtime_chunks || 0} vector chunks</span>
           <span>{embedding.store_path || "runtime store"}</span>
         </div>
         <div className="profile-grid">
           {asList(sources.data?.domains).map((item: any) => (
-            <div className="profile-card" key={item.id}><strong>{item.name}</strong><p>{item.documents} 个知识片段，可被小助手、SRE 对话和运维流程复用。</p></div>
+            <div className="profile-card" key={item.id}><strong>{item.name}</strong><p>{item.documents} knowledge chunks, reusable by the assistant, SRE chat, and operations workflows.</p></div>
           ))}
         </div>
       </Panel>
@@ -2954,7 +2954,7 @@ function EmptyState({ text }: { text: string }) {
 
 function Bars({ rows }: { rows: any[] }) {
   const max = Math.max(1, ...rows.map((r) => Number(r.calls || r.count || 0)));
-  return <div className="bars">{rows.length ? rows.slice(0, 8).map((row) => <div className="bar" key={row.name}><span>{row.name}</span><i><b style={{ width: `${(Number(row.calls || row.count || 0) / max) * 100}%` }} /></i><strong>{row.calls || row.count || 0}</strong></div>) : <EmptyState text="暂无观测数据。" />}</div>;
+  return <div className="bars">{rows.length ? rows.slice(0, 8).map((row) => <div className="bar" key={row.name}><span>{row.name}</span><i><b style={{ width: `${(Number(row.calls || row.count || 0) / max) * 100}%` }} /></i><strong>{row.calls || row.count || 0}</strong></div>) : <EmptyState text="No observability data yet." />}</div>;
 }
 
 const demoVideoMode = new URLSearchParams(window.location.search).get("demoVideo");

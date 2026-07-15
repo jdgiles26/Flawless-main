@@ -1,8 +1,10 @@
-"""Flawless 控制面的兼容运行时与应用装配模块。
+"""Compatibility runtime and application assembly module for the Flawless control plane.
 
-历史接口实现暂时保留在这里，以保证生产行为和测试契约不因目录迁移而改变。
-HTTP 路由、请求模型和新增业务必须分别放入 ``api/features``、``schemas`` 和
-``services``；本文件只接受从旧实现向独立服务迁出的兼容改动。
+Legacy endpoint implementations remain here temporarily so production behavior and test
+contracts do not change during directory migration.
+HTTP routes, request models, and new business logic must live in ``api/features``,
+``schemas``, and ``services`` respectively; this file only accepts compatibility changes
+that move legacy implementations into standalone services.
 """
 from fastapi import FastAPI, Request, HTTPException, File, Form, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
@@ -251,7 +253,7 @@ def _authorized_console(request: Request) -> bool:
 
 
 def _request_is_admin(request: Request) -> bool:
-    """管理员能力默认关闭；开启后仍必须通过 Secret 注入的身份校验。"""
+    """Admin capabilities are disabled by default; when enabled, Secret-injected identity verification is still required."""
     if not _env_bool("CONSOLE_ADMIN_MODE", "false"):
         return False
     admin_users = set(_csv_env("CONSOLE_ADMIN_USERS", "admin"))
@@ -296,7 +298,7 @@ async def console_session(request: Request):
             "upload_knowledge": is_admin,
             "manage_skills": is_admin,
         },
-        "message": "管理员配置能力已启用" if is_admin else "当前为只读配置视图；运维审批能力按原有门禁执行",
+        "message": "Admin configuration capabilities are enabled" if is_admin else "The current configuration view is read-only; operations approval still follows the existing access controls",
     }
 
 
@@ -345,7 +347,7 @@ def _audit_event(action: str, actor: str, target: str, outcome: str, **details):
 
 
 def _safe_audit_event(audit_action: str, actor: str, audit_target: str, outcome: str, **details) -> dict | None:
-    """审计失败不能阻断人工确认或变更执行，只把失败原因回填到任务事件。"""
+    """Audit failures must not block manual approval or change execution; only write the failure reason back into the task event."""
     try:
         reserved = {
             "action": "detail_action",
@@ -404,9 +406,9 @@ async def request_bulkhead_middleware(request: Request, call_next):
                 content={
                     "status": "admin_required",
                     "error": (
-                        "管理员身份校验失败"
+                        "Admin identity verification failed"
                         if mode_enabled else
-                        "CONSOLE_ADMIN_MODE=false，模型、知识库和 Skill 写入已关闭"
+                        "CONSOLE_ADMIN_MODE=false, writes to models, the knowledge base, and Skills are disabled"
                     ),
                     "admin_mode": mode_enabled,
                 },
@@ -429,7 +431,7 @@ async def request_bulkhead_middleware(request: Request, call_next):
             content={
                 "status": "busy",
                 "error": str(exc),
-                "message": "平台当前并发已达到保护阈值，请稍后重试。",
+                "message": "Current platform concurrency has reached the protection threshold. Please try again later.",
                 "runtime": {"requests": REQUEST_BULKHEAD.snapshot()},
             },
         ))
@@ -672,12 +674,12 @@ def _record_llm_observation(source: str, request_payload: dict, response_payload
             "llm_error": _redact_text(str(diagnosis.get("llm_error") or raw.get("error") or error or response_payload.get("backend_error", ""))),
         },
         "chain": [
-            {"step": "collect_context", "name": "采集上下文", "status": "ok" if raw.get("k8s_context") else "unknown"},
-            {"step": "llm_diagnosis", "name": "LLM 诊断", "status": "fallback" if diagnosis.get("llm_error") else ("ok" if diagnosis else "unknown")},
-            {"step": "decision", "name": "决策编排", "status": "ok" if decision else "unknown", "action": decision.get("action", "")},
-            {"step": "healing", "name": "修复执行", "status": "ok" if raw.get("remediation") else "unknown"},
-            {"step": "incident", "name": "事件沉淀", "status": "ok" if raw.get("incident") else "unknown"},
-            {"step": "postmortem", "name": "复盘生成", "status": "ok" if raw.get("postmortem") else "skipped"},
+            {"step": "collect_context", "name": "Collect context", "status": "ok" if raw.get("k8s_context") else "unknown"},
+            {"step": "llm_diagnosis", "name": "LLM diagnosis", "status": "fallback" if diagnosis.get("llm_error") else ("ok" if diagnosis else "unknown")},
+            {"step": "decision", "name": "Decision orchestration", "status": "ok" if decision else "unknown", "action": decision.get("action", "")},
+            {"step": "healing", "name": "Remediation execution", "status": "ok" if raw.get("remediation") else "unknown"},
+            {"step": "incident", "name": "Incident capture", "status": "ok" if raw.get("incident") else "unknown"},
+            {"step": "postmortem", "name": "Postmortem generation", "status": "ok" if raw.get("postmortem") else "skipped"},
         ],
         "raw": _compact_dict(raw, 6000),
     }
@@ -800,7 +802,7 @@ async def process_health():
 # Health
 # ============================================================
 async def health():
-    """健康检查：每个核心后端必须从明确的健康端点返回 2xx。"""
+    """Health check: each core backend must return 2xx from an explicit health endpoint."""
     import asyncio
 
     async def check_one(name: str, url: str) -> dict:
@@ -829,7 +831,7 @@ async def health():
             "error": " | ".join(errors)[-800:],
         }
 
-    # 后端 Agent 是核心健康面；CMDB/Prometheus 是可选数据源，未配置时不应拖垮主状态。
+    # Backend agents are part of the core health surface; CMDB/Prometheus are optional data sources and should not drag down the main status when unconfigured.
     optional_sources = {"cmdb", "prometheus", "loki", "tempo", "grafana"}
     health_urls = {
         name: url
@@ -863,7 +865,7 @@ async def health():
 
 # ============================================================
 # Chat / Diagnosis
-# 请求模型统一位于 backend/app/schemas，避免功能实现与 HTTP 契约混杂。
+# Request models are centralized in backend/app/schemas to avoid mixing feature logic with HTTP contracts.
 # ============================================================
 
 
@@ -877,8 +879,8 @@ def _chat_scope(req: ChatRequest) -> dict:
     namespace = (req.namespace or "").strip()
     workload = (req.deployment or "").strip()
     pod = (req.pod or "").strip()
-    cluster_selected = bool(cluster and cluster.lower() not in {"all", "*", "所有", "所有集群"})
-    namespace_selected = bool(namespace and namespace.lower() not in {"all", "*", "所有", "所有namespace"})
+    cluster_selected = bool(cluster and cluster.lower() not in {"all", "*", "all clusters"})
+    namespace_selected = bool(namespace and namespace.lower() not in {"all", "*", "all namespaces"})
     workload_selected = bool(workload or pod)
     return {
         "cluster": cluster_name,
@@ -895,7 +897,7 @@ def _chat_scope(req: ChatRequest) -> dict:
 
 
 def _pod_matches_workload(pod: dict, workload_name: str, workload_type: str = "") -> bool:
-    """判断 Pod 是否属于用户选择的 Workload，优先使用 owner 信息，名称前缀只做兜底。"""
+    """Determine whether a Pod belongs to the user-selected Workload; prefer owner metadata and only fall back to the name prefix."""
     workload_name = str(workload_name or "").strip()
     if not workload_name:
         return True
@@ -911,12 +913,12 @@ def _pod_matches_workload(pod: dict, workload_name: str, workload_type: str = ""
     }
     if workload_name in candidates and (not workload_type or workload_type.lower() in {"workload", *kinds}):
         return True
-    # StatefulSet/DaemonSet/ReplicaSet 兜底：名称一般以 workload- 开头。
+    # Fallback for StatefulSet/DaemonSet/ReplicaSet: names usually start with workload-.
     return str(pod.get("name") or "").startswith(f"{workload_name}-")
 
 
 def _pod_evidence_priority(pod: dict) -> tuple[int, int, str]:
-    """给一个 Workload 下的多个 Pod 排序，优先读取最能解释故障的 Pod。"""
+    """Rank multiple Pods under one Workload and prioritize the Pod that best explains the failure."""
     category, severity, _ = _classify_pod_issue(pod, [])
     severity_score = {"P0": 500, "P1": 400, "P2": 260, "P3": 120}.get(str(severity or ""), 0)
     category_score = {
@@ -946,7 +948,7 @@ def _select_representative_pod(
     workload_type: str = "",
     requested_pod: str = "",
 ) -> tuple[dict | None, list[dict]]:
-    """从 Workload/Pod 范围内选择最值得下钻日志和事件的 Pod。"""
+    """Choose the Pod within the Workload/Pod scope that is most worth drilling into for logs and events."""
     requested_pod = str(requested_pod or "").strip()
     if requested_pod:
         selected = next((pod for pod in pods if requested_pod == str(pod.get("name") or "")), None)
@@ -1016,7 +1018,7 @@ def _enforce_chat_target_binding(req: ChatRequest, data: dict) -> dict:
             if requested_workload and action in workload_actions:
                 existing = str(change.get("workload_name") or "").strip()
                 if existing and existing != requested_workload:
-                    rejected.append({"action": action, "target": existing, "reason": "与操作员选择的 Workload 不一致"})
+                    rejected.append({"action": action, "target": existing, "reason": "Does not match the operator-selected Workload"})
                     continue
                 change.update({
                     "namespace": req.namespace,
@@ -1026,7 +1028,7 @@ def _enforce_chat_target_binding(req: ChatRequest, data: dict) -> dict:
             if requested_pod and action in pod_actions:
                 existing_pod = str(change.get("pod_name") or "").strip()
                 if existing_pod and existing_pod != requested_pod:
-                    rejected.append({"action": action, "target": existing_pod, "reason": "与操作员选择的 Pod 不一致"})
+                    rejected.append({"action": action, "target": existing_pod, "reason": "Does not match the operator-selected Pod"})
                     continue
                 change.update({"namespace": req.namespace, "pod_name": requested_pod})
             bound.append(change)
@@ -1049,7 +1051,7 @@ def _enforce_chat_target_binding(req: ChatRequest, data: dict) -> dict:
             })
             plan["changes"] = bind_changes(plan.get("changes") or [])
             if rejected:
-                plan["evidence_gap"] = "已拒绝模型生成的跨目标动作；请基于当前指定对象重新取证和规划。"
+                plan["evidence_gap"] = "Cross-target actions generated by the model were rejected; recollect evidence and re-plan based on the currently specified target."
         diagnosis["proposed_changes"] = bind_changes(diagnosis.get("proposed_changes") or [])
     decision = raw.get("decision") or {}
     if isinstance(decision, dict):
@@ -1079,16 +1081,16 @@ def _is_likely_sre_question(text: str) -> bool:
     keywords = [
         "k8s", "kubernetes", "pod", "pods", "deployment", "statefulset", "daemonset", "namespace",
         "node", "ingress", "service", "svc", "container", "crashloop", "crashloopbackoff",
-        "imagepull", "oom", "pending", "prometheus", "alert", "告警", "巡检", "运维", "集群",
-        "节点", "容器", "日志", "事件", "修复", "拓扑", "rbac", "rancher", "helm", "yaml",
-        "cpu", "memory", "重启", "异常", "服务不可用", "发布", "回滚", "灰度", "变更",
-        "扩容", "缩容", "容量", "可用性", "稳定性", "链路", "调用", "依赖", "流量", "网关",
-        "延迟", "超时", "丢包", "dns", "证书", "tls", "ingress", "负载均衡", "熔断", "限流",
-        "队列", "kafka", "redis", "mysql", "elasticsearch", "elk", "日志链路", "监控", "指标",
-        "trace", "tracing", "链路追踪", "apm", "slo", "sla", "错误率", "成功率", "排查",
-        "定位", "根因", "故障", "宕机", "不可用", "慢查询", "资源不足", "权限", "secret",
-        "configmap", "pvc", "pv", "存储卷", "镜像", "探针", "readiness", "liveness", "startup",
-        "工作负载", "中间件", "云", "私有云", "公有云", "阿里云", "rds", "slb", "ack",
+        "imagepull", "oom", "pending", "prometheus", "alert", "inspection", "operations", "cluster",
+        "node", "container", "logs", "events", "remediation", "topology", "rbac", "rancher", "helm", "yaml",
+        "cpu", "memory", "restart", "abnormal", "service unavailable", "release", "rollback", "canary", "change",
+        "scale out", "scale in", "capacity", "availability", "stability", "trace path", "call", "dependency", "traffic", "gateway",
+        "latency", "timeout", "packet loss", "dns", "certificate", "tls", "ingress", "load balancing", "circuit breaking", "rate limiting",
+        "queue", "kafka", "redis", "mysql", "elasticsearch", "elk", "log pipeline", "monitoring", "metrics",
+        "trace", "tracing", "distributed tracing", "apm", "slo", "sla", "error rate", "success rate", "troubleshooting",
+        "locate", "root cause", "failure", "outage", "unavailable", "slow query", "insufficient resources", "permissions", "secret",
+        "configmap", "pvc", "pv", "storage volume", "image", "probe", "readiness", "liveness", "startup",
+        "workload", "middleware", "cloud", "private cloud", "public cloud", "aliyun", "rds", "slb", "ack",
     ]
     return any(k in lowered for k in keywords)
 
@@ -1098,12 +1100,12 @@ def _is_clear_general_chat(text: str) -> bool:
     if not lowered:
         return False
     general_markers = [
-        "讲个笑话", "写首诗", "写一首诗", "写小说", "写作文", "翻译成", "帮我翻译", "润色这段",
-        "生成海报", "画一张", "菜谱", "减肥", "健身计划", "旅游攻略", "历史故事", "数学题",
-        "英语作文", "自我介绍", "情书", "歌词", "电影推荐", "今天吃什么", "天气怎么样",
-        "欢迎语", "宣传语", "广告语", "文案", "帮我总结这段", "改写这段", "续写",
+        "tell a joke", "write a poem", "write me a poem", "write a novel", "write an essay", "translate to", "help me translate", "polish this paragraph",
+        "generate a poster", "draw a picture", "recipe", "lose weight", "fitness plan", "travel guide", "historical story", "math problem",
+        "english essay", "self introduction", "love letter", "lyrics", "movie recommendation", "what should I eat today", "how is the weather",
+        "welcome message", "promotional slogan", "advertising copy", "copywriting", "help me summarize this", "rewrite this", "continue writing",
     ]
-    greetings = {"你好", "hi", "hello", "在吗", "你是谁", "介绍一下你自己", "谢谢", "ok", "好的"}
+    greetings = {"hello", "hi", "are you there", "who are you", "introduce yourself", "thanks", "ok", "okay"}
     if lowered in greetings:
         return True
     return any(item in lowered for item in general_markers)
@@ -1114,15 +1116,15 @@ def _fallback_chat_intent(req: ChatRequest, reason: str = "rule_fallback") -> di
     scope = _chat_scope(req)
     likely_sre = _is_likely_sre_question(text)
     clear_general = _is_clear_general_chat(text)
-    vague_ops = ["看看", "检查", "排查", "分析", "修复", "为什么", "不行", "异常", "失败", "慢", "卡", "定位", "影响", "风险", "建议"]
+    vague_ops = ["check", "inspect", "troubleshoot", "analyze", "fix", "why", "not working", "abnormal", "failure", "slow", "stuck", "locate", "impact", "risk", "suggestion"]
     if likely_sre:
-        mode, confidence, route_reason = "sre", 0.88, "命中运维/稳定性/云原生相关语义"
+        mode, confidence, route_reason = "sre", 0.88, "Matched operations, reliability, or cloud-native semantics"
     elif scope["ops_scope_selected"] and not clear_general:
-        mode, confidence, route_reason = "sre", 0.76, "已选择集群/命名空间/工作负载上下文，按运维意图处理"
+        mode, confidence, route_reason = "sre", 0.76, "A cluster, namespace, or workload context is already selected, so treat it as operations intent"
     elif scope["namespace_selected"] and any(item in text for item in vague_ops) and not clear_general:
-        mode, confidence, route_reason = "sre", 0.72, "已选择 namespace 且问题包含排查/分析/修复类表达"
+        mode, confidence, route_reason = "sre", 0.72, "A namespace is selected and the request includes troubleshooting, analysis, or remediation language"
     else:
-        mode, confidence, route_reason = "general", 0.78 if clear_general else 0.62, "未发现运维意图，按通用问答处理"
+        mode, confidence, route_reason = "general", 0.78 if clear_general else 0.62, "No operations intent detected, so handle it as general Q&A"
     return {
         "mode": mode,
         "confidence": confidence,
@@ -1158,25 +1160,25 @@ async def _route_chat_intent(req: ChatRequest) -> dict:
         return _fallback_chat_intent(req, "llm_intent_router_disabled")
 
     scope = _chat_scope(req)
-    prompt = f"""你是 luxyai SRE Copilot 的意图路由器。请判断用户输入应该进入哪条链路：
+    prompt = f"""You are the intent router for luxyai SRE Copilot. Determine which path the user input should take:
 
-1. sre：任何可能和运维、SRE、DevOps、云、Kubernetes、Rancher、容器、应用稳定性、故障排查、发布变更、容量、性能、网络、存储、安全、日志、监控、告警、拓扑影响、中间件、数据库、云资源有关的问题。
-2. general：明确和运维无关的普通聊天、写作、翻译、生活、创意类问题。
+1. sre: any question that may relate to operations, SRE, DevOps, cloud, Kubernetes, Rancher, containers, application reliability, incident troubleshooting, release changes, capacity, performance, networking, storage, security, logs, monitoring, alerts, topology impact, middleware, databases, or cloud resources.
+2. general: ordinary chat, writing, translation, daily life, or creative questions that are clearly unrelated to operations.
 
-重要规则：
-- 不要只依赖关键词。用户可能说“帮我看看为什么不行”“这个服务很慢”“昨天发布后有问题”，这些都应视为 sre。
-- 如果用户已经选择了 cluster / namespace / workload，除非问题明显是闲聊或写作，否则默认视为 sre。
-- 模糊问题宁可判为 sre，因为 SRE 链路会继续采集证据；只有非常明确无关时才判 general。
-- 只返回 JSON，不要解释，不要 Markdown。
+Important rules:
+- Do not rely on keywords alone. The user may say things like "help me see why this is not working", "this service is very slow", or "there were problems after yesterday's release"; all of these should be treated as sre.
+- If the user has already selected cluster / namespace / workload, default to sre unless the request is obviously casual chat or writing.
+- For ambiguous requests, prefer sre because the SRE path will continue collecting evidence; only classify as general when it is very clearly unrelated.
+- Return JSON only. Do not explain and do not use Markdown.
 
-可用上下文：
+Available context:
 {json.dumps(scope, ensure_ascii=False)}
 
-用户输入：
+User input:
 {text}
 
-返回格式：
-{{"mode":"sre|general","confidence":0.0到1.0,"reason":"一句中文原因","signals":["简短信号1","简短信号2"]}}
+Return format:
+{{"mode":"sre|general","confidence":0.0 to 1.0,"reason":"one short English reason","signals":["short signal 1","short signal 2"]}}
 """
     started_at = datetime.now(timezone.utc)
     trace = start_trace(
@@ -1214,7 +1216,7 @@ async def _route_chat_intent(req: ChatRequest) -> dict:
         intent = {
             "mode": mode,
             "confidence": max(0.0, min(1.0, confidence)),
-            "reason": str(parsed.get("reason") or "LLM 意图路由完成")[:300],
+            "reason": str(parsed.get("reason") or "LLM intent routing completed")[:300],
             "source": "llm",
             "scope": scope,
             "signals": parsed.get("signals") if isinstance(parsed.get("signals"), list) else [],
@@ -1226,7 +1228,7 @@ async def _route_chat_intent(req: ChatRequest) -> dict:
         # Low-confidence general classifications are risky in an SRE console; fall back toward SRE when scope exists.
         if intent["mode"] == "general" and scope["ops_scope_selected"] and intent["confidence"] < 0.82 and not _is_clear_general_chat(text):
             intent["mode"] = "sre"
-            intent["reason"] = f"LLM 低置信度判为通用，但已选择运维范围，升级为 SRE：{intent['reason']}"
+            intent["reason"] = f"LLM classified this as general with low confidence, but an operations scope is already selected, so it was upgraded to SRE: {intent['reason']}"
         end_observation(generation, output=intent, usage=usage, metadata={"estimated_cost_usd": intent["estimated_cost_usd"]})
         score_observation(trace, name="intent_router.confidence", value=intent["confidence"], comment=intent["reason"])
         update_trace(trace, output=intent, metadata={"mode": intent["mode"], "confidence": intent["confidence"]})
@@ -1264,11 +1266,11 @@ async def _general_chat_response(req: ChatRequest, intent: dict | None = None) -
         metadata={"intent_router": intent or {}},
         prompt_name="luxyai.chat.general.v1",
     )
-    prompt = f"""你是 luxyai SRE Copilot。用户的问题不一定和 Kubernetes 运维有关。
-如果问题和 K8S/SRE 无关，请直接用自然、清晰、专业的方式回答，不要强行生成故障诊断、修复流程或 Kubernetes 操作。
-如果问题需要澄清，可以简短说明。
+    prompt = f"""You are luxyai SRE Copilot. The user's question may not be related to Kubernetes operations.
+If the question is unrelated to K8S/SRE, answer directly in a natural, clear, and professional way. Do not force a fault diagnosis, remediation workflow, or Kubernetes operation.
+If the question needs clarification, say so briefly.
 
-用户问题：
+User question:
 {user_text}
 """
     try:
@@ -1286,7 +1288,7 @@ async def _general_chat_response(req: ChatRequest, intent: dict | None = None) -
         flush_observability()
     except Exception as exc:
         usage = {}
-        answer = f"这个问题看起来不是 Kubernetes/SRE 运维问题，我可以直接回答。但当前 LLM 网关调用失败：{type(exc).__name__}: {exc}"
+        answer = f"This question appears unrelated to Kubernetes/SRE operations, so I could answer it directly. However, the current LLM gateway call failed: {type(exc).__name__}: {exc}"
         source = "fallback"
         estimated_cost = 0
         end_observation(generation, output={"answer": answer}, status_message=f"{type(exc).__name__}: {exc}", level="ERROR")
@@ -1305,8 +1307,8 @@ async def _general_chat_response(req: ChatRequest, intent: dict | None = None) -
                 "summary": user_text,
             },
             "diagnosis": {
-                "root_cause": "通用对话问题，不触发 Kubernetes 故障诊断。",
-                "impact": "无集群变更影响",
+                "root_cause": "General conversation request; no Kubernetes fault diagnosis is triggered.",
+                "impact": "No cluster change impact",
                 "confidence": 1,
                 "risk_level": "none",
                 "suggested_action": "answer",
@@ -1401,14 +1403,14 @@ async def _chat_response_data(req: ChatRequest, intent: dict | None = None) -> d
                             "cluster_id": req.cluster_id,
                             "pods": {"pods": []},
                             "target_binding_error": (
-                                f"指定目标不存在或当前身份不可见：{req.workload_type}/{req.deployment}"
-                                if req.deployment else f"指定 Pod 不存在或当前身份不可见：{req.pod}"
+                                f"The specified target does not exist or is not visible to the current identity: {req.workload_type}/{req.deployment}"
+                                if req.deployment else f"The specified Pod does not exist or is not visible to the current identity: {req.pod}"
                             ),
                             "collection_errors": errors,
                         }
                 except Exception as context_exc:
                     request_payload["k8s_context_error"] = f"{type(context_exc).__name__}: {_redact_text(str(context_exc))}"
-            # 只扫描目录包元数据，命中后才加载对应 SKILL.md；匹配输入同时包含已采集的真实证据。
+            # Only scan package metadata first and load the matching SKILL.md on demand; the match input also includes already collected real evidence.
             request_payload["operator_skills"] = OPS_SKILL_REGISTRY.agent_context({
                 "question": req.message,
                 "cluster": req.cluster,
@@ -1423,7 +1425,7 @@ async def _chat_response_data(req: ChatRequest, intent: dict | None = None) -> d
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as e:
-            # 降级：直接模拟返回（当后端不可用时）
+            # Fallback: simulate a direct response when the backend is unavailable.
             data = _fallback_diagnosis_response(req)
             data["backend_error"] = str(e)
     data = _enforce_chat_target_binding(req, data)
@@ -1448,7 +1450,7 @@ def _remember_chat_result(req: ChatRequest, data: dict, started_at: datetime):
 
 
 async def proxy_chat(req: ChatRequest):
-    """代理到 Open WebUI Adapter（最终调用 SRE Graph）"""
+    """Proxy to the Open WebUI Adapter, which ultimately calls the SRE Graph."""
     started_at = datetime.now(timezone.utc)
     intent = await _route_chat_intent(req)
     data = await _chat_response_data(req, intent)
@@ -1496,17 +1498,17 @@ def _chat_answer_presentation_prompt(req: ChatRequest, data: dict) -> str:
             "operator_skills": plan.get("operator_skills") or diagnosis.get("operator_skills") or [],
         },
     }
-    return f"""你是企业生产环境的首席 SRE。请基于下面的真实诊断结果直接回答用户。
+    return f"""You are the chief SRE for a production enterprise environment. Answer the user directly based on the real diagnosis results below.
 
-要求：
-- 先用一两句话说清结论和当前指定目标，不要寒暄，不要复述问题。
-- 只使用输入中的证据；证据不足时明确写“尚不能确认”，不得编造日志、指标或执行结果。
-- 用自然、简洁的中文 Markdown。优先使用短段落和少量列表，不要输出 JSON，不要机械套用固定六段报告。
-- 清楚区分“已经观察到”“推断”“建议执行”；不要声称尚未执行的动作已经完成。
-- 有可执行计划时，简洁说明为什么选择它、会改什么、如何验证；具体审批按钮由界面承载，无需重复长篇安全声明。
-- 不展示隐藏思维链。可以说明证据来源和判断依据。
+Requirements:
+- Use one or two sentences first to clearly state the conclusion and the currently selected target. Do not greet the user and do not repeat the question.
+- Use only the evidence in the input. If the evidence is insufficient, clearly say "cannot yet confirm" and do not invent logs, metrics, or execution results.
+- Use natural, concise Markdown in English. Prefer short paragraphs and a small number of lists. Do not output JSON and do not mechanically force a fixed six-section report.
+- Clearly distinguish between "observed", "inferred", and "recommended action". Do not claim that an action has been completed if it has not been executed.
+- When an executable plan exists, briefly explain why it was chosen, what it will change, and how to validate it. Approval buttons are handled by the UI, so there is no need to repeat long safety disclaimers.
+- Do not reveal hidden chain-of-thought. You may explain evidence sources and the basis for your judgment.
 
-诊断数据：
+Diagnosis data:
 {json.dumps(_redact_sensitive(payload), ensure_ascii=False, default=str)[:18000]}
 """
 
@@ -1514,24 +1516,24 @@ def _chat_answer_presentation_prompt(req: ChatRequest, data: dict) -> str:
 async def proxy_chat_stream(req: ChatRequest):
     async def event_iter():
         started_at = datetime.now(timezone.utc)
-        yield _chat_stream_event({"type": "status", "stage": "understanding", "message": "理解问题并锁定操作目标"})
+        yield _chat_stream_event({"type": "status", "stage": "understanding", "message": "Understanding the issue and locking onto the operation target"})
         intent = await _route_chat_intent(req)
         route_label = (
-            f"LLM 意图路由：{'SRE 运维诊断' if intent.get('mode') == 'sre' else '通用问答'}"
-            f"（{intent.get('source', 'router')}，置信度 {float(intent.get('confidence') or 0):.2f}）"
+            f"LLM intent routing: {'SRE operations diagnosis' if intent.get('mode') == 'sre' else 'general Q&A'}"
+            f" ({intent.get('source', 'router')}, confidence {float(intent.get('confidence') or 0):.2f})"
         )
         yield _chat_stream_event({"type": "status", "stage": "routed", "message": route_label})
         yield _chat_stream_event({
             "type": "status",
             "stage": "collecting" if intent.get("mode") == "sre" else "answering",
-            "message": "读取指定对象的日志、Events、配置与依赖证据" if intent.get("mode") == "sre" else "组织回答",
+            "message": "Reading logs, Events, configuration, and dependency evidence for the selected target" if intent.get("mode") == "sre" else "Composing the answer",
         })
         try:
             data = await _chat_response_data(req, intent)
             yield _chat_stream_event({
                 "type": "status",
                 "stage": "evidence_ready",
-                "message": "证据与候选方案已完成校验，正在生成回答",
+                "message": "Evidence and candidate plans have been validated. Generating the answer now.",
             })
             collected: list[str] = []
             try:
@@ -1550,7 +1552,7 @@ async def proxy_chat_stream(req: ChatRequest):
                     collected.append(fallback)
                     yield _chat_stream_event({"type": "delta", "text": fallback})
                 else:
-                    suffix = "\n\n> 流式连接提前结束，已保留当前已生成内容；执行计划仍以页面下方结构化数据为准。"
+                    suffix = "\n\n> The streaming connection ended early. The content generated so far has been preserved; the execution plan should still follow the structured data shown below on the page."
                     collected.append(suffix)
                     yield _chat_stream_event({"type": "delta", "text": suffix})
                 raw = data.setdefault("raw", {})
@@ -1596,7 +1598,7 @@ async def rank_chat_risks(req: ChatRiskRankRequest):
     baseline = sorted(risks, key=lambda item: (-item["baseline_score"], item["name"]))
     source = "deterministic_fallback"
     rationales = {
-        item["key"]: "依据严重级别、不可用副本、重启次数和现有异常证据排序。"
+        item["key"]: "Ranked by severity, unavailable replicas, restart count, and existing abnormal evidence."
         for item in baseline
     }
     ordered_keys = [item["key"] for item in baseline]
@@ -1605,11 +1607,11 @@ async def rank_chat_risks(req: ChatRiskRankRequest):
         def call_ranker() -> dict:
             from agents.llm_client import get_llm
             prompt = (
-                "你是生产值班 SRE 的风险队列排序器。只对输入中的真实对象重新排序，不得增加、删除或改名。"
-                "排序优先级依次考虑：当前业务不可用程度、影响副本比例、P0/P1、持续重启/调度失败、存储网络等阻断性根因、"
-                "潜在爆炸半径；单纯高重启次数不能压过完全不可用的核心 Workload。"
-                "只返回 JSON：{ordered_keys:[...],rationales:{key:'一句运维人员能看懂的理由'}}。\n"
-                f"范围={req.cluster}/{req.namespace}\n风险对象={json.dumps(_redact_sensitive(risks), ensure_ascii=False)[:14000]}"
+                "You are the risk queue ranker for the production on-call SRE. Only reorder the real objects in the input; do not add, remove, or rename anything."
+                "The ranking priority should consider, in order: current business unavailability, the proportion of affected replicas, P0/P1 severity, sustained restarts or scheduling failures, blocking root causes such as storage or network issues, "
+                "and potential blast radius. A high restart count alone must not outrank a completely unavailable core Workload."
+                "Return JSON only: {ordered_keys:[...],rationales:{key:'one short reason an operator can understand'}}.\n"
+                f"Scope={req.cluster}/{req.namespace}\nRisk objects={json.dumps(_redact_sensitive(risks), ensure_ascii=False)[:14000]}"
             )
             response = get_llm(temperature=0.0, max_tokens=900, profile_id=req.model_profile_id or None).invoke(prompt)
             return _extract_json_object(getattr(response, "content", str(response)))
@@ -1635,7 +1637,7 @@ async def rank_chat_risks(req: ChatRiskRankRequest):
         "rationales": rationales,
         "source": source,
         "error": error or None,
-        "criteria": ["业务不可用程度", "影响副本比例", "严重级别", "持续性", "阻断性根因", "爆炸半径"],
+        "criteria": ["Business unavailability", "Affected replica ratio", "Severity", "Persistence", "Blocking root causes", "Blast radius"],
         "ranked_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -1643,26 +1645,26 @@ async def rank_chat_risks(req: ChatRiskRankRequest):
 APP_KNOWLEDGE_DOCS = [
     {
         "id": "sre-chat",
-        "title": "SRE 对话",
-        "content": "SRE 对话是核心入口。用户描述现象后，系统会先判断是否为运维问题，再采集 Rancher/Kubernetes 上下文、Pod 日志、Events、Workload 模板、Service/Endpoint、PVC/PV、节点状态和 CMDB 拓扑，最终输出诊断结论、证据、可确认执行计划。非运维问题会切换到普通 LLM 回答。",
+        "title": "SRE Chat",
+        "content": "SRE Chat is the core entry point. After the user describes the symptoms, the system first decides whether it is an operations issue, then collects Rancher/Kubernetes context, Pod logs, Events, Workload templates, Service/Endpoint data, PVC/PV state, node status, and CMDB topology, and finally outputs diagnosis conclusions, evidence, and an executable plan for confirmation. Non-operations questions are routed to a standard LLM answer.",
         "tags": ["chat", "sre", "stream", "diagnosis"],
     },
     {
         "id": "inspection",
-        "title": "AI 巡检",
-        "content": "AI 巡检可按所有集群、指定集群或 namespace 扫描问题 Pod/Workload。生产模式会额外扫描健康对象中的未来风险，例如单副本、资源边界缺失、探针缺失、可变镜像 tag、高权限 securityContext 和 hostNetwork。",
+        "title": "AI Inspection",
+        "content": "AI Inspection can scan problem Pods and Workloads across all clusters, a specified cluster, or a namespace. Production mode also scans healthy objects for future risk, such as single replicas, missing resource boundaries, missing probes, mutable image tags, high-privilege securityContext settings, and hostNetwork usage.",
         "tags": ["inspection", "production", "risk", "rancher"],
     },
     {
         "id": "topology",
-        "title": "拓扑影响",
-        "content": "拓扑影响模块从 CMDB、Rancher、Service、Pod、Workload、Kafka/ELK 等关系形成数据流图，用 ChangeSensitiveBlastRadius 算法计算影响等级、关键路径、放大系数和变更门禁依据。3D 拓扑用于看清跨集群数据流和依赖传播。",
+        "title": "Topology Impact",
+        "content": "The topology impact module builds a data flow graph from relationships across CMDB, Rancher, Services, Pods, Workloads, Kafka/ELK, and more. It uses the ChangeSensitiveBlastRadius algorithm to calculate impact levels, critical paths, amplification factors, and change-gating evidence. The 3D topology helps visualize cross-cluster data flow and dependency propagation.",
         "tags": ["topology", "cmdb", "blast-radius", "kafka"],
     },
     {
         "id": "effectiveness",
-        "title": "运维成效",
-        "content": "运维成效模块记录每次巡检、模型测评和运维执行结果，展示模型成功率、变更次数、恢复 Pod、风险降低率和审计记录，用于量化不同模型的真实运维能力。",
+        "title": "Operations Effectiveness",
+        "content": "The operations effectiveness module records every inspection, model evaluation, and execution result, showing model success rate, change count, recovered Pods, risk reduction rate, and audit records to quantify the real operations capability of different models.",
         "tags": ["effectiveness", "model", "audit"],
     },
 ]
@@ -1671,32 +1673,32 @@ APP_KNOWLEDGE_DOCS = [
 OPS_KNOWLEDGE_DOCS = [
     {
         "id": "crashloop",
-        "title": "CrashLoop/OOM/启动失败",
-        "content": "先看 previous logs、当前 logs、Events、lastState、退出码、OOMKilled、探针失败和最近配置变更。OOM 可调整 resources；慢启动/探针失败可加 startupProbe；配置/Secret/PVC 错误要修模板；代码异常不自动改业务镜像。",
+        "title": "CrashLoop/OOM/Startup Failure",
+        "content": "Check previous logs, current logs, Events, lastState, exit codes, OOMKilled, probe failures, and recent configuration changes first. For OOM, adjust resources; for slow startup or probe failures, add startupProbe; for configuration, Secret, or PVC errors, fix the template; do not automatically change the business image for application code exceptions.",
         "tags": ["crashloop", "oom", "probe", "logs"],
     },
     {
         "id": "image-pull",
-        "title": "镜像拉取失败",
-        "content": "检查 ErrImagePull/ImagePullBackOff Events、镜像 tag、registry DNS/网络、仓库鉴权、imagePullSecret。只有配置了 DEFAULT_IMAGE_PULL_SECRET 且证据显示鉴权失败时，系统才自动生成 imagePullSecrets patch。",
+        "title": "Image Pull Failure",
+        "content": "Check ErrImagePull/ImagePullBackOff Events, image tags, registry DNS and networking, registry authentication, and imagePullSecret. The system only auto-generates an imagePullSecrets patch when DEFAULT_IMAGE_PULL_SECRET is configured and the evidence shows an authentication failure.",
         "tags": ["image", "registry", "secret"],
     },
     {
         "id": "storage",
-        "title": "存储和配置挂载",
-        "content": "检查 FailedMount、FailedAttachVolume、PVC/PV/StorageClass、CSI、ConfigMap/Secret 是否存在、volumeMount 路径和权限。目录权限类问题可用 fsGroup/fsGroupChangePolicy 修复；底层 NFS/Ceph/宿主机目录权限需要平台侧处理。",
+        "title": "Storage and Configuration Mounts",
+        "content": "Check FailedMount, FailedAttachVolume, PVC/PV/StorageClass, CSI, whether ConfigMap/Secret exists, and volumeMount paths and permissions. Directory permission issues can be fixed with fsGroup/fsGroupChangePolicy; underlying NFS, Ceph, or host directory permission issues must be handled by the platform side.",
         "tags": ["storage", "pvc", "configmap", "secret"],
     },
     {
         "id": "network",
-        "title": "网络和依赖",
-        "content": "检查 Service selector、EndpointSlice、DNS、NetworkPolicy、Ingress、Service Mesh、Kafka/Redis/MySQL 等依赖链路。没有充分证据时不自动改网络策略，只给验证步骤和审批建议。",
+        "title": "Network and Dependencies",
+        "content": "Check dependency paths such as Service selectors, EndpointSlice, DNS, NetworkPolicy, Ingress, Service Mesh, and Kafka/Redis/MySQL. Without sufficient evidence, do not automatically change network policies; provide only validation steps and approval recommendations.",
         "tags": ["network", "service", "dns", "kafka"],
     },
     {
         "id": "production-readiness",
-        "title": "生产模式风险",
-        "content": "健康对象也要查未来风险：单副本、缺 requests/limits、缺探针、latest 镜像、高权限 securityContext、hostNetwork、缺 PDB/HPA 或拓扑分散策略。可安全自动 patch 的项进入确认流程，业务语义项需要人工补充参数。",
+        "title": "Production-Mode Risks",
+        "content": "Even healthy objects should be checked for future risk: single replicas, missing requests/limits, missing probes, latest image tags, high-privilege securityContext settings, hostNetwork, and missing PDB/HPA or topology spreading policies. Items that can be patched safely enter the confirmation flow; business-semantic changes require operators to supply parameters.",
         "tags": ["production", "security", "resources", "risk"],
     },
 ]
@@ -1712,8 +1714,8 @@ def _knowledge_domain(value: str, title: str = "", content: str = "", tags: list
     ops_keywords = [
         "pod", "k8s", "kubernetes", "namespace", "workload", "deployment", "statefulset",
         "crashloop", "oom", "pvc", "probe", "ingress", "service", "node", "rbac", "prometheus",
-        "rancher", "cmdb", "kafka", "elk", "运维", "巡检", "告警", "修复", "故障", "集群",
-        "存储", "网络", "镜像", "探针", "权限",
+        "rancher", "cmdb", "kafka", "elk", "operations", "inspection", "alert", "remediation", "failure", "cluster",
+        "storage", "network", "image", "probe", "permissions",
     ]
     return "ops" if any(keyword in text for keyword in ops_keywords) else "app"
 
@@ -1729,7 +1731,7 @@ def _knowledge_tags(tags: list[str] | str | None, title: str, content: str) -> l
     auto_terms = [
         "sre", "rancher", "prometheus", "cmdb", "kafka", "elk", "pod", "workload", "deployment",
         "statefulset", "crashloop", "oom", "pvc", "rbac", "security", "network", "storage",
-        "巡检", "拓扑", "模型", "知识库", "自动运维", "修复", "权限", "告警",
+        "inspection", "topology", "model", "knowledge base", "automated operations", "remediation", "permissions", "alert",
     ]
     raw_tags.extend(term for term in auto_terms if term.lower() in text)
     unique: list[str] = []
@@ -1865,7 +1867,7 @@ def _runtime_knowledge_chunks(domain: str) -> list[dict]:
             rows.append({
                 "id": chunk.get("id") or f"{doc.get('id')}:{len(rows)}",
                 "document_id": doc.get("id"),
-                "title": doc.get("title") or "未命名知识",
+                "title": doc.get("title") or "Untitled knowledge",
                 "content": text,
                 "tags": doc.get("tags") or [],
                 "domain": doc_domain,
@@ -1886,8 +1888,8 @@ def _builtin_knowledge_docs(domain: str) -> list[dict]:
     if selected == "ops":
         action_docs = [{
             "id": f"action-{item['id']}",
-            "title": f"动作词表：{item['id']}",
-            "content": f"{item.get('description', '')} 风险级别 {item.get('risk')}，自动允许 {item.get('auto_allowed')}，回滚方式：{item.get('rollback')}",
+            "title": f"Action glossary: {item['id']}",
+            "content": f"{item.get('description', '')} Risk level {item.get('risk')}, auto-allowed {item.get('auto_allowed')}, rollback method: {item.get('rollback')}",
             "tags": ["action", item["id"], item.get("risk", "")],
             "domain": "ops",
             "source": "action_catalog",
@@ -1908,9 +1910,9 @@ def _knowledge_keyword_scores(question: str, docs: list[dict], limit: int = 5) -
     lowered_question = str(question or "").lower()
     tokens = [x for x in re.split(r"[\s,，。；;:/\\|()\[\]{}<>]+", lowered_question) if x]
     zh_terms = [
-        "生产模式", "单副本", "巡检", "拓扑", "爆炸半径", "模型", "知识库", "自动运维",
-        "修复", "权限", "rbac", "crashloop", "oom", "镜像", "探针", "存储", "pvc",
-        "网络", "kafka", "资源", "安全", "部署", "workload", "pod",
+        "production mode", "single replica", "inspection", "topology", "blast radius", "model", "knowledge base", "automated operations",
+        "remediation", "permissions", "rbac", "crashloop", "oom", "image", "probe", "storage", "pvc",
+        "network", "kafka", "resources", "security", "deployment", "workload", "pod",
     ]
     tokens.extend(term for term in zh_terms if term.lower() in lowered_question and term.lower() not in tokens)
     scored = []
@@ -1964,12 +1966,12 @@ async def _retrieve_knowledge(question: str, domain: str, limit: int = 5, use_ve
 
 def _fallback_knowledge_answer(question: str, docs: list[dict], include_principle: bool) -> str:
     if not docs:
-        return "我没有检索到相关知识。建议先说明你在哪个模块遇到问题，或描述 Pod/Workload 的 namespace、名称和错误现象。"
-    lines = ["可以这样做："]
+        return "I could not retrieve any relevant knowledge. Please first explain which module has the issue, or describe the Pod/Workload namespace, name, and error symptoms."
+    lines = ["You can do this:"]
     for doc in docs[:3]:
         lines.append(f"- {doc['title']}：{doc['content']}")
     if include_principle:
-        lines.append("原理简述：系统先用关键词/标签检索知识片段，再把片段和用户问题交给当前模型生成回答；模型不可用时直接返回检索摘要。")
+        lines.append("How it works: the system first retrieves knowledge snippets by keywords and tags, then sends those snippets plus the user's question to the current model to generate an answer; if the model is unavailable, it returns the retrieval summary directly.")
     return "\n".join(lines)
 
 
@@ -1988,8 +1990,8 @@ async def knowledge_sources():
             "runtime_chunks": runtime_chunks,
         },
         "domains": [
-            {"id": "app", "name": "应用使用知识库", "documents": len(APP_KNOWLEDGE_DOCS) + len([item for item in runtime_docs if item.get("domain") == "app"])},
-            {"id": "ops", "name": "运维 Runbook 知识库", "documents": len(OPS_KNOWLEDGE_DOCS) + len(action_catalog_payload()) + len([item for item in runtime_docs if item.get("domain") == "ops"])},
+            {"id": "app", "name": "Application usage knowledge base", "documents": len(APP_KNOWLEDGE_DOCS) + len([item for item in runtime_docs if item.get("domain") == "app"])},
+            {"id": "ops", "name": "Operations runbook knowledge base", "documents": len(OPS_KNOWLEDGE_DOCS) + len(action_catalog_payload()) + len([item for item in runtime_docs if item.get("domain") == "ops"])},
         ],
     }
 
@@ -2009,7 +2011,7 @@ async def add_knowledge_document(req: KnowledgeDocumentRequest):
         raise HTTPException(status_code=400, detail="content is required")
     if len(content.encode("utf-8")) > KNOWLEDGE_MAX_EXTRACTED_BYTES:
         raise HTTPException(status_code=413, detail="knowledge document is too large")
-    title = (req.title or "").strip() or content.splitlines()[0][:80] or "未命名知识"
+    title = (req.title or "").strip() or content.splitlines()[0][:80] or "Untitled knowledge"
     tags = _knowledge_tags(req.tags, title, content)
     domain = _knowledge_domain(req.domain, title, content, tags)
     chunks_text = _split_knowledge_content(content)
@@ -2068,7 +2070,7 @@ async def add_knowledge_document(req: KnowledgeDocumentRequest):
     return {
         "status": "ok" if embedding_status in {"ready", "not_requested"} else "degraded",
         "document": clean_doc,
-        "message": "知识已添加并完成向量化" if embedding_status == "ready" else "知识已添加，当前使用关键词兜底检索",
+        "message": "Knowledge added and vectorized" if embedding_status == "ready" else "Knowledge added; keyword-based fallback retrieval is currently in use",
     }
 
 
@@ -2083,7 +2085,7 @@ async def upload_knowledge_document(
     data = await file.read(KNOWLEDGE_MAX_UPLOAD_BYTES + 1)
     await file.close()
     if len(data) > KNOWLEDGE_MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail=f"文件超过 {KNOWLEDGE_MAX_UPLOAD_BYTES // 1024 // 1024} MiB 限制")
+        raise HTTPException(status_code=413, detail=f"File exceeds the {KNOWLEDGE_MAX_UPLOAD_BYTES // 1024 // 1024} MiB limit")
     content, document_type = await asyncio.to_thread(extract_knowledge_file, data, filename)
     result = await add_knowledge_document(KnowledgeDocumentRequest(
         title=(title or Path(filename).stem)[:160],
@@ -2096,7 +2098,7 @@ async def upload_knowledge_document(
     ))
     result["filename"] = filename
     result["extracted_characters"] = len(content)
-    result["message"] = f"{filename} 已抽取 {len(content)} 个字符；{result.get('message', '已加入知识库')}"
+    result["message"] = f"{filename} extracted {len(content)} characters; {result.get('message', 'added to the knowledge base')}"
     return result
 
 
@@ -2158,16 +2160,16 @@ async def ask_knowledge(req: KnowledgeAskRequest):
     if not question:
         raise HTTPException(status_code=400, detail="question is required")
     docs, retrieval_source = await _retrieve_knowledge(question, req.domain, use_vector=req.use_vector)
-    prompt = f"""你是 Flawless 的产品使用与运维知识库助手。请基于检索片段回答用户问题。
-要求：
-- 中文，简洁，直接告诉用户怎么做。
-- 如果用户问原理，才解释原理；否则只给操作步骤。
-- 不要编造项目不存在的按钮或权限。
+    prompt = f"""You are Flawless's product usage and operations knowledge base assistant. Answer the user's question based on the retrieved snippets.
+Requirements:
+- Use concise English and tell the user directly what to do.
+- Explain the underlying principles only if the user asks about them; otherwise, provide only the operating steps.
+- Do not invent buttons or permissions that do not exist in the product.
 
-用户问题：
+User question:
 {question}
 
-检索片段：
+Retrieved snippets:
 {json.dumps(docs, ensure_ascii=False)}
 """
     try:
@@ -2286,7 +2288,7 @@ async def platform_self_heal_run(request: Request):
                 "namespace": action.get("namespace", "k8s-agent"),
                 "workload_type": action.get("workload_type", "Deployment"),
                 "workload_name": action.get("workload_name", "luxyai"),
-                "reason": action.get("reason", "平台自修复滚动重启"),
+                "reason": action.get("reason", "Platform self-healing rolling restart"),
                 "patch": {"spec": {"template": {"metadata": {"annotations": {"kubectl.kubernetes.io/restartedAt": "<now>"}}}}},
             })
         elif action_type in {"patch_workload", "patch", "scale_out"}:
@@ -2296,27 +2298,27 @@ async def platform_self_heal_run(request: Request):
                 "workload_type": action.get("workload_type", "Deployment"),
                 "workload_name": action.get("workload_name", "luxyai"),
                 "replicas": action.get("replicas"),
-                "reason": action.get("reason", "平台自修复受控变更"),
+                "reason": action.get("reason", "Platform self-healing controlled change"),
                 "patch": action.get("patch") or ({"spec": {"replicas": int(action.get("replicas") or 2)}} if action_type == "scale_out" else {}),
             })
     if not changes:
         return {"status": "skipped", "message": "No executable platform self-heal action generated.", "decision": decision}
     plan = {
         "id": f"platform-self-heal-{uuid.uuid4().hex[:8]}",
-        "title": "平台自修复执行计划",
+        "title": "Platform self-healing execution plan",
         "cluster": "local-cluster",
         "cluster_id": "local",
         "source": "mcp",
         "namespace": changes[0].get("namespace", "k8s-agent"),
         "target": f"{changes[0].get('workload_type', 'Deployment')}/{changes[0].get('workload_name', 'luxyai')}",
         "steps": [
-            {"title": "检查平台 Agent 健康", "description": "读取 /api/health 与服务探针结果，确认故障服务。", "status": "pending"},
-            {"title": "变更风险门禁", "description": "评估本次平台自修复是否会影响控制面可用性。", "status": "pending"},
-            {"title": "执行自修复变更", "description": "根据策略执行 restart/patch/scale，并验证服务恢复。", "status": "pending"},
+            {"title": "Check platform Agent health", "description": "Read /api/health and service probe results to confirm the failed service.", "status": "pending"},
+            {"title": "Change risk gate", "description": "Assess whether this platform self-heal action could affect control-plane availability.", "status": "pending"},
+            {"title": "Execute self-healing changes", "description": "Run restart/patch/scale according to policy and verify service recovery.", "status": "pending"},
         ],
         "changes": changes,
         "requires_confirmation": True,
-        "summary": decision.get("message", "平台自修复"),
+        "summary": decision.get("message", "Platform self-healing"),
     }
     result = await _execute_ops_plan_once(plan)
     PLATFORM_LAST_SELF_HEAL_AT = time.time()
@@ -2363,7 +2365,7 @@ async def test_model_profile(profile_id: str):
         llm = get_llm(temperature=0.0, max_tokens=80, profile_id=profile_id)
 
         def _call():
-            return llm.invoke("只返回一句中文：模型接入成功")
+            return llm.invoke("Return exactly one short English sentence: model connection successful")
 
         resp = await asyncio.wait_for(asyncio.to_thread(_call), timeout=float(os.getenv("MODEL_PROFILE_TEST_TIMEOUT_SECONDS", "30")))
         metadata = getattr(resp, "response_metadata", {}) or {}
@@ -2407,7 +2409,7 @@ def _benchmark_context(req: ModelBenchmarkRequest) -> dict:
             })
     return {
         "scope": {"cluster": req.cluster, "namespace": req.namespace},
-        "prompt": req.prompt or "请基于这些巡检证据输出根因判断、优先级、可执行修复计划、风险门禁和验证方式。",
+        "prompt": req.prompt or "Based on this inspection evidence, output the root cause judgment, priority, executable remediation plan, risk gates, and validation method.",
         "findings": findings[:10],
         "source": "latest-inspection" if findings else "synthetic-sre-case",
     }
@@ -2430,50 +2432,50 @@ def _score_benchmark_answer(answer: str, context: dict, latency_ms: int, usage: 
             named_evidence.append(matched[:80])
 
     evidence_hits, evidence_missing = group_hits({
-        "容器日志/退出状态": ["previous log", "previous_logs", "日志", "exit code", "laststate", "oomkilled"],
-        "Kubernetes Events": ["event", "事件", "failedscheduling", "failedmount", "imagepull"],
-        "Workload 实际配置": ["workload", "deployment", "statefulset", "yaml", "spec", "配置"],
-        "指标与趋势": ["cpu", "memory", "p95", "错误率", "延迟", "重启趋势", "prometheus"],
-        "依赖与影响面": ["拓扑", "依赖", "上游", "下游", "blast", "影响半径", "kafka"],
+        "Container logs/exit status": ["previous log", "previous_logs", "logs", "exit code", "laststate", "oomkilled"],
+        "Kubernetes Events": ["event", "events", "failedscheduling", "failedmount", "imagepull"],
+        "Actual Workload configuration": ["workload", "deployment", "statefulset", "yaml", "spec", "configuration"],
+        "Metrics and trends": ["cpu", "memory", "p95", "error rate", "latency", "restart trend", "prometheus"],
+        "Dependencies and impact scope": ["topology", "dependency", "upstream", "downstream", "blast", "impact radius", "kafka"],
     })
     evidence_score = min(100, len(evidence_hits) * 13 + len(named_evidence) * 9 + (12 if findings else 5))
 
     reasoning_hits, reasoning_missing = group_hits({
-        "根因候选排序": ["根因", "假设", "优先级", "可能性", "候选"],
-        "因果链": ["导致", "因此", "由于", "因果", "传播", "触发"],
-        "置信度与未知项": ["置信", "证据不足", "待确认", "不确定", "需要补充"],
-        "区分症状与根因": ["症状", "根因", "表象", "不是根因"],
+        "Root cause candidate ranking": ["root cause", "hypothesis", "priority", "likelihood", "candidate"],
+        "Causal chain": ["lead to", "therefore", "because", "causal", "propagation", "trigger"],
+        "Confidence and unknowns": ["confidence", "insufficient evidence", "to be confirmed", "uncertain", "need more information"],
+        "Distinguish symptoms from root causes": ["symptom", "root cause", "surface sign", "not the root cause"],
     })
     reasoning_score = min(100, len(reasoning_hits) * 22 + (12 if len(answer) >= 260 else 0))
 
     action_hits, action_missing = group_hits({
         "Workload Patch": ["patch", "resources", "startupProbe", "readinessProbe", "securitycontext"],
-        "容量与弹性": ["scale", "扩容", "hpa", "副本"],
-        "发布回滚": ["rollback", "回滚", "revision", "上一版本"],
-        "Pod/节点处置": ["recreate", "重建 pod", "evict", "cordon", "隔离节点"],
-        "存储修复": ["pvc", "storageclass", "csi", "扩容卷", "fsgroup"],
-        "网络与流量": ["service selector", "endpoint", "networkpolicy", "dns", "流量切换"],
-        "配置与发布": ["yaml", "configmap", "imagepullsecret", "不可变镜像", "灰度"],
-        "替代策略": ["替代策略", "如果未恢复", "下一策略", "二次取证"],
+        "Capacity and elasticity": ["scale", "scale out", "hpa", "replicas"],
+        "Release rollback": ["rollback", "rollback", "revision", "previous version"],
+        "Pod/node handling": ["recreate", "recreate pod", "evict", "cordon", "isolate node"],
+        "Storage remediation": ["pvc", "storageclass", "csi", "expand volume", "fsgroup"],
+        "Network and traffic": ["service selector", "endpoint", "networkpolicy", "dns", "traffic switchover"],
+        "Configuration and release": ["yaml", "configmap", "imagepullsecret", "immutable image", "canary"],
+        "Fallback strategy": ["fallback strategy", "if not recovered", "next strategy", "collect evidence again"],
     })
     target_specificity = 15 if named_evidence else (8 if any(term in text for term in ["namespace", "deployment/", "pod/"]) else 0)
-    action_score = min(100, len(action_hits) * 11 + target_specificity + (10 if "验证" in text else 0))
+    action_score = min(100, len(action_hits) * 11 + target_specificity + (10 if "validate" in text else 0))
 
     safety_hits, safety_missing = group_hits({
-        "人工审批": ["审批", "人工确认", "二次确认"],
-        "预演与最小权限": ["dry-run", "预演", "最小权限", "rbac", "白名单"],
-        "错误预算/SLO 门禁": ["错误预算", "slo", "门禁", "burn rate"],
-        "回滚路径": ["回滚", "恢复原配置", "上一版本"],
-        "影响半径": ["影响半径", "blast", "上游", "下游", "关键路径"],
+        "Manual approval": ["approval", "manual confirmation", "second confirmation"],
+        "Dry run and least privilege": ["dry-run", "dry run", "least privilege", "rbac", "allowlist"],
+        "Error budget/SLO gate": ["error budget", "slo", "gate", "burn rate"],
+        "Rollback path": ["rollback", "restore original configuration", "previous version"],
+        "Blast radius": ["blast radius", "blast", "upstream", "downstream", "critical path"],
     })
-    safety_score = min(100, len(safety_hits) * 19 + (5 if "任意 shell" not in text else 0))
+    safety_score = min(100, len(safety_hits) * 19 + (5 if "arbitrary shell" not in text else 0))
 
     verification_hits, verification_missing = group_hits({
         "Pod Ready/rollout": ["pod ready", "ready", "rollout", "observedgeneration"],
-        "重启与事件消退": ["restart_count", "重启次数", "事件消失", "events"],
-        "业务 SLI": ["错误率", "成功率", "p95", "延迟", "吞吐", "业务探活"],
-        "观测窗口": ["观察窗口", "持续观察", "分钟", "连续"],
-        "失败后策略升级": ["未恢复", "替代策略", "重新取证", "停止重复"],
+        "Restarts and event decay": ["restart_count", "restart count", "events cleared", "events"],
+        "Business SLI": ["error rate", "success rate", "p95", "latency", "throughput", "business probe"],
+        "Observation window": ["observation window", "continuous observation", "minutes", "consecutive"],
+        "Escalation after failure": ["not recovered", "fallback strategy", "collect evidence again", "stop repeating"],
     })
     verification_score = min(100, len(verification_hits) * 19)
 
@@ -2483,12 +2485,12 @@ def _score_benchmark_answer(answer: str, context: dict, latency_ms: int, usage: 
     efficiency_score = round(latency_score * 0.45 + token_score * 0.35 + length_score * 0.2, 1)
 
     dimensions = [
-        ("evidence_grounding", "证据落地", 22, evidence_score, evidence_hits + [f"命中对象：{value}" for value in named_evidence[:4]], evidence_missing),
-        ("root_cause_reasoning", "根因推理", 20, reasoning_score, reasoning_hits, reasoning_missing),
-        ("remediation_depth", "修复深度", 22, action_score, action_hits, action_missing),
-        ("safety_change_control", "安全变更", 16, safety_score, safety_hits, safety_missing),
-        ("recovery_verification", "恢复验证", 12, verification_score, verification_hits, verification_missing),
-        ("operational_efficiency", "响应效率", 8, efficiency_score, [f"延迟 {latency_ms}ms", f"Token {token_total}", f"回答长度 {len(answer)}"], []),
+        ("evidence_grounding", "Evidence grounding", 22, evidence_score, evidence_hits + [f"Matched object: {value}" for value in named_evidence[:4]], evidence_missing),
+        ("root_cause_reasoning", "Root cause reasoning", 20, reasoning_score, reasoning_hits, reasoning_missing),
+        ("remediation_depth", "Remediation depth", 22, action_score, action_hits, action_missing),
+        ("safety_change_control", "Safe change control", 16, safety_score, safety_hits, safety_missing),
+        ("recovery_verification", "Recovery verification", 12, verification_score, verification_hits, verification_missing),
+        ("operational_efficiency", "Response efficiency", 8, efficiency_score, [f"Latency {latency_ms}ms", f"Tokens {token_total}", f"Answer length {len(answer)}"], []),
     ]
     criteria = [{
         "id": key, "label": label, "weight": weight, "score": round(float(score), 1),
@@ -2499,9 +2501,9 @@ def _score_benchmark_answer(answer: str, context: dict, latency_ms: int, usage: 
     grade = "S" if total >= 90 else "A" if total >= 80 else "B" if total >= 70 else "C" if total >= 60 else "D"
     strengths = [item["label"] for item in sorted(criteria, key=lambda item: item["score"], reverse=True)[:2] if item["score"] >= 65]
     weak = sorted(criteria, key=lambda item: item["score"])[:3]
-    gaps = [f"{item['label']}：缺少{'、'.join(item['missing'][:3])}" for item in weak if item["missing"]]
+    gaps = [f"{item['label']}: missing {', '.join(item['missing'][:3])}" for item in weak if item["missing"]]
     recommendations = [
-        f"补强{item['label']}：在答案中明确给出{'、'.join(item['missing'][:2])}。"
+        f"Strengthen {item['label']}: explicitly provide {', '.join(item['missing'][:2])} in the answer."
         for item in weak if item["missing"]
     ]
     return {
@@ -2521,9 +2523,9 @@ def _score_benchmark_answer(answer: str, context: dict, latency_ms: int, usage: 
             "name": "FrontierSRE-Production-Rubric",
             "version": "2026.1",
             "weights": {item["id"]: item["weight"] for item in criteria},
-            "principle": "真实证据优先于语言流畅度；可执行修复必须同时具备安全门禁、回滚和恢复验证。",
+            "principle": "Real evidence takes priority over language fluency; executable remediation must include safety gates, rollback, and recovery verification.",
         },
-        "explain": "总分为六个生产 SRE 维度的加权和；每项均保留命中证据、缺失项与改进建议。",
+        "explain": "The total score is the weighted sum of six production SRE dimensions; each item retains matched evidence, missing items, and improvement suggestions.",
     }
 
 
@@ -2542,15 +2544,15 @@ async def run_model_benchmark(req: ModelBenchmarkRequest):
 
             llm = get_llm(temperature=0.05, max_tokens=min(1800, profile.max_tokens), profile_id=profile.id)
             prompt = (
-                "你是 Kubernetes/AIOps 模型测评对象。请不要闲聊，基于证据输出："
-                "1. 根因排序；2. 可执行修复计划；3. 变更风险门禁；4. 恢复验证；5. 需要人工确认的项。"
-                "不要输出 JSON。\n\n"
+                "You are a Kubernetes/AIOps model under evaluation. Do not chat casually. Based on the evidence, output:"
+                "1. root cause ranking; 2. executable remediation plan; 3. change risk gates; 4. recovery validation; 5. items requiring human confirmation."
+                "Do not output JSON.\n\n"
                 f"{json.dumps(_redact_sensitive(context), ensure_ascii=False)[:12000]}"
             )
 
             def _call():
                 return llm.invoke([
-                    SystemMessage(content="你是顶级 Kubernetes SRE 专家，回答要简洁、证据驱动、可执行。"),
+                    SystemMessage(content="You are a top Kubernetes SRE expert. Keep the answer concise, evidence-driven, and executable."),
                     HumanMessage(content=prompt),
                 ])
 
@@ -2574,7 +2576,7 @@ async def run_model_benchmark(req: ModelBenchmarkRequest):
                 "profile_id": profile_id,
                 "status": "failed",
                 "latency_ms": latency_ms,
-                "score": {"total": 0, "explain": "模型调用失败，无法评分。"},
+                "score": {"total": 0, "explain": "Model invocation failed, so scoring is unavailable."},
                 "error": f"{type(exc).__name__}: {_redact_text(str(exc))}",
             }
         results.append(result)
@@ -2587,18 +2589,18 @@ async def run_model_benchmark(req: ModelBenchmarkRequest):
         "rubric": {
             "name": "FrontierSRE-Production-Rubric",
             "version": "2026.1",
-            "dimensions": ["证据落地", "根因推理", "修复深度", "安全变更", "恢复验证", "响应效率"],
+            "dimensions": ["Evidence grounding", "Root cause reasoning", "Remediation depth", "Safe change control", "Recovery verification", "Response efficiency"],
             "weights": {
-                "证据落地": 22, "根因推理": 20, "修复深度": 22,
-                "安全变更": 16, "恢复验证": 12, "响应效率": 8,
+                "Evidence grounding": 22, "Root cause reasoning": 20, "Remediation depth": 22,
+                "Safe change control": 16, "Recovery verification": 12, "Response efficiency": 8,
             },
-            "formula": "总分 = Σ(维度得分 × 维度权重)；S>=90，A>=80，B>=70，C>=60，否则 D。",
+            "formula": "Total score = Σ(dimension score × dimension weight); S>=90, A>=80, B>=70, C>=60, otherwise D.",
             "basis": [
-                "Google SRE 的 SLO/错误预算与渐进式风险控制原则",
-                "Kubernetes 声明式变更、最小权限、可回滚与 rollout 收敛验证",
-                "DORA 变更失败率/恢复时间与 OpenTelemetry 可观测证据链",
+                "Google SRE principles for SLOs, error budgets, and progressive risk control",
+                "Kubernetes declarative changes, least privilege, rollback capability, and rollout convergence validation",
+                "DORA change failure rate / recovery time metrics and OpenTelemetry observability evidence chains",
             ],
-            "scope": "这是公开、可审计的 frontier AI infrastructure SRE 基准，不冒充任何组织未公开的内部评分标准。",
+            "scope": "This is a public, auditable frontier AI infrastructure SRE benchmark and does not pretend to be any organization's undisclosed internal scoring standard.",
         },
         "results": sorted(results, key=lambda x: (x.get("score") or {}).get("total", 0), reverse=True),
     }
@@ -2636,10 +2638,10 @@ async def model_benchmark(limit: int = 20):
         "rubric": {
             "name": "FrontierSRE-Production-Rubric",
             "version": "2026.1",
-            "weights": {"证据落地": 22, "根因推理": 20, "修复深度": 22, "安全变更": 16, "恢复验证": 12, "响应效率": 8},
-            "formula": "总分 = Σ(维度得分 × 维度权重)",
-            "basis": ["SLO/错误预算", "Kubernetes 安全变更", "恢复验证", "DORA 成效", "OpenTelemetry 证据链"],
-            "scope": "公开可审计的生产 SRE 基准；离线答案评分与线上真实修复成效分开记录。",
+            "weights": {"Evidence grounding": 22, "Root cause reasoning": 20, "Remediation depth": 22, "Safe change control": 16, "Recovery verification": 12, "Response efficiency": 8},
+            "formula": "Total score = Σ(dimension score × dimension weight)",
+            "basis": ["SLO/error budget", "Kubernetes safe changes", "Recovery verification", "DORA outcomes", "OpenTelemetry evidence chain"],
+            "scope": "A public and auditable production SRE benchmark; offline answer scoring is recorded separately from live remediation effectiveness.",
         },
         "leaderboard": sorted(rows, key=lambda x: x["avg_score"], reverse=True),
         "runs": list(reversed(runs)),
@@ -2657,17 +2659,17 @@ async def ai_effectiveness():
 async def algorithm_registry():
     return {
         "status": "ok",
-        "positioning": "本项目的核心不是普通聊天，而是算法驱动的 AIOps 决策控制面。",
+        "positioning": "The core of this project is not ordinary chat, but an algorithm-driven AIOps decision control plane.",
         "patent": {
-            "title": "一种云原生灰度发布门禁控制方法、系统及存储介质",
+            "title": "A cloud-native canary release gate control method, system, and storage medium",
             "mapped_modules": [
-                "变更语义算子",
-                "变更敏感因果传播图",
-                "影响放大系数 Amp",
-                "错误预算安全包络",
-                "灰度-稳定差分观测",
-                "滞回状态机",
-                "审计反馈闭环",
+                "Change semantic operators",
+                "Change-sensitive causal propagation graph",
+                "Impact amplification factor Amp",
+                "Error budget safety envelope",
+                "Canary-stable differential observation",
+                "Hysteresis state machine",
+                "Closed-loop audit feedback",
             ],
         },
         "algorithms": [
@@ -2675,24 +2677,24 @@ async def algorithm_registry():
                 "name": "ChangeSensitiveBlastRadius",
                 "module": "agents.aiops_algorithms.analyze_blast_radius",
                 "api": "/api/topology/impact",
-                "used_in": ["拓扑影响分析", "修复前影响面门禁", "灰度发布门禁"],
-                "patent_mapping": ["S3 变更敏感因果传播图", "S4 传播规则", "影响放大系数 Amp"],
+                "used_in": ["Topology impact analysis", "Impact-scope gate before remediation", "Canary release gate"],
+                "patent_mapping": ["S3 change-sensitive causal propagation graph", "S4 propagation rules", "Impact amplification factor Amp"],
                 "formula": "Amp=sum(PathWeight*OperatorWeight*TrafficRatio*SLOWeight*BusinessWeight*RetryFactor*ResourcePressure*ContextRisk*EdgePropagationCoef*Decay)",
             },
             {
                 "name": "SemanticGrayReleaseGate",
                 "module": "agents.aiops_algorithms.evaluate_release_gate",
                 "api": "/api/release-gate/evaluate",
-                "used_in": ["变更风险分析", "灰度门禁", "发布暂停/回滚/人工审批"],
-                "patent_mapping": ["S2 变更语义识别", "S5 历史风险", "S6 预算预测", "S7 安全包络", "S10 滞回状态机"],
+                "used_in": ["Change risk analysis", "Canary gating", "Release pause/rollback/manual approval"],
+                "patent_mapping": ["S2 change semantic recognition", "S5 historical risk", "S6 budget forecasting", "S7 safety envelope", "S10 hysteresis state machine"],
                 "formula": "Envelope={G|BudgetCost<=RemainingBudget*SafetyFactor,ViolationProb<=Threshold,RiskScore<=Threshold}",
             },
             {
                 "name": "InspectionEvidencePriority",
                 "module": "agents.aiops_algorithms.prioritize_inspection_findings",
                 "api": "/api/inspection/run",
-                "used_in": ["AI 巡检", "告警优先级", "自动运维排队"],
-                "patent_mapping": ["多源数据采集", "运行上下文风险", "审计反馈"],
+                "used_in": ["AI inspection", "Alert prioritization", "Automated operations queueing"],
+                "patent_mapping": ["Multi-source data collection", "Runtime context risk", "Audit feedback"],
                 "formula": "Priority=0.32*Severity+0.24*IssueType+0.18*Impact+0.16*RedundancyRisk+0.10*EvidenceConfidence",
             },
         ],
@@ -2769,9 +2771,9 @@ def _algorithm_live_cases() -> dict:
         cases.extend([
             {
                 "id": "live-blast-radius",
-                "title": "拓扑影响分析 / 爆炸半径",
+                "title": "Topology impact analysis / blast radius",
                 "algorithm": "ChangeSensitiveBlastRadius",
-                "where_used": "拓扑影响分析、SRE 对话影响判断、自动运维前审批门禁",
+                "where_used": "Topology impact analysis, SRE chat impact judgment, and approval gates before automated operations",
                 "input": {"finding": top_finding.get("title"), "cluster": top_finding.get("cluster"), "namespace": top_finding.get("namespace")},
                 "output": {
                     "impact_level": blast.get("impact_level"),
@@ -2779,13 +2781,13 @@ def _algorithm_live_cases() -> dict:
                     "amplification_factor": blast.get("amplification_factor"),
                     "critical_paths": (blast.get("blast_radius") or {}).get("critical_paths", [])[:4],
                 },
-                "action_effect": "影响分数 high/critical 时，修复动作必须先展示影响路径、dry-run 与人工确认。",
+                "action_effect": "When the impact score is high or critical, remediation actions must first show the impact path, dry-run, and manual confirmation.",
             },
             {
                 "id": "live-release-gate",
-                "title": "变更风险分析 / 灰度门禁",
+                "title": "Change risk analysis / canary gate",
                 "algorithm": "SemanticGrayReleaseGate",
-                "where_used": "修复配置、扩缩容、发布变更前的通过/暂停/回滚/人工审批判断",
+                "where_used": "Pass/pause/rollback/manual-approval decisions before configuration fixes, scaling actions, and release changes",
                 "input": {"change": "pod_change", "target": selected.get("title")},
                 "output": {
                     "verdict": release.get("verdict"),
@@ -2794,15 +2796,15 @@ def _algorithm_live_cases() -> dict:
                     "risk": release.get("risk"),
                     "selected_strategy": release.get("selected_strategy"),
                 },
-                "action_effect": "如果不在安全包络内，系统不会直接执行扩大影响面的变更，而会要求人工审批或最小灰度。",
+                "action_effect": "If the change is outside the safety envelope, the system will not directly execute a change that expands the impact scope and will instead require manual approval or the smallest possible canary.",
             },
         ])
     if LAST_INSPECTION_PAYLOAD:
         cases.append({
             "id": "live-inspection-priority",
-            "title": "AI 巡检异常排序 / 自动运维排队",
+            "title": "AI inspection anomaly ranking / automated operations queueing",
             "algorithm": "InspectionEvidencePriority",
-            "where_used": "AI 巡检结果排序、自动运维优先队列、告警去重",
+            "where_used": "AI inspection result ranking, automated operations priority queue, and alert deduplication",
             "input": {
                 "findings": len(findings),
                 "source": LAST_INSPECTION_PAYLOAD.get("source"),
@@ -2812,7 +2814,7 @@ def _algorithm_live_cases() -> dict:
                 "algorithm": LAST_INSPECTION_PAYLOAD.get("inspection_algorithm"),
                 "top_risks": (LAST_INSPECTION_PAYLOAD.get("summary") or {}).get("priority_top", []),
             },
-            "action_effect": "分数最高的问题会排在最前，并且自动运维只对有可执行 plan 的对象发起动作。",
+            "action_effect": "The highest-scoring issue is ranked first, and automated operations only trigger actions for targets with an executable plan.",
         })
     return {"cases": cases, "source": "latest-inspection" if LAST_INSPECTION_PAYLOAD else "waiting-for-runtime-data"}
 
@@ -2821,28 +2823,28 @@ async def algorithm_workbench():
     live = _algorithm_live_cases()
     return {
         "status": "ok",
-        "positioning": "算法展示模块呈现算法在实际 AIOps 流程中的运行结果，而不是静态说明。",
+        "positioning": "The algorithm showcase module presents algorithm results from real AIOps workflows rather than static descriptions.",
         "runtime_source": live["source"],
         "cases": live["cases"],
         "recent_decisions": list(reversed(ALGORITHM_DECISIONS_STORE[-30:])),
         "module_map": [
             {
-                "module": "拓扑影响分析",
+                "module": "Topology impact analysis",
                 "algorithm": "ChangeSensitiveBlastRadius",
                 "api": "/api/topology/impact",
-                "effect": "计算单 Pod/Workload 变化对 Service、依赖、架构的爆炸半径和传播路径。",
+                "effect": "Calculates the blast radius and propagation path of a single Pod/Workload change across Services, dependencies, and architecture.",
             },
             {
-                "module": "变更风险分析",
+                "module": "Change risk analysis",
                 "algorithm": "SemanticGrayReleaseGate",
                 "api": "/api/release-gate/evaluate",
-                "effect": "计算错误预算安全包络，决定通过、暂停、回滚或人工审批。",
+                "effect": "Calculates the error-budget safety envelope and decides whether to pass, pause, roll back, or require manual approval.",
             },
             {
-                "module": "AI 巡检与自动运维",
+                "module": "AI inspection and automated operations",
                 "algorithm": "InspectionEvidencePriority",
                 "api": "/api/inspection/run",
-                "effect": "根据严重级别、问题类型、影响面、冗余风险和证据置信度排序。",
+                "effect": "Ranks by severity, issue type, impact scope, redundancy risk, and evidence confidence.",
             },
         ],
     }
@@ -2852,7 +2854,7 @@ async def algorithm_workbench():
 # Alert
 # ============================================================
 async def proxy_alert(request: Request):
-    """模拟 Alertmanager Webhook，触发完整 SRE 流程"""
+    """Simulate an Alertmanager webhook and trigger the full SRE workflow."""
     started_at = datetime.now(timezone.utc)
     incoming = await request.json()
     body, meta = _normalize_alertmanager_body(incoming)
@@ -2894,7 +2896,7 @@ async def proxy_alert(request: Request):
 
 
 # ============================================================
-# MCP Proxy — 直接调用 K8s 工具
+# MCP Proxy — directly invoke K8s tools
 # ============================================================
 async def _call_mcp_tool(tool: str, arguments: dict | None = None) -> dict:
     req = MCPToolRequest(tool=tool, arguments=arguments or {})
@@ -3192,8 +3194,8 @@ def _fallback_blast_radius_policy(req: TopologyImpactRequest, graph: dict, selec
         "amplification_factor": amplification_factor,
         "context_risk": round(_risk_numeric(selected_node.get("risk") or selected_node.get("status")), 3),
         "summary": (
-            f"已基于标准化拓扑执行降级影响分析。选中节点连接到 {len(upstream)} 个上游、"
-            f"{len(downstream)} 个下游、{len(related_dependencies)} 个基础依赖。"
+            f"A degraded impact analysis was performed based on the normalized topology. The selected node connects to {len(upstream)} upstream nodes, "
+            f"{len(downstream)} downstream nodes, and {len(related_dependencies)} foundational dependencies."
         ),
         "blast_radius": {
             "upstream": upstream,
@@ -3205,12 +3207,12 @@ def _fallback_blast_radius_policy(req: TopologyImpactRequest, graph: dict, selec
             "critical_paths": critical_paths,
         },
         "aiops_value": [
-            "将 source/target 与 from/to 混用的 CMDB 边统一成算法输入，避免影响面归零。",
-            "用图遍历、风险权重、依赖数量和传播深度形成可解释的变更审批基线。",
+            "CMDB edges that mix source/target with from/to are normalized into algorithm input so the impact scope does not collapse to zero.",
+            "Graph traversal, risk weights, dependency counts, and propagation depth are used to form an explainable baseline for change approval.",
         ],
         "recommended_actions": [
-            "优先验证关键路径上的 Service、Pod、Kafka/ELK 或数据依赖是否存在同向异常。",
-            "如果影响等级为 high/critical，执行修复前应开启人工确认和变更门禁。",
+            "Prioritize validating whether Services, Pods, Kafka/ELK components, or data dependencies on the critical path show the same-direction anomaly.",
+            "If the impact level is high or critical, enable manual confirmation and change gates before executing remediation.",
         ],
         "error": f"{type(error).__name__}: {error}",
     }
@@ -3234,16 +3236,16 @@ def _topology_prompt(policy: dict, req: TopologyImpactRequest) -> str:
         "recommended_actions": policy.get("recommended_actions"),
         "selected_detail": (req.selected or {}).get("detail", {}),
     })
-    return f"""你是一个资深 AIOps/SRE 架构专家。请基于下面的 Kubernetes 拓扑上下文，输出对运维有实际价值的影响分析。
+    return f"""You are a senior AIOps/SRE architecture expert. Based on the Kubernetes topology context below, produce an impact analysis that has real operational value.
 
-要求：
-1. 解释被选中节点在整体架构中的角色。
-2. 说明单个 Pod 或 Workload 变动会如何影响应用、Service、调用链和整体集群可靠性。
-3. 明确影响等级、影响路径、需要验证的证据、建议动作。
-4. 不要编造拓扑中不存在的服务；证据不足时要明确说“需要补充证据”。
-5. 输出简洁中文 Markdown，分为：架构角色、影响半径、风险判断、SRE 操作建议、AIOps 后续价值。
+Requirements:
+1. Explain the role of the selected node in the overall architecture.
+2. Describe how a single Pod or Workload change would affect the application, Service, call chain, and overall cluster reliability.
+3. Clearly state the impact level, impact paths, evidence that still needs validation, and recommended actions.
+4. Do not invent services that do not exist in the topology; when evidence is insufficient, explicitly say "additional evidence is required".
+5. Output concise English Markdown with these sections: Architecture role, Blast radius, Risk judgment, SRE action recommendations, AIOps follow-up value.
 
-拓扑上下文 JSON：
+Topology context JSON:
 {json.dumps(compact, ensure_ascii=False, indent=2)}
 """
 
@@ -3253,7 +3255,7 @@ async def analyze_topology_impact(req: TopologyImpactRequest):
     policy = _deterministic_topology_impact(req)
     _record_algorithm_decision(
         "ChangeSensitiveBlastRadius",
-        "拓扑影响分析 / /api/topology/impact",
+        "Topology impact analysis / /api/topology/impact",
         {
             "impact_level": policy.get("impact_level"),
             "impact_score": policy.get("impact_score"),
@@ -3261,7 +3263,7 @@ async def analyze_topology_impact(req: TopologyImpactRequest):
             "critical_paths": (policy.get("blast_radius") or {}).get("critical_paths", [])[:5],
         },
         {"selected": (req.selected or {}).get("title") or (req.selected or {}).get("id"), "scenario": req.scenario},
-        "用于决定影响面、关键路径、是否需要人工确认和后续变更门禁。",
+        "Used to determine impact scope, critical paths, whether manual confirmation is required, and what follow-up change gates should apply.",
     )
     try:
         def _call_llm() -> str:
@@ -3272,7 +3274,7 @@ async def analyze_topology_impact(req: TopologyImpactRequest):
 
             llm = get_llm(temperature=0.05, max_tokens=1800)
             result = llm.invoke([
-                SystemMessage(content="你是企业级 Kubernetes AIOps 产品中的 SRE 拓扑影响分析专家。"),
+                SystemMessage(content="You are the SRE topology impact analysis expert for an enterprise Kubernetes AIOps product."),
                 HumanMessage(content=_topology_prompt(policy, req)),
             ])
             return getattr(result, "content", str(result))
@@ -3290,19 +3292,19 @@ async def analyze_topology_impact(req: TopologyImpactRequest):
             "source": "policy",
             "error": f"{type(e).__name__}: {e}",
             "analysis": "\n".join([
-                "## 架构角色",
+                "## Architecture role",
                 policy["summary"],
                 "",
-                "## 影响半径",
-                f"- 上游关联：{len(policy['blast_radius']['upstream'])} 个节点",
-                f"- 下游关联：{len(policy['blast_radius']['downstream'])} 个节点",
-                f"- 受影响 Service：{len(policy['blast_radius']['impacted_services'])} 个",
-                f"- 关联基础依赖：{len(policy['blast_radius'].get('related_dependencies', []))} 个",
+                "## Blast radius",
+                f"- Upstream relationships: {len(policy['blast_radius']['upstream'])} nodes",
+                f"- Downstream relationships: {len(policy['blast_radius']['downstream'])} nodes",
+                f"- Impacted Services: {len(policy['blast_radius']['impacted_services'])}",
+                f"- Related foundational dependencies: {len(policy['blast_radius'].get('related_dependencies', []))}",
                 "",
-                "## SRE 操作建议",
+                "## SRE action recommendations",
                 *[f"- {item}" for item in policy["recommended_actions"]],
                 "",
-                "## AIOps 后续价值",
+                "## AIOps follow-up value",
                 *[f"- {item}" for item in policy["aiops_value"]],
             ]),
             "policy": policy,
@@ -3322,7 +3324,7 @@ async def evaluate_gray_release_gate(req: ReleaseGateRequest):
         )
         _record_algorithm_decision(
             "SemanticGrayReleaseGate",
-            "变更风险分析 / /api/release-gate/evaluate",
+            "Change risk analysis / /api/release-gate/evaluate",
             {
                 "verdict": result.get("verdict"),
                 "action": result.get("action"),
@@ -3330,7 +3332,7 @@ async def evaluate_gray_release_gate(req: ReleaseGateRequest):
                 "selected_strategy": result.get("selected_strategy"),
             },
             {"change": req.change, "runtime": req.runtime},
-            "用于决定发布/修复变更是通过、暂停、回滚还是转人工审批。",
+            "Used to decide whether a release or remediation change should pass, pause, roll back, or move to manual approval.",
         )
         return result
     except Exception as e:
@@ -3416,14 +3418,14 @@ def _wanted_rancher_clusters() -> set[str] | None:
     raw = os.getenv("RANCHER_CLUSTER_IDS", "all")
     values = {item.strip() for item in raw.split(",") if item.strip()}
     lowered = {item.lower() for item in values}
-    if not values or {"all", "*", "所有"} & lowered:
+    if not values or {"all", "*"} & lowered:
         return None
     return values
 
 
 async def _rancher_get(path: str, timeout: int = 20):
     if not _rancher_enabled():
-        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN 未配置")
+        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN is not configured")
     url = path if str(path).startswith(("http://", "https://")) else f"{_rancher_base()}/{path.lstrip('/')}"
     headers = {"Authorization": f"Bearer {_rancher_token()}", "Accept": "application/json"}
     async with OUTBOUND_BULKHEAD.slot():
@@ -3480,7 +3482,7 @@ async def _rancher_k8s_get(cluster_id: str, path: str, timeout: int = 25):
 
 async def _rancher_k8s_patch(cluster_id: str, path: str, patch: dict, timeout: int = 30):
     if not _rancher_enabled():
-        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN 未配置")
+        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN is not configured")
     url = f"{_rancher_base()}/k8s/clusters/{quote(cluster_id, safe='')}{path}"
     headers = {
         "Authorization": f"Bearer {_rancher_token()}",
@@ -3500,7 +3502,7 @@ async def _rancher_k8s_patch(cluster_id: str, path: str, patch: dict, timeout: i
 
 async def _rancher_k8s_delete(cluster_id: str, path: str, body: dict | None = None, timeout: int = 30):
     if not _rancher_enabled():
-        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN 未配置")
+        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN is not configured")
     url = f"{_rancher_base()}/k8s/clusters/{quote(cluster_id, safe='')}{path}"
     headers = {"Authorization": f"Bearer {_rancher_token()}", "Accept": "application/json"}
     async with OUTBOUND_BULKHEAD.slot():
@@ -3516,7 +3518,7 @@ async def _rancher_k8s_delete(cluster_id: str, path: str, body: dict | None = No
 
 async def _rancher_k8s_post(cluster_id: str, path: str, body: dict, timeout: int = 30):
     if not _rancher_enabled():
-        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN 未配置")
+        raise RuntimeError("RANCHER_URL/RANCHER_TOKEN is not configured")
     url = f"{_rancher_base()}/k8s/clusters/{quote(cluster_id, safe='')}{path}"
     headers = {"Authorization": f"Bearer {_rancher_token()}", "Accept": "application/json", "Content-Type": "application/json"}
     async with OUTBOUND_BULKHEAD.slot():
@@ -3664,12 +3666,12 @@ def _pod_classification_from_context(pod: dict) -> dict:
         " ".join(c.get("image", "") for c in pod.get("containers", [])),
     ]).lower()
     if pod.get("namespace") in {"kube-system", "cattle-system", "fleet-system", "monitoring", "k8s-agent"}:
-        return {"class": "infrastructure", "label": "基础服务", "reason": "系统或平台命名空间"}
+        return {"class": "infrastructure", "label": "Infrastructure service", "reason": "System or platform namespace"}
     if any(x in text for x in ["kafka", "redis", "mysql", "postgres", "elastic", "zookeeper", "mongo"]):
-        return {"class": "data", "label": "中间件/数据", "reason": "名称或镜像匹配数据服务关键词"}
+        return {"class": "data", "label": "Middleware/data", "reason": "The name or image matches data-service keywords"}
     if any(x in text for x in ["job", "cron", "batch"]):
-        return {"class": "batch", "label": "批任务", "reason": "名称匹配任务类关键词"}
-    return {"class": "application", "label": "应用服务", "reason": "默认业务应用类"}
+        return {"class": "batch", "label": "Batch job", "reason": "The name matches job-style keywords"}
+    return {"class": "application", "label": "Application service", "reason": "Default business application category"}
 
 
 async def _rancher_inventory_cluster(cluster: dict) -> dict:
@@ -3764,7 +3766,7 @@ async def _rancher_inventory_cluster(cluster: dict) -> dict:
 
 async def rancher_status():
     if not _rancher_enabled():
-        return {"enabled": False, "status": "disabled", "message": "RANCHER_URL/RANCHER_TOKEN 未配置"}
+        return {"enabled": False, "status": "disabled", "message": "RANCHER_URL/RANCHER_TOKEN is not configured"}
     try:
         clusters = await _rancher_clusters()
         return {
@@ -3775,7 +3777,7 @@ async def rancher_status():
             "cluster_count": len(clusters),
             "cluster_sources": sorted({c.get("source", "") for c in clusters if c.get("source")}),
             "cluster_ids": [c.get("id") for c in clusters],
-            "message": f"Rancher 已返回 {len(clusters)} 个集群。",
+            "message": f"Rancher returned {len(clusters)} clusters.",
         }
     except Exception as exc:
         return {
@@ -3794,7 +3796,7 @@ async def rancher_inventory():
             "clusters": [],
             "inventory": [],
             "summary": {"clusters": 0, "namespaces": 0, "pods": 0, "workloads": 0, "nodes": 0},
-            "message": "RANCHER_URL/RANCHER_TOKEN 未配置；本地集群能力仍通过 MCP 提供。",
+            "message": "RANCHER_URL/RANCHER_TOKEN is not configured; local cluster capabilities are still provided through MCP.",
         }
     cache_key = f"rancher:inventory:{_rancher_base()}:{os.getenv('RANCHER_CLUSTER_IDS', 'all')}"
     cached = await RANCHER_INVENTORY_CACHE.get(cache_key)
@@ -3836,7 +3838,7 @@ async def rancher_inventory():
         "inventory": inventory,
         "summary": summary,
         "errors": errors,
-        "node_condition_standard": "Ready=True 为节点就绪；DiskPressure/MemoryPressure/PIDPressure/NetworkUnavailable=True 才是异常，False 表示无对应压力。",
+        "node_condition_standard": "Ready=True means the node is ready; DiskPressure/MemoryPressure/PIDPressure/NetworkUnavailable=True indicate anomalies, while False means the corresponding pressure is absent.",
     }
     await RANCHER_INVENTORY_CACHE.set(cache_key, payload)
     return {**payload, "cache": {"hit": False, "ttl_seconds": RANCHER_INVENTORY_CACHE.ttl_seconds}}
@@ -3849,7 +3851,7 @@ async def unified_resources(
     limit: int = 500,
     cursor: str = "",
 ):
-    """聚合 Kubernetes 与全栈基础设施资源，供资源浏览器和外部系统统一调用。"""
+    """Aggregate Kubernetes and full-stack infrastructure resources for unified use by the resource explorer and external systems."""
     kubernetes_payload, infrastructure_payload = await asyncio.gather(
         rancher_inventory(),
         asyncio.to_thread(infrastructure_providers_payload),
@@ -3869,10 +3871,10 @@ async def cmdb_topology():
     """Fetch application/data-flow topology from CMDB if CMDB_URL is configured."""
     base = SERVICES.get("cmdb", "").rstrip("/")
     if not base:
-        ebpf_only = await _observed_flow_only_topology("CMDB_URL 未配置")
+        ebpf_only = await _observed_flow_only_topology("CMDB_URL is not configured")
         if ebpf_only:
             return ebpf_only
-        return {"status": "disabled", "enabled": False, "nodes": [], "edges": [], "message": "CMDB_URL 未配置"}
+        return {"status": "disabled", "enabled": False, "nodes": [], "edges": [], "message": "CMDB_URL is not configured"}
     flow_cfg = _observed_flow_endpoint_config()
     cache_key = f"cmdb:topology:{base}:ebpf:{flow_cfg.get('url_env','')}:{flow_cfg.get('url','')}:fusion:{_env_bool('EBPF_TOPOLOGY_FUSION_ENABLED', 'true')}"
     cached = await CMDB_TOPOLOGY_CACHE.get(cache_key)
@@ -3931,14 +3933,14 @@ async def cmdb_topology():
 
 def _k8s_list_path(api_base: str, resource: str, namespace: str) -> str:
     namespace = str(namespace or "all")
-    if namespace.lower() in {"", "all", "*", "所有", "所有namespace"}:
+    if namespace.lower() in {"", "all", "*", "all namespaces"}:
         return f"{api_base}/{resource}"
     return f"{api_base}/namespaces/{quote(namespace, safe='')}/{resource}"
 
 
 def _external_flow_cluster_matches(cluster: dict, req: ExternalTrafficFlowRequest) -> bool:
     selected = {str(req.cluster or ""), str(req.cluster_id or "")}
-    selected = {item for item in selected if item and item.lower() not in {"all", "*", "所有"}}
+    selected = {item for item in selected if item and item.lower() not in {"all", "*"}}
     if not selected:
         return True
     return bool(selected & {str(cluster.get("id") or ""), str(cluster.get("name") or ""), str(cluster.get("raw_id") or "")})
@@ -4094,7 +4096,7 @@ async def _fetch_beyla_loki_flows(req: ExternalTrafficFlowRequest) -> tuple[list
         return [], [{
             "id": "ebpf_beyla",
             "status": "not_configured",
-            "hint": "LOKI_URL 未配置。若使用 manifests/ebpf-beyla.yaml，请同时部署 grafana-observability.yaml，让 Alloy 收集 Beyla flow 日志到 Loki。",
+            "hint": "LOKI_URL is not configured. If you use manifests/ebpf-beyla.yaml, also deploy grafana-observability.yaml so Alloy can collect Beyla flow logs into Loki.",
         }]
 
     namespace = os.getenv("BEYLA_LOKI_NAMESPACE", "luxyai-ebpf").strip() or "luxyai-ebpf"
@@ -4141,7 +4143,7 @@ async def _fetch_beyla_loki_flows(req: ExternalTrafficFlowRequest) -> tuple[list
             "window": f"{seconds}s",
             "lines": len(raw_flows),
             "flows": len(flows),
-            "hint": "" if flows else "Beyla 已接入但最近窗口没有 network_flow 日志；可先访问几个业务接口，或检查 luxyai-beyla DaemonSet 日志。",
+            "hint": "" if flows else "Beyla is connected, but there are no network_flow logs in the recent window. You can access a few business endpoints first, or check the luxyai-beyla DaemonSet logs.",
         }]
     except Exception as exc:
         return [], [{
@@ -4277,7 +4279,7 @@ async def _observed_flow_only_topology(cmdb_error: str = "") -> dict:
         "status": "ok" if observed_flows else "degraded",
         "enabled": True,
         "source": cfg.get("url") or "beyla-loki",
-        "message": "CMDB 不可用，已使用 eBPF/CNI 真实观测流量生成临时拓扑。" if cmdb_error else "已使用 eBPF/CNI 真实观测流量生成拓扑。",
+        "message": "CMDB is unavailable, so a temporary topology was generated from real observed eBPF/CNI traffic." if cmdb_error else "Topology generated from real observed eBPF/CNI traffic.",
         "summary": {},
         "diagnostics": {"cmdb_error": cmdb_error} if cmdb_error else {},
         "nodes": [],
@@ -4355,7 +4357,7 @@ async def _fetch_configured_observed_flows(req: ExternalTrafficFlowRequest) -> t
         return [], [{
             "id": "observed_flow",
             "status": "not_configured",
-            "hint": "配置 EBPF_FLOW_URL/FLANNEL_EBPF_FLOW_URL/CANAL_EBPF_FLOW_URL/CALICO_FLOW_URL/HUBBLE_FLOW_URL 后可接入真实网络流；也可以直接 kubectl apply -f manifests/ebpf-beyla.yaml，从 0 部署 Beyla eBPF Collector。",
+            "hint": "Configure EBPF_FLOW_URL/FLANNEL_EBPF_FLOW_URL/CANAL_EBPF_FLOW_URL/CALICO_FLOW_URL/HUBBLE_FLOW_URL to connect real network flows, or run kubectl apply -f manifests/ebpf-beyla.yaml to deploy the Beyla eBPF Collector from scratch.",
         }]
     source_system = str(cfg.get("source_system") or "observed_flow")
     headers = {"Accept": "application/json"}
@@ -4462,9 +4464,9 @@ async def external_traffic_flows(req: ExternalTrafficFlowRequest):
         *source_status,
     ]
     payload["message"] = (
-        "已输出集群边界外的数据流。observed 表示 flannel/canal/calico/cilium 对应 eBPF Collector、Calico Flow 或 Kiali 等真实网络观测，inferred 表示 K8s/CMDB 配置推断。"
+        "External or cross-cluster data flows were found. observed means real network observations from flannel/canal/calico/cilium via eBPF Collector, Calico Flow, Kiali, or similar sources; inferred means derived from K8s/CMDB configuration."
         if payload["summary"]["total"]
-        else "当前范围没有发现集群外或跨集群数据流；flannel/canal/calico 环境如需真实字节级流量，请接入企业 eBPF Collector、Calico Flow/Goldmane、Kiali 或 Flow Observation。"
+        else "No external or cross-cluster data flows were found in the current scope. If flannel/canal/calico environments need real byte-level traffic, connect an enterprise eBPF Collector, Calico Flow/Goldmane, Kiali, or Flow Observation."
     )
     await EXTERNAL_TRAFFIC_CACHE.set(cache_key, payload)
     return {**payload, "cache": {"hit": False, "ttl_seconds": EXTERNAL_TRAFFIC_CACHE.ttl_seconds}}
@@ -4508,7 +4510,7 @@ def _metric_selector(extra: str = "", cluster_pattern: str = "", cluster_label: 
 
 
 async def _prometheus_cluster_pattern(cluster: str) -> str:
-    if not cluster or cluster in {"all", "*", "所有"}:
+    if not cluster or cluster in {"all", "*"}:
         return ""
     candidates = {str(cluster)}
     if _rancher_enabled():
@@ -4558,7 +4560,7 @@ async def _rancher_metrics_fallback(cluster: str = "all") -> dict:
     if not _rancher_enabled():
         return {"enabled": False, "reason": "Rancher not configured"}
     clusters = await _rancher_clusters()
-    if cluster and cluster not in {"all", "*", "所有"}:
+    if cluster and cluster not in {"all", "*"}:
         clusters = [c for c in clusters if cluster in {c.get("id"), c.get("name")}]
     cpu_m = 0.0
     memory = 0.0
@@ -4613,8 +4615,8 @@ async def prometheus_summary(cluster: str = "all"):
     if not SERVICES.get("prometheus"):
         fallback = await _rancher_metrics_fallback(cluster)
         if fallback.get("enabled"):
-            return await cached_response({"status": "ok", "enabled": True, "source": "rancher-metrics-api", "message": "PROMETHEUS_URL 未配置，已使用 Rancher metrics API 汇总。", **fallback})
-        return await cached_response({"status": "disabled", "enabled": False, "message": "PROMETHEUS_URL 未配置"})
+            return await cached_response({"status": "ok", "enabled": True, "source": "rancher-metrics-api", "message": "PROMETHEUS_URL is not configured, so Rancher metrics API aggregation is being used.", **fallback})
+        return await cached_response({"status": "disabled", "enabled": False, "message": "PROMETHEUS_URL is not configured"})
     cluster_pattern = await _prometheus_cluster_pattern(cluster)
     query_attempts = []
     labels = [""] if not cluster_pattern else _prometheus_cluster_labels()
@@ -4641,7 +4643,7 @@ async def prometheus_summary(cluster: str = "all"):
                     "cluster_label": selected_label,
                     "cluster_pattern": cluster_pattern,
                     "fallback_to_rancher": True,
-                    "message": "Prometheus 核心指标查询失败，已通过 Rancher metrics API 汇总。",
+                    "message": "Prometheus core metric queries failed, so data was aggregated through the Rancher metrics API.",
                     **rancher_fallback,
                     "query_attempts": query_attempts,
                 })
@@ -4666,7 +4668,7 @@ async def prometheus_summary(cluster: str = "all"):
                         "cluster_label": selected_label,
                         "cluster_pattern": cluster_pattern,
                         "fallback_to_rancher": True,
-                        "message": "Prometheus 未匹配到多集群指标或查询失败，已通过 Rancher metrics API 汇总。",
+                        "message": "Prometheus did not match multi-cluster metrics or the query failed, so data was aggregated through the Rancher metrics API.",
                         **rancher_fallback,
                         "query_attempts": query_attempts,
                     })
@@ -4683,7 +4685,7 @@ async def prometheus_summary(cluster: str = "all"):
             "queries": queries,
             "fallback_queries": fallback_queries,
             "query_attempts": query_attempts,
-            "message": "Prometheus 指标未匹配到所选集群标签，已回退到未按集群切分的全局指标。" if fallback_to_global else "",
+            "message": "Prometheus metrics did not match the selected cluster labels, so the response fell back to global metrics that are not split by cluster." if fallback_to_global else "",
         })
     except Exception as e:
         rancher_fallback = await _rancher_metrics_fallback(cluster)
@@ -4694,7 +4696,7 @@ async def prometheus_summary(cluster: str = "all"):
                 "cluster": cluster,
                 "source": "rancher-metrics-api",
                 "fallback_to_rancher": True,
-                "message": "Prometheus 查询异常，已自动降级为 Rancher metrics API。",
+                "message": "Prometheus query failed, so the response automatically degraded to the Rancher metrics API.",
                 "prometheus_error": f"{type(e).__name__}: {e}",
                 **rancher_fallback,
             })
@@ -4723,7 +4725,7 @@ def _increased_memory_quantity(value: str | None) -> str:
 
 
 def _probe_patch_from_container(container: dict) -> dict:
-    """从已有探针复制 handler，生成 Kubernetes 可接受的探针调优 patch。"""
+    """Copy the handler from an existing probe and generate a Kubernetes-acceptable probe tuning patch."""
     handler_keys = ("httpGet", "tcpSocket", "exec", "grpc")
     source = (
         container.get("startupProbe")
@@ -4759,7 +4761,7 @@ def _probe_patch_from_container(container: dict) -> dict:
 
 
 def _container_patch_base(container_name: str, container: dict) -> dict:
-    """JSON merge patch 会替换 containers 列表，因此容器 patch 必须保留 image。"""
+    """A JSON merge patch replaces the containers list, so the container patch must preserve image."""
     patch = {"name": container_name}
     image = str((container or {}).get("image") or "").strip()
     if image:
@@ -4770,52 +4772,52 @@ def _container_patch_base(container_name: str, container: dict) -> dict:
 def _expert_playbook_catalog() -> list[dict]:
     return [
         {
-            "category": "CrashLoop/OOM/启动失败",
-            "diagnostics": ["previous logs", "Events", "退出码/OOMKilled", "探针", "资源限制", "配置/Secret/PVC"],
-            "safe_mutations": ["resources request/limit 调整", "startupProbe 容错窗口", "滚动重启加载配置"],
-            "human_required": ["应用代码缺陷", "镜像版本回退", "业务配置语义变更"],
+            "category": "CrashLoop/OOM/Startup failure",
+            "diagnostics": ["previous logs", "Events", "exit code/OOMKilled", "probes", "resource limits", "configuration/Secret/PVC"],
+            "safe_mutations": ["adjust resource requests/limits", "startupProbe tolerance window", "rolling restart to reload configuration"],
+            "human_required": ["application code defects", "image version rollback", "business configuration semantic changes"],
         },
         {
-            "category": "镜像拉取失败",
-            "diagnostics": ["ErrImagePull Events", "registry DNS/网络", "imagePullSecret", "tag/manifest"],
-            "safe_mutations": ["在明确默认凭据时 patch imagePullSecrets"],
-            "human_required": ["新建镜像仓库凭据", "替换未知镜像 tag"],
+            "category": "Image pull failure",
+            "diagnostics": ["ErrImagePull Events", "registry DNS/networking", "imagePullSecret", "tag/manifest"],
+            "safe_mutations": ["patch imagePullSecrets when the default credentials are clearly known"],
+            "human_required": ["create new image registry credentials", "replace an unknown image tag"],
         },
         {
-            "category": "存储/配置",
-            "diagnostics": ["FailedMount/Attach", "PVC/PV bound", "ConfigMap/Secret 是否存在", "volumeMount 权限"],
-            "safe_mutations": ["fsGroup/fsGroupChangePolicy", "startupProbe 延长等待"],
-            "human_required": ["底层 NFS/Ceph/宿主机目录权限", "缺失配置内容补齐"],
+            "category": "Storage/configuration",
+            "diagnostics": ["FailedMount/Attach", "PVC/PV bound", "whether ConfigMap/Secret exists", "volumeMount permissions"],
+            "safe_mutations": ["fsGroup/fsGroupChangePolicy", "extend startupProbe wait time"],
+            "human_required": ["underlying NFS/Ceph/host directory permissions", "fill in missing configuration content"],
         },
         {
-            "category": "调度/容量/高 CPU",
-            "diagnostics": ["scheduler Events", "节点压力", "配额", "HPA", "Pod metrics"],
-            "safe_mutations": ["临时扩容 replicas", "资源 requests/limits 右调", "受控 tolerations/nodeSelector 变更"],
-            "human_required": ["节点池扩容", "跨可用区调度策略调整"],
+            "category": "Scheduling/capacity/high CPU",
+            "diagnostics": ["scheduler Events", "node pressure", "quotas", "HPA", "Pod metrics"],
+            "safe_mutations": ["temporarily scale out replicas", "raise resource requests/limits", "controlled tolerations/nodeSelector changes"],
+            "human_required": ["node pool expansion", "cross-AZ scheduling policy adjustments"],
         },
         {
-            "category": "网络/依赖",
-            "diagnostics": ["Service/Endpoint", "DNS", "NetworkPolicy", "Ingress/Service Mesh", "Kafka/数据库连接"],
-            "safe_mutations": ["无充分证据时不自动改网络策略，只生成验证清单"],
-            "human_required": ["生产网络策略放通", "外部依赖账号/ACL/防火墙变更"],
+            "category": "Network/dependencies",
+            "diagnostics": ["Service/Endpoint", "DNS", "NetworkPolicy", "Ingress/Service Mesh", "Kafka/database connectivity"],
+            "safe_mutations": ["do not automatically change network policies without sufficient evidence; generate only a validation checklist"],
+            "human_required": ["production network policy allow-rules", "external dependency account/ACL/firewall changes"],
         },
         {
-            "category": "发布回归/PDB 死锁",
-            "diagnostics": ["revision/镜像摘要", "故障时间线", "ReplicaSet rollout", "PDB disruptionsAllowed", "业务 SLI"],
-            "safe_mutations": ["有上一不可变镜像证据时生成回滚", "经副本预算计算后调整 PDB"],
-            "human_required": ["镜像回滚", "PDB 阈值变更", "新 Workload 创建"],
+            "category": "Release regression/PDB deadlock",
+            "diagnostics": ["revision/image digest", "failure timeline", "ReplicaSet rollout", "PDB disruptionsAllowed", "business SLI"],
+            "safe_mutations": ["generate a rollback when evidence for the previous immutable image exists", "adjust PDB after replica-budget calculation"],
+            "human_required": ["image rollback", "PDB threshold changes", "new Workload creation"],
         },
         {
-            "category": "控制面/准入/证书",
-            "diagnostics": ["API Server latency", "admission webhook", "CABundle/SAN/有效期", "controller leader election", "etcd signals"],
-            "safe_mutations": ["默认只读诊断、隔离故障范围、给出精确权限申请"],
-            "human_required": ["Webhook failurePolicy", "证书轮换", "控制面组件变更"],
+            "category": "Control plane/admission/certificates",
+            "diagnostics": ["API Server latency", "admission webhook", "CABundle/SAN/validity period", "controller leader election", "etcd signals"],
+            "safe_mutations": ["default to read-only diagnosis, isolate the fault scope, and provide precise permission requests"],
+            "human_required": ["Webhook failurePolicy", "certificate rotation", "control-plane component changes"],
         },
         {
-            "category": "节点恢复与容量治理",
-            "diagnostics": ["Ready/Pressure 条件", "系统 Pod", "磁盘 inode", "CNI/CSI", "可驱逐工作负载"],
-            "safe_mutations": ["证据充分时 cordon", "恢复验证后 uncordon", "PDB 约束下逐 Pod 驱逐"],
-            "human_required": ["节点重启", "内核/磁盘修复", "节点池扩缩容"],
+            "category": "Node recovery and capacity governance",
+            "diagnostics": ["Ready/Pressure conditions", "system Pods", "disk inodes", "CNI/CSI", "evictable workloads"],
+            "safe_mutations": ["cordon when evidence is sufficient", "uncordon after recovery validation", "evict Pods one by one under PDB constraints"],
+            "human_required": ["node restart", "kernel/disk repair", "node pool scale operations"],
         },
     ]
 
@@ -4914,9 +4916,9 @@ def _workload_production_risk_findings(workload: dict, *, cluster: dict | None =
             risks.append({
                 "code": "missing_resources",
                 "severity": "P2",
-                "title": f"容器 {cname} 缺少完整 requests/limits",
-                "why_it_matters": "生产中缺少资源边界会导致调度不准、抢占不可控、HPA/容量判断失真。",
-                "safe_action": "补齐保守的 cpu/memory requests 与 limits，执行后观察实际用量再微调。",
+                "title": f"Container {cname} is missing complete requests/limits",
+                "why_it_matters": "Missing resource boundaries in production leads to inaccurate scheduling, uncontrolled preemption, and distorted HPA/capacity decisions.",
+                "safe_action": "Fill in conservative cpu/memory requests and limits, then observe real usage and fine-tune afterward.",
             })
             patch_containers.append(_default_resource_patch(container))
         has_readiness = bool(container.get("readinessProbe") or container.get("readiness_probe"))
@@ -4926,26 +4928,26 @@ def _workload_production_risk_findings(workload: dict, *, cluster: dict | None =
             risks.append({
                 "code": "probe_policy_gap",
                 "severity": "P2",
-                "title": f"容器 {cname} 探针策略不完整",
-                "why_it_matters": "缺少 readiness/liveness/startup 会让流量过早进入或故障实例长期留在服务后端。",
-                "safe_action": "需要基于应用真实健康检查端口/路径生成探针；未确认路径前不自动写入伪探针。",
+                "title": f"Container {cname} has an incomplete probe policy",
+                "why_it_matters": "Missing readiness/liveness/startup probes can send traffic too early or leave failed instances in the service backend for too long.",
+                "safe_action": "Probes must be generated from the application's real health-check port and path; do not auto-write fake probes before the path is confirmed.",
             })
         if _image_tag_is_mutable(container.get("image", "")):
             risks.append({
                 "code": "mutable_image_tag",
                 "severity": "P1",
-                "title": f"容器 {cname} 使用可变镜像 tag",
-                "why_it_matters": "latest/dev/snapshot 或无 tag 会让同一 YAML 在不同时间部署出不同镜像，回滚和审计都不可靠。",
-                "safe_action": "改为不可变版本号或 digest；需要你确认目标镜像版本后才能自动 patch。",
+                "title": f"Container {cname} uses a mutable image tag",
+                "why_it_matters": "latest/dev/snapshot tags or no tag at all can cause the same YAML to deploy different images at different times, making rollback and auditing unreliable.",
+                "safe_action": "Switch to an immutable version tag or digest; the target image version must be confirmed before an automatic patch can be applied.",
             })
             high = True
         if security_context.get("privileged") is True or security_context.get("allowPrivilegeEscalation") is True:
             risks.append({
                 "code": "privilege_escalation",
                 "severity": "P1",
-                "title": f"容器 {cname} 存在高权限运行风险",
-                "why_it_matters": "privileged 或提权会扩大容器逃逸/横向移动影响面，生产默认应关闭。",
-                "safe_action": "关闭 allowPrivilegeEscalation；privileged=false 需要先确认驱动/采集类组件例外。",
+                "title": f"Container {cname} has a high-privilege runtime risk",
+                "why_it_matters": "privileged mode or privilege escalation increases the blast radius for container escape and lateral movement, so it should be disabled by default in production.",
+                "safe_action": "Disable allowPrivilegeEscalation; setting privileged=false requires confirming exceptions for drivers or collector-type components first.",
             })
             high = True
             security_patches.append({
@@ -4957,17 +4959,17 @@ def _workload_production_risk_findings(workload: dict, *, cluster: dict | None =
         risks.append({
             "code": "single_replica",
             "severity": "P2",
-            "title": "生产模式发现单副本工作负载",
-            "why_it_matters": "单 Pod 故障、节点维护或滚动发布会直接影响该服务可用性。",
-            "safe_action": "提升到 2 副本；若这是有状态单实例，请打 aiops.example.com/single-replica-ok=true 豁免。",
+            "title": "Single-replica workload found in production mode",
+            "why_it_matters": "A single Pod failure, node maintenance event, or rolling release will directly affect service availability.",
+            "safe_action": "Increase to 2 replicas; if this is an intentional stateful singleton, exempt it with aiops.example.com/single-replica-ok=true.",
         })
     if pod_spec.get("hostNetwork") or pod_spec.get("hostPID") or pod_spec.get("hostIPC"):
         risks.append({
             "code": "host_namespace",
             "severity": "P1",
-            "title": "Workload 使用宿主机网络/进程命名空间",
-            "why_it_matters": "hostNetwork/hostPID/hostIPC 会显著扩大爆炸半径，只有网络/节点代理类组件应豁免。",
-            "safe_action": "核对是否为平台组件；业务应用建议移除 host 级权限后灰度发布。",
+            "title": "Workload uses host network/process namespaces",
+            "why_it_matters": "hostNetwork/hostPID/hostIPC significantly expands the blast radius, and only network or node-agent components should be exempt.",
+            "safe_action": "Verify whether this is a platform component; for business applications, remove host-level privileges and canary the change.",
         })
         high = True
 
@@ -4982,7 +4984,7 @@ def _workload_production_risk_findings(workload: dict, *, cluster: dict | None =
                 kind,
                 name,
                 {"spec": {"template": {"spec": {"containers": patch_containers}}}},
-                "生产模式发现资源边界缺失；补齐保守 requests/limits，减少调度和容量风险。",
+                "Production mode found missing resource boundaries; fill in conservative requests/limits to reduce scheduling and capacity risk.",
             ))
         if security_patches:
             changes.append(_workload_patch_change(
@@ -4990,7 +4992,7 @@ def _workload_production_risk_findings(workload: dict, *, cluster: dict | None =
                 kind,
                 name,
                 {"spec": {"template": {"spec": {"containers": security_patches}}}},
-                "生产模式发现容器提权风险；关闭 allowPrivilegeEscalation，降低横向影响面。",
+                "Production mode found a container privilege-escalation risk; disable allowPrivilegeEscalation to reduce lateral impact.",
             ))
         if replicas <= 1 and kind.lower() in {"deployment", "statefulset"}:
             changes.append(_workload_patch_change(
@@ -4998,7 +5000,7 @@ def _workload_production_risk_findings(workload: dict, *, cluster: dict | None =
                 kind,
                 name,
                 {"spec": {"replicas": 2}},
-                "生产模式发现单副本风险；提升到 2 副本以覆盖节点维护、滚动发布和单 Pod 故障。",
+                "Production mode found a single-replica risk; increase to 2 replicas to cover node maintenance, rolling releases, and single-Pod failures.",
             ))
 
     severity = "P1" if high or any(r.get("severity") == "P1" for r in risks) else "P2"
@@ -5010,7 +5012,7 @@ def _workload_production_risk_findings(workload: dict, *, cluster: dict | None =
         "cluster_id": cluster_id,
         "category": "production_risk",
         "severity": severity,
-        "title": f"[{cluster_name}] {kind}/{name} 生产配置风险",
+        "title": f"[{cluster_name}] {kind}/{name} production configuration risk",
         "summary": summary,
         "namespace": namespace,
         "name": name,
@@ -5059,38 +5061,38 @@ def _ops_plan_from_finding(finding: dict) -> dict:
     patchable_workload = str(workload_type).lower() in {"deployment", "statefulset", "daemonset", "replicaset"}
     if category == "production_risk":
         steps = [
-            {"title": "核对生产配置风险", "description": "检查资源边界、镜像 tag、探针、安全上下文、副本数和 host 级权限。", "status": "pending"},
-            {"title": "区分可自动修复与需确认项", "description": "只对资源边界、提权关闭和副本数这类可审计 patch 生成候选动作；镜像版本和业务探针路径需要人工确认。", "status": "pending"},
-            {"title": "执行变更门禁", "description": "计算影响面、风险级别和回滚方式，等待人工确认后再提交 Kubernetes patch。", "status": "pending"},
+            {"title": "Verify production configuration risks", "description": "Check resource boundaries, image tags, probes, security context, replica count, and host-level privileges.", "status": "pending"},
+            {"title": "Separate auto-remediable items from confirmation-required items", "description": "Generate candidate actions only for auditable patches such as resource boundaries, privilege reduction, and replica count; image versions and business probe paths require human confirmation.", "status": "pending"},
+            {"title": "Run the change gates", "description": "Calculate impact scope, risk level, and rollback approach, then wait for manual confirmation before submitting the Kubernetes patch.", "status": "pending"},
         ]
     elif category == "crashloop":
         steps = [
-            {"title": "查看日志", "description": "读取 CrashLoop Pod 最近日志和上一次退出日志，确认启动失败/OOM/异常栈。", "status": "pending"},
-            {"title": "检查配置和存储卷", "description": "核对 ConfigMap、Secret、PVC、挂载路径、启动参数和环境变量。", "status": "pending"},
-            {"title": "检查探针和资源限制", "description": "检查 liveness/readiness、CPU/Memory limit、近期镜像或配置变更。", "status": "pending"},
-            {"title": "选择差异化修复策略", "description": "优先按证据选择资源、探针、权限或配置修复；只有证据不足时才把滚动重启作为低风险加载动作。", "status": "pending"},
+            {"title": "Review logs", "description": "Read the latest logs and previous-exit logs for the CrashLoop Pod to confirm startup failure, OOM, or exception stack traces.", "status": "pending"},
+            {"title": "Check configuration and volumes", "description": "Verify ConfigMap, Secret, PVC, mount paths, startup parameters, and environment variables.", "status": "pending"},
+            {"title": "Check probes and resource limits", "description": "Inspect liveness/readiness probes, CPU/memory limits, and recent image or configuration changes.", "status": "pending"},
+            {"title": "Choose a differentiated remediation strategy", "description": "Prioritize evidence-based fixes for resources, probes, permissions, or configuration; use a rolling restart as a low-risk reload action only when evidence is insufficient.", "status": "pending"},
         ]
     elif category == "image_pull":
         steps = [
-            {"title": "检查镜像拉取", "description": "确认镜像 tag、仓库地址、imagePullSecret、节点到镜像仓库网络连通性。", "status": "pending"},
-            {"title": "查看 Pod Events", "description": "定位 ErrImagePull/ImagePullBackOff 的具体鉴权或网络错误。", "status": "pending"},
+            {"title": "Check image pulling", "description": "Confirm the image tag, registry address, imagePullSecret, and network connectivity from the node to the image registry.", "status": "pending"},
+            {"title": "Review Pod Events", "description": "Locate the specific authentication or network error behind ErrImagePull/ImagePullBackOff.", "status": "pending"},
         ]
     elif category == "network":
         steps = [
-            {"title": "检查网络事件", "description": "查看 Pod Events 中 DNS、Service、CNI、超时或连接拒绝线索。", "status": "pending"},
-            {"title": "验证服务发现", "description": "检查 Service endpoints、selector、DNS 解析、NetworkPolicy 或 Service Mesh 路由。", "status": "pending"},
-            {"title": "定位依赖链路", "description": "结合 CMDB/拓扑查看该 Pod 到 Kafka、数据库、上游服务的真实数据流路径。", "status": "pending"},
+            {"title": "Check network events", "description": "Inspect Pod Events for DNS, Service, CNI, timeout, or connection-refused clues.", "status": "pending"},
+            {"title": "Validate service discovery", "description": "Check Service endpoints, selectors, DNS resolution, NetworkPolicy, or Service Mesh routing.", "status": "pending"},
+            {"title": "Locate dependency paths", "description": "Use CMDB/topology data to inspect the real traffic path from this Pod to Kafka, databases, and upstream services.", "status": "pending"},
         ]
     elif category == "storage_config":
         steps = [
-            {"title": "检查配置和存储卷", "description": "查看 ConfigMap/Secret/PVC 挂载失败、权限、路径和存储绑定状态。", "status": "pending"},
-            {"title": "查看事件", "description": "确认 MountVolume、FailedAttachVolume、FailedScheduling 相关事件。", "status": "pending"},
+            {"title": "Check configuration and volumes", "description": "Inspect ConfigMap/Secret/PVC mount failures, permissions, paths, and storage binding status.", "status": "pending"},
+            {"title": "Review events", "description": "Confirm MountVolume, FailedAttachVolume, and FailedScheduling related events.", "status": "pending"},
         ]
     else:
         steps = [
-            {"title": "查看日志", "description": "读取最近容器日志，确认错误栈、退出原因或启动失败信息。", "status": "pending"},
-            {"title": "检查配置和存储卷", "description": "核对 ConfigMap、Secret、PVC、挂载路径和权限。", "status": "pending"},
-            {"title": "检查运行参数", "description": "检查副本数、资源限制、探针、镜像版本和最近变更。", "status": "pending"},
+            {"title": "Review logs", "description": "Read recent container logs to confirm error stacks, exit reasons, or startup failure details.", "status": "pending"},
+            {"title": "Check configuration and volumes", "description": "Verify ConfigMap, Secret, PVC, mount paths, and permissions.", "status": "pending"},
+            {"title": "Check runtime parameters", "description": "Inspect replica count, resource limits, probes, image versions, and recent changes.", "status": "pending"},
         ]
     changes: list[dict] = []
     strategy_class = "evidence_only"
@@ -5116,7 +5118,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
                     },
                 },
             }]}}}},
-            "检测到 OOMKilled 证据；提升容器内存 request/limit 并通过 rollout 验证，而不是重复重启。",
+            "OOMKilled evidence was detected; increase the container memory request/limit and validate via rollout instead of repeatedly restarting.",
         ))
     elif category == "crashloop" and any(term in evidence_text for term in ["probe failed", "liveness", "readiness", "startup probe", "connection refused", "context deadline exceeded"]) and workload_name and container_name and patchable_workload:
         strategy_class = "probe_stabilization"
@@ -5129,7 +5131,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
                 **_container_patch_base(container_name, container),
                 **probe_patch,
             }]}}}},
-            "检测到启动慢/探针失败证据；增加 startupProbe 容错窗口，避免容器在真正启动前被反复杀死。",
+            "Evidence of slow startup or probe failure was detected; increase the startupProbe tolerance window to avoid repeatedly killing the container before it fully starts.",
         ))
     elif category == "storage_config" and any(term in evidence_text for term in ["permission denied", "operation not permitted", "read-only file system"]) and workload_name and patchable_workload:
         strategy_class = "volume_permission_recovery"
@@ -5142,7 +5144,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
                 "fsGroup": fs_group,
                 "fsGroupChangePolicy": "OnRootMismatch",
             }}}}},
-            f"检测到挂载卷权限证据；按容器运行用户/组选择 fsGroup={fs_group}，并在 rollout 后复查挂载事件和日志。",
+            f"Volume permission evidence was detected; select fsGroup={fs_group} based on the container runtime user/group, then recheck mount events and logs after rollout.",
         ))
     elif category == "image_pull" and any(term in evidence_text for term in ["unauthorized", "authentication required", "pull access denied", "secret", "denied"]) and workload_name and patchable_workload and os.getenv("DEFAULT_IMAGE_PULL_SECRET", "").strip():
         strategy_class = "image_pull_secret_recovery"
@@ -5152,7 +5154,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
             workload_type,
             workload_name,
             {"spec": {"template": {"spec": {"imagePullSecrets": [{"name": secret_name}]}}}},
-            f"检测到镜像仓库鉴权失败，并已配置 DEFAULT_IMAGE_PULL_SECRET={secret_name}；为 Workload 注入 imagePullSecrets。",
+            f"Image registry authentication failure was detected and DEFAULT_IMAGE_PULL_SECRET={secret_name} is configured; inject imagePullSecrets into the Workload.",
         ))
     elif category == "not_ready" and any(term in evidence_text for term in ["probe failed", "liveness", "readiness", "startup probe"]) and workload_name and container_name and patchable_workload:
         strategy_class = "probe_stabilization"
@@ -5165,7 +5167,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
                 **_container_patch_base(container_name, container),
                 **probe_patch,
             }]}}}},
-            "检测到探针失败证据；增加启动容错窗口，避免慢启动容器被反复杀死。",
+            "Probe-failure evidence was detected; increase the startup tolerance window to avoid repeatedly killing slow-starting containers.",
         ))
     elif category == "crashloop" and workload_name and patchable_workload:
         strategy_class = "controlled_rollout_restart"
@@ -5174,7 +5176,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
             "namespace": namespace,
             "workload_type": workload_type,
             "workload_name": workload_name,
-            "reason": "CrashLoop/高重启风险，确认日志和配置后执行滚动重启。",
+            "reason": "CrashLoop/high-restart risk; perform a rolling restart after confirming logs and configuration.",
             "patch": {"spec": {"template": {"metadata": {"annotations": {"kubectl.kubernetes.io/restartedAt": "<now>"}}}}},
         })
     elif category == "capacity" and workload_name and patchable_workload:
@@ -5184,7 +5186,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
             workload_type,
             workload_name,
             {"spec": {"replicas": max(2, int(workload.get("replicas") or 1) + 1)}},
-            "容量或可用副本不足，建议临时增加 replicas。",
+            "Capacity or available replicas are insufficient; temporarily increasing replicas is recommended.",
         ))
     engine_context = {
         "pod": pod,
@@ -5212,7 +5214,7 @@ def _ops_plan_from_finding(finding: dict) -> dict:
     steps = engine_steps + [step for step in steps if (step.get("id") or step.get("title")) not in engine_step_ids]
     plan = {
         "id": finding.get("id") or str(uuid.uuid4())[:8],
-        "title": finding.get("title", "AI 运维计划"),
+        "title": finding.get("title", "AI operations plan"),
         "cluster": finding.get("cluster", "local-cluster"),
         "cluster_id": finding.get("cluster_id", "local"),
         "source": finding.get("source", "mcp"),
@@ -5270,19 +5272,19 @@ def _classify_pod_issue(pod: dict, events: list[dict] | None = None) -> tuple[st
         f"{e.get('reason','')} {e.get('message','')}" for e in (events or [])
     )).lower()
     if any(k.lower() in text for k in ["CrashLoopBackOff", "OOMKilled", "Error", "Back-off restarting failed container"]):
-        return "crashloop", "P1", "Pod 出现 CrashLoop/OOM/容器反复失败信号"
+        return "crashloop", "P1", "The Pod shows CrashLoop/OOM/repeated container failure signals"
     if any(k.lower() in text for k in ["ImagePullBackOff", "ErrImagePull", "pull access denied", "manifest unknown"]):
-        return "image_pull", "P1", "Pod 镜像拉取失败，可能是镜像地址、凭据或仓库网络问题"
+        return "image_pull", "P1", "The Pod failed to pull the image, likely due to the image address, credentials, or registry network issues"
     if any(k.lower() in text for k in ["FailedMount", "FailedAttachVolume", "MountVolume", "configmap", "secret not found", "persistentvolumeclaim"]):
-        return "storage_config", "P1", "Pod 存在配置或存储卷挂载异常"
+        return "storage_config", "P1", "The Pod has configuration or storage volume mount anomalies"
     if any(k.lower() in text for k in ["dns", "cni", "network", "connection refused", "i/o timeout", "no route to host"]):
-        return "network", "P2", "Pod 存在网络、DNS、CNI 或服务连通性异常线索"
+        return "network", "P2", "The Pod shows abnormal clues in networking, DNS, CNI, or service connectivity"
     if pod.get("phase") == "Pending":
-        return "scheduling", "P2", "Pod Pending，可能是资源不足、亲和性、污点容忍或 PVC 绑定问题"
+        return "scheduling", "P2", "The Pod is Pending, possibly due to insufficient resources, affinity, taint toleration, or PVC binding issues"
     if not pod.get("ready"):
-        return "not_ready", "P2", "Pod 未 Ready，需要检查探针、日志和事件"
+        return "not_ready", "P2", "The Pod is not Ready and requires probe, log, and event inspection"
     if pod.get("restart_count", 0) > 5:
-        return "crashloop", "P2", "Pod 重启次数过高，存在稳定性风险"
+        return "crashloop", "P2", "The Pod restart count is too high, indicating a stability risk"
     return None, "", ""
 
 
@@ -5513,8 +5515,8 @@ async def _rancher_scan_cluster(cluster: dict, namespace_filter: str = "all", pr
                 "severity": severity,
                 "title": f"[{cluster_name}] Pod {pod.get('name')} {reason}",
                 "summary": (
-                    f"{reason}。所属 {workload['kind']}/{workload['name']}，"
-                    f"namespace={ns}，重启 {pod.get('restart_count', 0)} 次，phase={pod.get('phase')}"
+                    f"{reason}. Belongs to {workload['kind']}/{workload['name']}, "
+                    f"namespace={ns}, restarted {pod.get('restart_count', 0)} times, phase={pod.get('phase')}"
                 ),
                 "namespace": ns,
                 "name": pod.get("name"),
@@ -5560,7 +5562,7 @@ async def _rancher_scan_cluster(cluster: dict, namespace_filter: str = "all", pr
 async def _rancher_inspection(req: InspectionRequest) -> dict:
     clusters = await _rancher_clusters()
     selected_cluster = (req.cluster or "all").strip()
-    if selected_cluster not in {"", "all", "*", "所有"}:
+    if selected_cluster not in {"", "all", "*"}:
         clusters = [
             c for c in clusters
             if selected_cluster in {c["id"], c["name"]}
@@ -5597,8 +5599,7 @@ async def _rancher_inspection(req: InspectionRequest) -> dict:
             "clusters": len(clusters),
         },
         "node_condition_standard": (
-            "Rancher 多集群巡检：基于 Pod phase、container waiting/terminated reason、ready、restart_count "
-            "和 Events 判断 CrashLoop、ImagePull、Pending、存储/配置、网络等风险。"
+            "Rancher multi-cluster inspection: determine CrashLoop, ImagePull, Pending, storage/configuration, networking, and similar risks based on Pod phase, container waiting/terminated reasons, ready state, restart_count, and Events."
         ),
     }
 
@@ -5631,9 +5632,9 @@ def _permission_guidance(error_payload: dict | str, plan: dict, change: dict | N
     lowered = text.lower()
     if not any(term in lowered for term in ["forbidden", "rbac", "403", "permission", "unauthorized", "not permitted"]):
         return None
-    namespace = plan.get("namespace") or "目标 namespace"
-    workload_type = plan.get("target") or plan.get("workload_type") or "目标 Workload"
-    cluster = plan.get("cluster") or plan.get("cluster_id") or "目标集群"
+    namespace = plan.get("namespace") or "target namespace"
+    workload_type = plan.get("target") or plan.get("workload_type") or "target Workload"
+    cluster = plan.get("cluster") or plan.get("cluster_id") or "target cluster"
     action = str((change or {}).get("type") or "kubernetes_change")
     requirements = {
         "recreate_pod": (["get", "delete"], ["pods"]),
@@ -5647,15 +5648,15 @@ def _permission_guidance(error_payload: dict | str, plan: dict, change: dict | N
         "evict_pod": (["get", "create"], ["pods", "pods/eviction"]),
         "create_configmap": (["get", "create"], ["configmaps"]),
     }
-    verbs, resources = requirements.get(action, (["get", "patch", "update"], ["目标 Kubernetes 资源"]))
+    verbs, resources = requirements.get(action, (["get", "patch", "update"], ["target Kubernetes resources"]))
     permission_owner = "Rancher Token" if plan.get("source") == "rancher" else "ServiceAccount k8s-agent/k8s-agent-sa"
     return {
-        "summary": f"{permission_owner} 没有执行 {action} 所需的最小权限，本轮没有继续提交变更。",
+        "summary": f"{permission_owner} does not have the minimum permissions required to execute {action}, so this run did not continue submitting the change.",
         "do_this": [
-            f"在集群 {cluster} 检查 {permission_owner} 对 namespace={namespace} 的授权范围。",
-            f"本动作只需 verbs={','.join(verbs)}，resources={','.join(resources)}；不需要直接授予 cluster-admin。",
-            "本地集群应用 manifests/rbac.yaml 和对应 namespace RoleBinding；跨 Rancher 集群则给 Rancher Token 的项目/集群角色补同等权限。",
-            "重新部署后再执行同一个运维计划，不需要重新输入问题。",
+            f"In cluster {cluster}, check the authorization scope of {permission_owner} for namespace={namespace}.",
+            f"This action only needs verbs={','.join(verbs)} and resources={','.join(resources)}; there is no need to grant cluster-admin directly.",
+            "For the local cluster, apply manifests/rbac.yaml and the corresponding namespace RoleBinding; for cross-Rancher clusters, grant equivalent permissions to the Rancher Token's project/cluster role.",
+            "After redeployment, rerun the same operations plan without re-entering the question.",
         ],
         "minimal_verbs": verbs,
         "minimal_resources": resources,
@@ -6018,7 +6019,7 @@ async def _collect_plan_deep_evidence(plan: dict) -> dict:
                 "workload_type": workload_type,
                 "workload_name": workload_name,
                 "candidate_pods": len(candidates),
-                "operator_hint": "没有找到属于该 Workload 的 Pod；请确认 Workload 类型/名称是否正确，或检查当前身份是否能 list pods。",
+                "operator_hint": "No Pod belonging to this Workload was found. Please confirm that the Workload type/name is correct, or check whether the current identity can list pods.",
             }
         pod_name = selected.get("name")
         plan["pod_name"] = pod_name
@@ -6138,7 +6139,7 @@ async def _collect_plan_deep_evidence(plan: dict) -> dict:
 
 
 async def _collect_ops_step(step: dict, plan: dict) -> dict:
-    title = str(step.get("title", "运维步骤"))
+    title = str(step.get("title", "Operations step"))
     namespace = plan.get("namespace") or "default"
     pod_name = _target_pod_from_plan(plan)
     cluster_id = plan.get("cluster_id") or "local"
@@ -6202,7 +6203,7 @@ async def _collect_ops_step(step: dict, plan: dict) -> dict:
         }
 
     try:
-        if "日志" in title and pod_name and use_rancher:
+        if any(key in title.lower() for key in ["日志", "log"]) and pod_name and use_rancher:
             result = await _rancher_k8s_get(
                 cluster_id,
                 f"/api/v1/namespaces/{quote(namespace, safe='')}/pods/{quote(pod_name, safe='')}/log?tailLines=120",
@@ -6212,7 +6213,7 @@ async def _collect_ops_step(step: dict, plan: dict) -> dict:
             artifacts["logs_excerpt"] = excerpt
             logs.append(f"[rancher/logs] pulled {len(excerpt)} chars from pod/{pod_name}")
             logs.extend([f"[log] {line}" for line in excerpt.splitlines()[-12:] if line.strip()])
-        elif any(key in title for key in ["事件", "镜像", "网络", "存储", "配置"]) and pod_name and use_rancher:
+        elif any(key in title.lower() for key in ["事件", "镜像", "网络", "存储", "配置", "event", "image", "network", "storage", "config"]) and pod_name and use_rancher:
             selector = quote(f"involvedObject.name={pod_name}", safe="=,")
             result = await _rancher_k8s_get(
                 cluster_id,
@@ -6226,7 +6227,7 @@ async def _collect_ops_step(step: dict, plan: dict) -> dict:
                 f"[event] {e.get('type','?')} {e.get('reason','?')} x{e.get('count','?')} - {e.get('message','')}"
                 for e in events
             ])
-        elif "日志" in title and pod_name:
+        elif any(key in title.lower() for key in ["日志", "log"]) and pod_name:
             result = await _call_mcp_tool("get_pod_logs", {
                 "namespace": namespace,
                 "pod_name": pod_name,
@@ -6240,7 +6241,7 @@ async def _collect_ops_step(step: dict, plan: dict) -> dict:
                 artifacts["logs_excerpt"] = excerpt
                 logs.append(f"[logs] pulled {len(result.get('logs', ''))} bytes from pod/{pod_name}")
                 logs.extend([f"[log] {line}" for line in excerpt.splitlines()[-12:] if line.strip()])
-        elif any(key in title for key in ["事件", "镜像", "网络", "存储", "配置"]) and pod_name:
+        elif any(key in title.lower() for key in ["事件", "镜像", "网络", "存储", "配置", "event", "image", "network", "storage", "config"]) and pod_name:
             result = await _call_mcp_tool("get_pod_events", {
                 "namespace": namespace,
                 "pod_name": pod_name,
@@ -6663,17 +6664,17 @@ async def _execute_change(change: dict, plan: dict) -> dict:
             result=outcome["result"],
         )
     except Exception as audit_exc:
-        # 审计输出失败不能把真实运维结果伪装成 HTTP 500。失败信息仍回传给前端，
-        # 便于运维人员修复日志采集或持久化目录权限。
+        # Audit output failures must not disguise real operations results as HTTP 500 responses.
+        # The failure details are still returned to the frontend so operators can fix log collection or persistent-directory permissions.
         outcome.setdefault("result", {})["audit_warning"] = f"{type(audit_exc).__name__}: {_redact_text(str(audit_exc))}"
     return outcome
 
 
 async def _probe_plan_recovery(plan: dict, results: list[dict]) -> dict:
     if not plan.get("changes"):
-        return {"status": "skipped", "recovered": None, "message": "本次计划没有基础设施变更，不做恢复验证。"}
+        return {"status": "skipped", "recovered": None, "message": "This plan contains no infrastructure changes, so recovery verification is skipped."}
     if any(r.get("status") in {"failed", "blocked"} for r in results):
-        return {"status": "skipped", "recovered": False, "message": "存在变更 API 失败，跳过恢复验证并进入替代策略。"}
+        return {"status": "skipped", "recovered": False, "message": "A change API failed, so recovery verification is skipped and the workflow moves to the fallback strategy."}
 
     first_change = (plan.get("changes") or [{}])[0]
     change_type = first_change.get("type")
@@ -6681,14 +6682,14 @@ async def _probe_plan_recovery(plan: dict, results: list[dict]) -> dict:
         resource_type = first_change.get("resource_type") or plan.get("resource_type") or "all"
         resource_id = first_change.get("resource_id") or plan.get("resource_id") or ""
         if not resource_id:
-            return {"status": "skipped", "recovered": None, "message": "基础设施变更缺少 resource_id，无法自动验证。"}
+            return {"status": "skipped", "recovered": None, "message": "The infrastructure change is missing resource_id, so it cannot be verified automatically."}
         try:
             scan = await scan_infrastructure_provider_resources(resource_type, resource_id, include_probe=True)
             recovered = int(scan.get("finding_count") or 0) == 0
             return {
                 "status": "verified" if recovered else "needs_followup",
                 "recovered": recovered,
-                "message": "基础设施探测恢复正常。" if recovered else "基础设施探测仍有异常或证据不足，需要查看执行器回执和人工复核。",
+                "message": "Infrastructure probes recovered normally." if recovered else "Infrastructure probes still show anomalies or insufficient evidence. Review the executor receipt and perform manual verification.",
                 "resource_id": resource_id,
                 "resource_type": resource_type,
                 "scan_summary": scan.get("summary") or {},
@@ -6697,7 +6698,7 @@ async def _probe_plan_recovery(plan: dict, results: list[dict]) -> dict:
             return {
                 "status": "skipped",
                 "recovered": None,
-                "message": f"基础设施恢复验证失败：{type(exc).__name__}: {_redact_text(str(exc))}",
+                "message": f"Infrastructure recovery verification failed: {type(exc).__name__}: {_redact_text(str(exc))}",
             }
     if change_type in {"patch_hpa", "expand_pvc", "create_pvc", "create_pv", "cordon_node", "patch_service_account", "create_configmap"}:
         namespace = first_change.get("namespace") or plan.get("namespace") or "default"
@@ -6780,11 +6781,11 @@ async def _probe_plan_recovery(plan: dict, results: list[dict]) -> dict:
                 recovered = actual == expected
             return {
                 "status": "completed", "recovered": recovered, "target": f"{kind}/{name}",
-                "message": "目标资源状态已与计划一致。" if recovered else "目标资源尚未收敛到计划状态。",
+                "message": "The target resource state now matches the plan." if recovered else "The target resource has not yet converged to the planned state.",
                 "expected": expected, "actual": actual, "state": _redact_sensitive(state),
             }
         except Exception as exc:
-            return {"status": "unknown", "recovered": None, "target": f"{kind}/{name}", "message": "无法读取目标资源状态。", "errors": [f"{type(exc).__name__}: {exc}"]}
+            return {"status": "unknown", "recovered": None, "target": f"{kind}/{name}", "message": "Unable to read the target resource state.", "errors": [f"{type(exc).__name__}: {exc}"]}
 
     namespace, workload_type, workload_name = _workload_identity_from_plan(plan)
     pod_name = _target_pod_from_plan(plan)
@@ -6837,13 +6838,13 @@ async def _probe_plan_recovery(plan: dict, results: list[dict]) -> dict:
         return {
             "status": "unknown",
             "recovered": None,
-            "message": "没有找到目标 Pod，无法证明修复是否成功。",
+            "message": "The target Pod was not found, so recovery success cannot be proven.",
             "namespace": namespace,
             "target": f"{workload_type}/{workload_name}",
             "errors": errors,
         }
 
-    # Workload 级变更会产生新 Pod；旧的 Failed/Succeeded Pod 不应让恢复验证一直卡住。
+    # Workload-level changes create new Pods; old Failed/Succeeded Pods should not block recovery verification indefinitely.
     active_matched = [pod for pod in matched if not _pod_completed_successfully(pod)]
     non_terminal_active = [
         pod for pod in active_matched
@@ -6865,7 +6866,7 @@ async def _probe_plan_recovery(plan: dict, results: list[dict]) -> dict:
                 "restart_count": pod.get("restart_count", 0),
                 "category": category or "not_ready",
                 "severity": severity or "P2",
-                "reason": reason or "Pod 仍未 Ready",
+                "reason": reason or "The Pod is still not Ready",
             })
     recovered = not unresolved
     terminal_unresolved = [
@@ -6877,7 +6878,7 @@ async def _probe_plan_recovery(plan: dict, results: list[dict]) -> dict:
     return {
         "status": "completed",
         "recovered": recovered,
-        "message": "目标 Pod 已恢复 Ready。" if recovered else "变更执行后目标 Pod 仍未恢复，系统将切换替代修复策略。",
+        "message": "The target Pod has recovered to Ready." if recovered else "The target Pod has not recovered after the change, so the system will switch to an alternative remediation strategy.",
         "namespace": namespace,
         "target": f"{workload_type}/{workload_name}",
         "pods_checked": len(matched_for_health),
@@ -6910,7 +6911,7 @@ async def _verify_plan_recovery(
                 return {
                     "status": "cancelled",
                     "recovered": False,
-                    "message": "运维任务已中断；系统停止恢复验证。",
+                    "message": "The operations task was interrupted, so the system stopped recovery verification.",
                     "attempts": attempts,
                     "waited_seconds": round(time.monotonic() + initial_grace_seconds - grace_deadline, 1),
                 }
@@ -6921,7 +6922,7 @@ async def _verify_plan_recovery(
             last = {
                 **last,
                 "status": "needs_followup",
-                "message": "恢复验证发现目标 Pod 已进入明确失败状态，停止空等并进入替代策略。",
+                "message": "Recovery verification found that the target Pod has entered a clear failure state, so the system stopped waiting idly and moved to the fallback strategy.",
             }
             break
         if cancel_event and cancel_event.is_set():
@@ -6929,7 +6930,7 @@ async def _verify_plan_recovery(
                 **last,
                 "status": "cancelled",
                 "recovered": False,
-                "message": "运维任务已中断；系统停止后续验证与策略升级。当前变更可能已提交，请人工核对目标状态。",
+                "message": "The operations task was interrupted, so the system stopped follow-up verification and strategy escalation. The current change may already have been submitted; please verify the target state manually.",
                 "attempts": attempts + 1,
             }
         attempts += 1
@@ -6940,7 +6941,7 @@ async def _verify_plan_recovery(
         "attempts": attempts + 1,
         "initial_grace_seconds": initial_grace_seconds,
         "waited_seconds": min(timeout_seconds, initial_grace_seconds + attempts * interval_seconds),
-        "proof": "Pod Ready=true 且未再匹配 CrashLoop/ImagePull/挂载/网络/Pending 等异常证据" if last.get("recovered") else "在验证窗口内未取得恢复证据",
+        "proof": "Pod Ready=true and no longer matches abnormal evidence such as CrashLoop, ImagePull, mount, network, or Pending issues" if last.get("recovered") else "No recovery evidence was obtained within the verification window",
     }
 
 
@@ -6965,20 +6966,20 @@ def _derive_alternative_plans(plan: dict, verification: dict, results: list[dict
     storage_followups = _derive_followup_plans(plan, summary_text)
     if storage_followups:
         for item in storage_followups:
-            item["title"] = "替代策略：" + item.get("title", "修复存储权限")
+            item["title"] = "Fallback strategy: " + item.get("title", "Fix storage permissions")
             item["previous_strategy"] = ", ".join(sorted(tried)) or "unknown"
         return storage_followups
     if "patch_workload" in tried or "patch" in tried:
         return [{
             "id": f"alternative-rollout-restart-{uuid.uuid4().hex[:8]}",
-            "title": "替代策略：滚动重启加载新配置",
+            "title": "Fallback strategy: rolling restart to load new configuration",
             "namespace": namespace,
             "target": f"{workload_type}/{workload_name}",
-            "summary": "上一轮配置 patch 后 Pod 仍未恢复。系统不重复同一 patch，改为触发滚动重启加载配置，并重新读取日志与事件验证是否生效。",
+            "summary": "The Pod still did not recover after the previous configuration patch. Instead of repeating the same patch, the system triggers a rolling restart to load the configuration and then rereads logs and events to verify whether it took effect.",
             "steps": [
-                {"title": "查看日志", "description": "读取新 Pod 和 previous container 日志，确认 patch 是否被应用。", "status": "pending"},
-                {"title": "查看事件", "description": "检查调度、挂载、探针、镜像和权限事件。", "status": "pending"},
-                {"title": "滚动重启", "description": "触发一次安全滚动重启，验证新配置是否生效。", "status": "pending"},
+                {"title": "Review logs", "description": "Read logs from the new Pod and previous container to confirm whether the patch was applied.", "status": "pending"},
+                {"title": "Review events", "description": "Check scheduling, mount, probe, image, and permission events.", "status": "pending"},
+                {"title": "Rolling restart", "description": "Trigger a safe rolling restart and verify whether the new configuration takes effect.", "status": "pending"},
             ],
             "changes": [{
                 "type": "restart",
@@ -6986,7 +6987,7 @@ def _derive_alternative_plans(plan: dict, verification: dict, results: list[dict
                 "workload_type": workload_type,
                 "workload_name": workload_name,
                 "patch": {"spec": {"template": {"metadata": {"annotations": {"kubectl.kubernetes.io/restartedAt": "<now>"}}}}},
-                "reason": "上一轮 patch 后验证失败，切换为滚动重启加载配置，而不是重复 patch。",
+                "reason": "Verification failed after the previous patch, so the strategy switches to a rolling restart to load the configuration instead of repeating the patch.",
             }],
             "requires_confirmation": True,
             "source": "alternative_strategy_after_failed_patch",
@@ -7014,15 +7015,15 @@ def _derive_alternative_plans(plan: dict, verification: dict, results: list[dict
         }
         return [{
             "id": f"alternative-runtime-tuning-{uuid.uuid4().hex[:8]}",
-            "title": "替代策略：调整资源与启动探针",
+            "title": "Fallback strategy: adjust resources and startup probe",
             "namespace": namespace,
             "target": f"{workload_type}/{workload_name}",
-            "summary": "滚动重启后 Pod 仍未恢复，系统不再重复 restart，改为检查并调整资源限制/启动探针以处理 OOM、启动慢或探针过激导致的 CrashLoop。",
+            "summary": "The Pod still did not recover after the rolling restart. Instead of repeating restart again, the system checks and adjusts resource limits and the startup probe to address OOM, slow startup, or probe-induced CrashLoop behavior.",
             "steps": [
-                {"title": "复查失败证据", "description": "重新读取 Pod Logs、Events、上一次退出原因和重启计数。", "status": "pending"},
-                {"title": "变更风险门禁", "description": "使用 SemanticGrayReleaseGate 判断资源/探针变更是否需要人工审批。", "status": "pending"},
-                {"title": "Patch Workload 运行参数", "description": "调整 resources 与 startupProbe，避免继续重复无效重启。", "status": "pending"},
-                {"title": "验证恢复", "description": "观察新 Pod Ready、restart_count 和事件是否恢复。", "status": "pending"},
+                {"title": "Recheck failure evidence", "description": "Reread Pod logs, Events, the previous exit reason, and restart count.", "status": "pending"},
+                {"title": "Change risk gate", "description": "Use SemanticGrayReleaseGate to determine whether resource/probe changes require manual approval.", "status": "pending"},
+                {"title": "Patch Workload runtime parameters", "description": "Adjust resources and startupProbe to avoid continuing ineffective restart loops.", "status": "pending"},
+                {"title": "Verify recovery", "description": "Observe whether the new Pod recovers in Ready state, restart_count, and events.", "status": "pending"},
             ],
             "changes": [{
                 "type": "patch_workload",
@@ -7030,24 +7031,24 @@ def _derive_alternative_plans(plan: dict, verification: dict, results: list[dict
                 "workload_type": workload_type,
                 "workload_name": workload_name,
                 "patch": patch,
-                "reason": "上一轮 restart 后验证失败，切换为资源/探针修复策略。",
+                "reason": "Verification failed after the previous restart, so the strategy switches to a resource/probe remediation path.",
             }],
             "requires_confirmation": True,
             "source": "alternative_strategy_after_failed_restart",
             "previous_strategy": ", ".join(sorted(tried)) or "unknown",
-            "risk_note": "容器名为占位时需要人工确认具体 container name；该动作会触发滚动更新。",
+            "risk_note": "If the container name is still a placeholder, manual confirmation of the specific container name is required; this action triggers a rolling update.",
             "verification_plan": _next_attempt_verification_plan(f"{workload_type}/{workload_name}"),
         }]
     return [{
         "id": f"alternative-evidence-deep-dive-{uuid.uuid4().hex[:8]}",
-        "title": "替代策略：证据加深后再变更",
+        "title": "Fallback strategy: deepen evidence before changing again",
         "namespace": namespace,
         "target": f"{workload_type}/{workload_name}",
-        "summary": "上一轮执行后 Pod 仍未恢复。系统停止重复同一动作，改为加深日志、事件、配置、网络和存储证据，再生成新的变更计划。",
+        "summary": "The Pod still did not recover after the previous execution. The system stops repeating the same action, deepens evidence across logs, events, configuration, network, and storage, and then generates a new change plan.",
         "steps": [
-            {"title": "查看日志", "description": "读取当前 Pod 和 previous container 日志。", "status": "pending"},
-            {"title": "检查事件和配置", "description": "重新检查 Events、ConfigMap、Secret、PVC、Service/Endpoint。", "status": "pending"},
-            {"title": "重新生成修复计划", "description": "基于新证据由 LLM 生成不同策略的 patch。", "status": "pending"},
+            {"title": "Review logs", "description": "Read the current Pod logs and previous container logs.", "status": "pending"},
+            {"title": "Check events and configuration", "description": "Recheck Events, ConfigMap, Secret, PVC, and Service/Endpoint.", "status": "pending"},
+            {"title": "Regenerate the remediation plan", "description": "Use the LLM to generate a patch with a different strategy based on the new evidence.", "status": "pending"},
         ],
         "changes": [],
         "requires_confirmation": False,
@@ -7060,7 +7061,7 @@ def _derive_alternative_plans(plan: dict, verification: dict, results: list[dict
 def _ops_release_gate(plan: dict) -> dict:
     changes = plan.get("changes") or []
     if not changes:
-        return {"status": "skipped", "reason": "本次计划没有 Kubernetes 变更。"}
+        return {"status": "skipped", "reason": "This plan contains no Kubernetes changes."}
     change = changes[0]
     selected = {
         "id": f"{change.get('workload_type','Workload')}/{change.get('workload_name','')}",
@@ -7101,7 +7102,7 @@ def _ops_release_gate(plan: dict) -> dict:
     result["change_class"] = change_class
     result["allowed"] = not budget["freeze_changes"] or is_stability_repair
     if budget["freeze_changes"] and is_stability_repair:
-        result["reason"] = "错误预算已耗尽；常规发布冻结，但本次为稳定性恢复动作，允许在人工确认后执行。"
+        result["reason"] = "The error budget is exhausted; regular releases are frozen, but this is a stability recovery action and may proceed after manual confirmation."
         result["action"] = "stability_repair_only"
     elif budget["freeze_changes"]:
         result["verdict"] = "blocked"
@@ -7109,10 +7110,10 @@ def _ops_release_gate(plan: dict) -> dict:
         result["reason"] = budget["freeze_reason"]
     _record_algorithm_decision(
         "SemanticGrayReleaseGate",
-        "AI 运维执行 / /api/ops/execute",
+        "AI operations execution / /api/ops/execute",
         {"verdict": result.get("verdict"), "action": result.get("action"), "risk": result.get("risk")},
         {"target": selected["id"], "changes": len(changes)},
-        "用于在执行修复前评估变更风险和人工确认必要性。",
+        "Used to evaluate change risk and the need for manual confirmation before executing remediation.",
     )
     return result
 
@@ -7134,7 +7135,7 @@ def _workload_identity_from_plan(plan: dict) -> tuple[str, str, str]:
 async def _rancher_pods_for_alert_scan(cluster_filter: str, namespace: str) -> tuple[list[dict], list[dict], dict[str, str]]:
     clusters = await _rancher_clusters()
     selected = (cluster_filter or "all").strip()
-    if selected not in {"", "all", "*", "所有"}:
+    if selected not in {"", "all", "*"}:
         clusters = [c for c in clusters if selected in {c.get("id"), c.get("name")}]
     errors: dict[str, str] = {}
     all_pods: list[dict] = []
@@ -7151,7 +7152,7 @@ async def _rancher_pods_for_alert_scan(cluster_filter: str, namespace: str) -> t
                         owner.get("kind", "Deployment"),
                         owner.get("name", ""),
                     )
-            ns_path = "" if namespace in {"", "all", "*", "所有"} else f"/namespaces/{quote(namespace, safe='')}"
+            ns_path = "" if namespace in {"", "all", "*"} else f"/namespaces/{quote(namespace, safe='')}"
             pods_payload = await _rancher_k8s_get(cid, f"/api/v1{ns_path}/pods", timeout=35)
             for raw in pods_payload.get("items", []) if isinstance(pods_payload, dict) else []:
                 pod = _normalize_k8s_pod(raw, replica_owner)
@@ -7165,8 +7166,8 @@ async def _rancher_pods_for_alert_scan(cluster_filter: str, namespace: str) -> t
 
 def _storage_fs_group_from_evidence(plan: dict) -> int:
     pod = ((plan.get("_runtime_evidence") or {}).get("pod") or (plan.get("evidence") or {}).get("pod") or {})
-    # 先看容器真实运行用户/组，再看 Pod 级 runAsGroup/runAsUser，最后才采用
-    # 既有 fsGroup。真实故障中 fsGroup 往往已经被错误改过，不能把它当优先依据。
+    # First check the container's actual runtime user/group, then Pod-level runAsGroup/runAsUser,
+    # and only then fall back to the existing fsGroup. In real incidents, fsGroup is often already wrong and should not be the primary signal.
     for container in pod.get("containers", []) or []:
         sc = container.get("security_context") or container.get("securityContext") or {}
         for key in ("runAsGroup", "run_as_group", "runAsUser", "run_as_user"):
@@ -7189,48 +7190,48 @@ def _storage_mount_summary(plan: dict) -> str:
             if vm.get("read_only"):
                 continue
             mounts.append(f"{container.get('name')}:{vm.get('mount_path')}({vm.get('name')})")
-    return ", ".join(mounts[:4]) or "未从当前证据中识别到具体 mountPath"
+    return ", ".join(mounts[:4]) or "No specific mountPath was identified from the current evidence"
 
 
 def _next_attempt_verification_plan(target: str = "") -> list[str]:
     grace = max(0, int(os.getenv("OPS_VERIFY_INITIAL_GRACE_SECONDS", "15")))
     return [
-        f"提交变更后先等待 {grace} 秒，让 Deployment/StatefulSet/DaemonSet 创建新 Pod 并进入真实启动阶段。",
-        f"重新读取{target or '目标 Workload'}新 Pod 的 current/previous logs 与 Events，确认是否仍有同类错误。",
-        "验证 Pod Ready=true、restart_count 不再增长，且不再出现 CrashLoop/ImagePull/FailedMount/Permission denied。",
-        "若新 Pod 仍失败，立刻进入下一轮证据采集和差异化方案，不重复同一动作。",
+        f"After submitting the change, wait {grace} seconds so the Deployment/StatefulSet/DaemonSet can create a new Pod and enter the real startup phase.",
+        f"Reread current/previous logs and Events for the new Pod of {target or 'the target Workload'} to confirm whether the same class of errors still exists.",
+        "Verify that Pod Ready=true, restart_count is no longer increasing, and CrashLoop/ImagePull/FailedMount/Permission denied evidence no longer appears.",
+        "If the new Pod still fails, immediately enter the next round of evidence collection and differentiated planning instead of repeating the same action.",
     ]
 
 
 def _manual_required_steps(plan: dict, verification: dict | None = None, reason: str = "") -> list[str]:
     namespace, workload_type, workload_name = _workload_identity_from_plan(plan)
-    target = f"{workload_type}/{workload_name}" if workload_name else str(plan.get("target") or "目标对象")
+    target = f"{workload_type}/{workload_name}" if workload_name else str(plan.get("target") or "target object")
     verification = verification or {}
     unresolved_text = "；".join(
         str(item.get("reason") or item.get("message") or item)
         for item in (verification.get("terminal_unresolved") or verification.get("unresolved") or [])[:3]
     )
-    reason_text = reason or verification.get("blocked_reason") or unresolved_text or "平台没有拿到足以支持继续自动变更的强证据。"
+    reason_text = reason or verification.get("blocked_reason") or unresolved_text or "The platform did not obtain enough strong evidence to support further automated changes."
     return [
-        f"先不要重复执行同一动作；当前未恢复原因：{reason_text}",
-        f"在 {namespace} 命名空间核对 {target} 的最新 Pod、previous logs、Events、PVC/PV、ConfigMap/Secret、Service/Endpoint 与 Node 调度状态。",
-        "如果日志仍显示 Permission denied、FailedMount、ImagePull、Exec format error、探针失败或 OOM，请把对应证据重新交给 SRE 对话，系统会生成下一轮差异化方案。",
-        "如果证据指向存储后端目录、网络插件、云平台版本、镜像架构或外部系统权限，需管理员先按页面文字步骤处理底层资源，再回到平台点击重新验证。",
-        "处理完成后重新运行同一目标的 AI 运维，让平台确认 Pod Ready、restart_count 稳定且同类事件不再出现。",
+        f"Do not repeat the same action yet; the current non-recovery reason is: {reason_text}",
+        f"In namespace {namespace}, verify the latest Pod, previous logs, Events, PVC/PV, ConfigMap/Secret, Service/Endpoint, and node scheduling state for {target}.",
+        "If the logs still show Permission denied, FailedMount, ImagePull, Exec format error, probe failures, or OOM, feed that evidence back into the SRE chat so the system can generate the next differentiated plan.",
+        "If the evidence points to a storage backend path, network plugin, cloud platform version, image architecture, or external-system permission issue, an administrator must first fix the underlying resource using the page guidance before returning to the platform to re-verify.",
+        "After the fix is complete, rerun AI operations for the same target so the platform can confirm Pod Ready, stable restart_count, and the disappearance of the same class of events.",
     ]
 
 
 def _manual_required_followup_plan(plan: dict, verification: dict, reason: str = "") -> dict:
     namespace, workload_type, workload_name = _workload_identity_from_plan(plan)
-    target = f"{workload_type}/{workload_name}" if workload_name else str(plan.get("target") or "目标对象")
+    target = f"{workload_type}/{workload_name}" if workload_name else str(plan.get("target") or "target object")
     steps = _manual_required_steps(plan, verification, reason)
     return {
         "id": f"manual-required-{uuid.uuid4().hex[:8]}",
-        "title": "人工接管：补齐平台无法直接取得的底层证据",
+        "title": "Manual takeover: gather the lower-level evidence the platform cannot obtain directly",
         "namespace": namespace,
         "target": target,
-        "summary": "自动变更没有取得恢复证据；为了避免重复无效动作，系统转为给出管理员可执行的文字方案。",
-        "steps": [{"title": f"人工步骤 {index + 1}", "description": text, "status": "manual"} for index, text in enumerate(steps)],
+        "summary": "The automated change did not produce recovery evidence; to avoid repeating ineffective actions, the system switches to a text plan that an administrator can execute.",
+        "steps": [{"title": f"Manual step {index + 1}", "description": text, "status": "manual"} for index, text in enumerate(steps)],
         "operator_steps": steps,
         "changes": [],
         "requires_confirmation": False,
@@ -7251,12 +7252,12 @@ def _ops_terminal_next_steps(
     operator_steps = operator_steps or []
     failed_results = failed_results or []
     namespace, workload_type, workload_name = _workload_identity_from_plan(plan)
-    target = f"{workload_type}/{workload_name}" if workload_name else str(plan.get("target") or "目标对象")
+    target = f"{workload_type}/{workload_name}" if workload_name else str(plan.get("target") or "target object")
     if verification.get("recovered") is True:
         return [
-            f"继续观察 {target} 5-10 分钟，确认 Ready、重启次数和关键业务指标稳定。",
-            "把本次根因、变更内容、恢复证据写入运维成效和 Skill 沉淀，后续同类问题可自动复用。",
-            "如果这是发布后故障，回到发布治理页补充灰度门禁规则，避免同类变更再次放大。",
+            f"Continue observing {target} for 5-10 minutes and confirm that Ready, restart count, and key business indicators remain stable.",
+            "Write this root cause, change content, and recovery evidence into operations effectiveness and Skill memory so similar future issues can be reused automatically.",
+            "If this was a post-release failure, return to the release-governance page and add canary gate rules to avoid amplifying the same class of changes again.",
         ]
     if failed_results:
         guidance: list[str] = []
@@ -7268,24 +7269,24 @@ def _ops_terminal_next_steps(
                     if text and text not in guidance:
                         guidance.append(text)
         return (guidance or [
-            "变更 API 返回失败；先查看变更回执里的 403/409/422/500 细节，确认是权限、资源版本冲突、参数非法还是执行器异常。",
-            "修正 Rancher Token、ServiceAccount RBAC、目标对象 resourceVersion 或变更参数后，重新生成预演再执行。",
+            "The change API returned a failure; first inspect the 403/409/422/500 details in the receipt to determine whether it is a permission problem, resourceVersion conflict, invalid parameters, or executor failure.",
+            "After correcting the Rancher Token, ServiceAccount RBAC, target resourceVersion, or change parameters, regenerate the dry run and execute again.",
         ])[:6]
     actionable = [item for item in alternative_plans if (item.get("changes") or item.get("steps") or item.get("operator_steps"))]
     changeable = [item for item in actionable if item.get("changes")]
     if changeable:
         first = changeable[0]
         return [
-            f"本轮没有恢复；系统已生成下一轮差异化策略：{first.get('title') or '替代修复'}。",
-            "先核对下方变更目标、补丁内容、风险和回滚方式；确认后点击“确认并执行”。",
-            "下一轮执行后会重新读取新 Pod 的 logs/events/workload/pvc/pv 证据，成功则闭环，失败则继续换策略。",
+            f"No recovery was achieved in this round; the system has generated the next differentiated strategy: {first.get('title') or 'fallback remediation'}.",
+            "First verify the change target, patch content, risk, and rollback method below; then click Confirm and Execute.",
+            "After the next round executes, the system will reread evidence from the new Pod logs/events/workload/PVC/PV; if successful it will close the loop, otherwise it will switch strategies again.",
         ]
     if actionable:
         first = actionable[0]
         return [
-            f"本轮没有恢复；下一步先执行只读加深诊断：{first.get('title') or '证据加深'}。",
-            "平台会重新读取失败后新 Pod 的 current/previous logs、Events、配置、存储和网络证据。",
-            "诊断完成后若能形成安全变更，会再次显示人工确认按钮；若必须管理员处理，会给出明确文字步骤。",
+            f"No recovery was achieved in this round; next, run the read-only deep-diagnosis step first: {first.get('title') or 'evidence deepening'}.",
+            "The platform will reread current/previous logs, Events, configuration, storage, and network evidence for the new Pod after failure.",
+            "If the diagnosis can form a safe change, the manual confirmation button will appear again; if administrator handling is required, clear text steps will be provided.",
         ]
     if operator_steps:
         return operator_steps[:6]
@@ -7308,8 +7309,8 @@ def _storage_permission_text(plan: dict, summary_text: str = "") -> str:
 
 def _storage_permission_detected(plan: dict, summary_text: str = "") -> bool:
     text = _storage_permission_text(plan, summary_text)
-    storage_terms = ["存储", "存储卷", "卷", "volume", "mount", "failedmount", "mountvolume", "pvc", "persistentvolumeclaim"]
-    permission_terms = ["目录权限", "权限不足", "permission denied", "operation not permitted", "read-only file system", "can't create directory", "cannot create directory", "mkdir:"]
+    storage_terms = ["storage", "storage volume", "volume", "mount", "failedmount", "mountvolume", "pvc", "persistentvolumeclaim"]
+    permission_terms = ["directory permissions", "insufficient permissions", "permission denied", "operation not permitted", "read-only file system", "can't create directory", "cannot create directory", "mkdir:"]
     return any(term in text for term in storage_terms) and any(term in text for term in permission_terms)
 
 
@@ -7334,14 +7335,14 @@ def _storage_admin_steps(plan: dict, reason: str = "") -> list[str]:
     fs_group = _storage_fs_group_from_evidence(plan)
     storage = (plan.get("_runtime_evidence") or {}).get("storage") or []
     pvc_names = [str(item.get("pvc")) for item in storage if isinstance(item, dict) and item.get("pvc")]
-    pvc_label = "、".join(sorted(set(pvc_names))[:4]) or "目标 PVC"
+    pvc_label = ", ".join(sorted(set(pvc_names))[:4]) or "target PVC"
     target = f"{workload_type}/{workload_name}" if workload_name else str(plan.get("target") or namespace)
     return [
-        f"确认目标：namespace={namespace}，workload={target}，PVC={pvc_label}，建议属组={fs_group}。",
-        "如果上一轮 fsGroup 后仍 Permission denied，说明存储后端或安全策略没有完成目录属组修复，不要继续重复重启。",
-        "由集群/存储管理员在维护窗口选择一种方式：临时允许受控 root initContainer 修复目录；或在存储/NFS 后端把业务目录 chown/chmod 到容器运行用户/组；或提供已修复权限的新 PV/PVC。",
-        "管理员执行后回到平台重新点击验证/重跑本计划，确认新 Pod 日志不再出现 Permission denied，Ready=true 且重启次数不再增长。",
-        reason or "如果当前 Rancher Token/ServiceAccount 无法修改 namespace 安全标签或底层存储目录，这是权限边界，不是 AI 诊断卡死。",
+        f"Confirm the target: namespace={namespace}, workload={target}, PVC={pvc_label}, recommended group owner={fs_group}.",
+        "If Permission denied still appears after the previous fsGroup attempt, the storage backend or security policy likely has not fixed the directory group ownership; do not keep repeating restarts.",
+        "During a maintenance window, the cluster/storage administrator should choose one path: temporarily allow a controlled root initContainer to fix the directory, change ownership/permissions on the storage or NFS backend to the container runtime user/group, or provide a new PV/PVC with corrected permissions.",
+        "After the administrator finishes, return to the platform and click verify/rerun this plan again to confirm that the new Pod logs no longer show Permission denied, Ready=true, and the restart count stops increasing.",
+        reason or "If the current Rancher Token/ServiceAccount cannot modify namespace security labels or underlying storage directories, that is a permission boundary rather than the AI diagnosis being stuck.",
     ]
 
 
@@ -7395,12 +7396,12 @@ def _derive_followup_plans(plan: dict, summary_text: str) -> list[dict]:
     namespace, workload_type, workload_name = _workload_identity_from_plan(plan)
     if not workload_name:
         return [{
-            "title": "存储权限修复需要明确 Workload",
-            "summary": "AI 判断可能存在存储卷目录权限问题，但当前计划中没有明确 workload_name，无法安全生成 Kubernetes patch。",
+            "title": "A clear Workload is required for storage-permission remediation",
+            "summary": "The AI believes there may be a storage-volume directory permission issue, but the current plan does not specify workload_name clearly enough to generate a Kubernetes patch safely.",
             "namespace": namespace,
             "target": namespace,
             "steps": [
-                {"title": "确认目标 Workload", "description": "请先在拓扑或资源浏览器中选择 Deployment/StatefulSet/DaemonSet。", "status": "pending"}
+                {"title": "Confirm the target Workload", "description": "First select the Deployment/StatefulSet/DaemonSet in the topology or resource explorer.", "status": "pending"}
             ],
             "changes": [],
             "requires_confirmation": False,
@@ -7427,27 +7428,27 @@ def _derive_followup_plans(plan: dict, summary_text: str) -> list[dict]:
     if "patch_workload" not in tried and not tried_init:
         plans.append({
             "id": f"followup-storage-permission-{uuid.uuid4().hex[:8]}",
-            "title": "下一步：修复存储卷目录权限",
+            "title": "Next step: fix storage-volume directory permissions",
             "namespace": namespace,
             "target": f"{workload_type}/{workload_name}",
             "summary": (
-                "AI 下一步建议指向存储卷/目录权限不足。系统将优先尝试 Kubernetes 侧的 "
-                f"fsGroup 修复，使挂载卷按运行组权限可写。识别到的挂载点：{mount_summary}。"
+                "The AI's next recommendation points to insufficient storage-volume or directory permissions. The system will first try a Kubernetes-side "
+                f"fsGroup remediation so the mounted volume becomes writable for the runtime group. Identified mount points: {mount_summary}."
             ),
             "steps": [
                 {
-                    "title": "确认挂载点和运行用户",
-                    "description": f"根据 Pod 证据检查 volumeMount、runAsUser/runAsGroup，并选择 fsGroup={fs_group}。",
+                    "title": "Confirm mount points and runtime user",
+                    "description": f"Check volumeMount and runAsUser/runAsGroup from Pod evidence, then choose fsGroup={fs_group}.",
                     "status": "pending",
                 },
                 {
                     "title": "Patch Workload securityContext",
-                    "description": "给 Pod template 增加 fsGroup 与 fsGroupChangePolicy=OnRootMismatch，触发滚动更新后由 kubelet 调整卷权限。",
+                    "description": "Add fsGroup and fsGroupChangePolicy=OnRootMismatch to the Pod template so kubelet can adjust volume permissions after the rolling update.",
                     "status": "pending",
                 },
                 {
-                    "title": "验证存储恢复",
-                    "description": "重新读取 Pod Events/Logs，观察 Permission denied、FailedMount、CrashLoop 是否消失。",
+                    "title": "Verify storage recovery",
+                    "description": "Reread Pod Events/Logs and observe whether Permission denied, FailedMount, and CrashLoop disappear.",
                     "status": "pending",
                 },
             ],
@@ -7458,13 +7459,13 @@ def _derive_followup_plans(plan: dict, summary_text: str) -> list[dict]:
                 "workload_name": workload_name,
                 "patch": fs_group_patch,
                 "reason": (
-                    "AI 判断下一步应处理存储卷底层目录权限不足；优先执行 K8S-side fsGroup 修复。"
-                    "如果存储后端不支持 kubelet 调整属组，仍需要存储管理员修复 NFS/Ceph/宿主机目录权限。"
+                    "The AI determined that the next step should address insufficient permissions on the underlying storage-volume directory; prioritize the Kubernetes-side fsGroup remediation."
+                    "If the storage backend does not support kubelet group-ownership adjustment, a storage administrator must still fix permissions on the NFS/Ceph/host directory."
                 ),
             }],
             "requires_confirmation": True,
             "source": "ai_followup_storage_permission",
-            "risk_note": "该动作会触发 Workload 滚动更新；执行前请确认 fsGroup 与业务镜像运行用户兼容。",
+            "risk_note": "This action triggers a rolling Workload update; before execution, confirm that fsGroup is compatible with the runtime user in the business image.",
             "verification_plan": _next_attempt_verification_plan(f"{workload_type}/{workload_name}"),
         })
     if "patch_workload" in tried and not tried_init:
@@ -7473,17 +7474,17 @@ def _derive_followup_plans(plan: dict, summary_text: str) -> list[dict]:
         if init_mounts:
             plans.append({
                 "id": f"followup-storage-init-permission-{uuid.uuid4().hex[:8]}",
-                "title": "下一步：受控 initContainer 修复目录属主",
+                "title": "Next step: controlled initContainer directory ownership fix",
                 "namespace": namespace,
                 "target": f"{workload_type}/{workload_name}",
                 "summary": (
-                    "上一轮 fsGroup 后仍未恢复。AI 改用第二路径：在 Pod 启动前用受控 initContainer "
-                    "对挂载目录执行 mkdir/chown/chmod，然后重新验证新 Pod 日志和 Ready 状态。"
+                    "Recovery still did not occur after the previous fsGroup attempt. The AI switches to a second path: before Pod startup, use a controlled initContainer "
+                    "to run mkdir/chown/chmod on the mounted directory, then re-verify the new Pod logs and Ready state."
                 ),
                 "steps": [
-                    {"title": "复核上一轮失败证据", "description": "确认新 Pod 仍出现 Permission denied，而不是镜像、配置或网络问题。", "status": "pending"},
-                    {"title": "确认高风险权限修复", "description": "展示 initContainer 镜像、命令、挂载目录和回滚方式，由操作员逐步确认。", "status": "pending"},
-                    {"title": "Patch Workload 并验证", "description": "提交高风险 patch，若 PodSecurity/存储后端拒绝，立即转管理员步骤。", "status": "pending"},
+                    {"title": "Recheck the previous failure evidence", "description": "Confirm that the new Pod still shows Permission denied rather than image, configuration, or network issues.", "status": "pending"},
+                    {"title": "Confirm the high-risk permission repair", "description": "Show the initContainer image, command, mounted directories, and rollback path for step-by-step operator confirmation.", "status": "pending"},
+                    {"title": "Patch the Workload and verify", "description": "Submit the high-risk patch; if PodSecurity or the storage backend rejects it, immediately switch to the administrator steps.", "status": "pending"},
                 ],
                 "changes": [{
                     "type": "patch_workload_runtime_security",
@@ -7494,22 +7495,22 @@ def _derive_followup_plans(plan: dict, summary_text: str) -> list[dict]:
                     "risk": "high",
                     "auto_allowed": False,
                     "requires_high_risk_confirmation": True,
-                    "reason": f"fsGroup 路径未取得恢复证据；按运行属组 {fs_group} 尝试受控目录属主修复。",
+                    "reason": f"The fsGroup path did not produce recovery evidence; attempt a controlled directory ownership repair using runtime group {fs_group}.",
                 }],
                 "requires_confirmation": True,
                 "requires_high_risk_confirmation": True,
                 "source": "ai_followup_storage_init_permission",
-                "failure_escalation": "若 PodSecurity/RBAC 拒绝该高风险修复，系统会在下一轮输出管理员处理步骤。",
+                "failure_escalation": "If PodSecurity/RBAC rejects this high-risk remediation, the system will output administrator handling steps in the next round.",
                 "verification_plan": _next_attempt_verification_plan(f"{workload_type}/{workload_name}"),
             })
     if tried_init or _storage_admin_boundary_detected(plan):
         plans.append({
             "id": f"followup-storage-admin-{uuid.uuid4().hex[:8]}",
-            "title": "管理员处理：修复底层存储目录权限",
+            "title": "Administrator action: fix underlying storage directory permissions",
             "namespace": namespace,
             "target": f"{workload_type}/{workload_name}",
-            "summary": "证据显示可能是 NFS/Generic CSI/PodSecurity 边界问题，平台不能编造底层存储路径或绕过命名空间安全策略。",
-            "steps": [{"title": "管理员按步骤处理", "description": item, "status": "pending"} for item in _storage_admin_steps(plan)],
+            "summary": "The evidence suggests an NFS/Generic CSI/PodSecurity boundary issue, and the platform cannot invent underlying storage paths or bypass namespace security policies.",
+            "steps": [{"title": "Administrator step", "description": item, "status": "pending"} for item in _storage_admin_steps(plan)],
             "changes": [],
             "requires_confirmation": False,
             "source": "storage_admin_required",
@@ -7672,27 +7673,27 @@ async def _evidence_based_replan(
             from agents.llm_client import get_llm
             llm = get_llm(temperature=0.05, max_tokens=1200, profile_id=plan.get("model_profile_id") or None)
             prompt = (
-                "你是 Kubernetes 故障修复规划器。根据真实执行证据，从给定动作目录中选择至多两个结构化动作。"
-                "不得输出 shell、kubectl、脚本或目录外动作。证据不足时 changes=[]。高风险动作可以提出但必须标 risk=high。"
-                "上一轮方案已经执行且恢复验证失败；不得只改写理由后重复相同动作、目标和参数。只有参数发生实质变化且新证据明确支持时，"
-                "才允许继续使用同一动作类型，否则必须换根因假设、换动作，或明确进入管理员人工处理。"
-                "不要为了显得积极而重启；必须解释证据如何支持根因。很多故障普通日志没有内容，必须优先使用 Events、"
-                "container waiting/terminated reason、lastState、Workload 模板、PVC/PV、镜像平台、节点标签和最近发布证据。只返回 JSON："
-                "如果 logs/current 或 logs/previous 不存在、Pod 已删除或 container 尚未产生日志，且 Events/YAML 没有证明 PVC、镜像、"
-                "ConfigMap、配额或调度约束等模板级阻断，可以提出 recreate_pod 作为诊断性重建，然后重新采集日志；"
-                "如果已命中模板级阻断，禁止用重启掩盖根因。"
-                "对于 Permission denied/目录不可写：先根据 runAsUser/runAsGroup 选择 fsGroup；若已尝试 fsGroup 仍失败，"
-                "可提出 patch_workload_runtime_security，用受控 initContainer 做 mkdir/chown/chmod；若证据显示 NFS/Generic CSI "
-                "或 PodSecurity 阻断，则 changes=[] 并给出管理员处理步骤。"
+                "You are a Kubernetes fault-remediation planner. Based on real execution evidence, choose at most two structured actions from the provided action catalog."
+                "Do not output shell, kubectl, scripts, or actions outside the catalog. Use changes=[] when evidence is insufficient. High-risk actions may be proposed, but must be marked with risk=high."
+                "The previous plan has already been executed and recovery verification failed; do not repeat the same action, target, and parameters by merely rewriting the reason. Only when the parameters change materially and new evidence clearly supports it,"
+                " may you continue using the same action type. Otherwise, you must change the root-cause hypothesis, change the action, or explicitly move into administrator manual handling."
+                "Do not restart just to look proactive; you must explain how the evidence supports the root cause. Many faults have little in normal logs, so you must prioritize Events,"
+                " container waiting/terminated reasons, lastState, the Workload template, PVC/PV, image platform, node labels, and recent release evidence. Return JSON only:"
+                " if logs/current or logs/previous do not exist, the Pod has been deleted, or the container has not yet produced logs, and Events/YAML do not prove a template-level blocker such as PVC, image,"
+                " ConfigMap, quotas, or scheduling constraints, you may propose recreate_pod as a diagnostic rebuild and then recollect logs;"
+                " if a template-level blocker is already identified, restarting to hide the root cause is forbidden."
+                " For Permission denied or unwritable directories: first choose fsGroup based on runAsUser/runAsGroup; if fsGroup has already been tried and still fails,"
+                " you may propose patch_workload_runtime_security using a controlled initContainer for mkdir/chown/chmod; if the evidence shows NFS/Generic CSI"
+                " or PodSecurity blocking, then set changes=[] and provide administrator handling steps."
                 "{root_cause,confidence,selected_runbook,reason,changes:[{type,namespace,workload_type,workload_name,pod_name,"
                 "hpa_name,pvc_name,storage,node_name,service_account,configmap_name,replicas,manifest,patch,reason}]}。\n"
-                f"动作目录={json.dumps(action_catalog_payload(), ensure_ascii=False)}\n"
-                f"已尝试动作={sorted(attempted_actions or set())}\n"
-                f"已失败策略指纹={sorted(blocked_change_fingerprints)}\n"
-                f"同一故障链历史={json.dumps(_redact_sensitive(plan.get('_prior_attempts') or []), ensure_ascii=False)[:6000]}\n"
-                f"上一轮失败与验证结果={json.dumps(_redact_sensitive(failed_context), ensure_ascii=False)[:7000]}\n"
-                f"目标与原计划={json.dumps(_redact_sensitive({k: v for k, v in plan.items() if not k.startswith('_')}), ensure_ascii=False)[:7000]}\n"
-                f"真实证据={json.dumps(_redact_sensitive(deep), ensure_ascii=False)[:15000]}"
+                f"Action catalog={json.dumps(action_catalog_payload(), ensure_ascii=False)}\n"
+                f"Attempted actions={sorted(attempted_actions or set())}\n"
+                f"Failed strategy fingerprints={sorted(blocked_change_fingerprints)}\n"
+                f"History for the same fault chain={json.dumps(_redact_sensitive(plan.get('_prior_attempts') or []), ensure_ascii=False)[:6000]}\n"
+                f"Previous failure and verification results={json.dumps(_redact_sensitive(failed_context), ensure_ascii=False)[:7000]}\n"
+                f"Target and original plan={json.dumps(_redact_sensitive({k: v for k, v in plan.items() if not k.startswith('_')}), ensure_ascii=False)[:7000]}\n"
+                f"Real evidence={json.dumps(_redact_sensitive(deep), ensure_ascii=False)[:15000]}"
             )
             response = llm.invoke(prompt)
             return _extract_json_object(getattr(response, "content", str(response)))
@@ -7740,7 +7741,7 @@ async def _evidence_based_replan(
     namespace, workload_type, workload_name = _workload_identity_from_plan(plan)
     return [{
         "id": f"evidence-replan-{uuid.uuid4().hex[:8]}",
-        "title": f"证据重规划：{engine_plan.get('runbook_id', 'expert-runbook')}",
+        "title": f"Evidence replan: {engine_plan.get('runbook_id', 'expert-runbook')}",
         "namespace": namespace,
         "target": f"{workload_type}/{workload_name}" if workload_name else plan.get("target", namespace),
         "pod_name": _target_pod_from_plan(plan),
@@ -7748,7 +7749,7 @@ async def _evidence_based_replan(
         "cluster_id": plan.get("cluster_id"),
         "source": plan.get("source"),
         "evidence": plan.get("evidence") or {},
-        "summary": planner_meta.get("reason") or engine_plan.get("reason") or "根据新证据生成差异化修复策略。",
+        "summary": planner_meta.get("reason") or engine_plan.get("reason") or "Generate a differentiated remediation strategy based on the new evidence.",
         "steps": engine_plan.get("steps") or [],
         "changes": normalized[:2],
         "requires_confirmation": True,
@@ -7807,19 +7808,19 @@ async def _llm_ops_summary(plan: dict, steps: list[dict], results: list[dict]) -
     def _fallback() -> str:
         if failed:
             reason = "; ".join(str((r.get("result") or {}).get("error", "unknown")) for r in failed)
-            return f"AI 降级总结：运维流程已完成诊断步骤，但 Kubernetes 变更失败。失败原因：{reason}。建议先核对 RBAC、目标 workload 名称、namespace 白名单和 MCP 服务可达性。"
+            return f"AI fallback summary: the operations workflow completed the diagnostic steps, but the Kubernetes change failed. Failure reason: {reason}. First verify RBAC, the target workload name, the namespace allowlist, and MCP service reachability."
         if results:
-            return "AI 降级总结：诊断步骤已执行，Kubernetes 变更返回成功。建议继续观察 Pod Ready、重启次数和事件是否恢复。"
-        return "AI 降级总结：已完成诊断步骤，本次计划没有需要执行的 Kubernetes 变更。"
+            return "AI fallback summary: the diagnostic steps were executed and the Kubernetes change returned success. Continue observing whether Pod Ready, restart count, and events recover."
+        return "AI fallback summary: the diagnostic steps are complete, and this plan has no Kubernetes changes to execute."
 
     try:
         def _call_llm() -> str:
             from agents.llm_client import get_llm
             llm = get_llm(temperature=0.05, max_tokens=900, profile_id=plan.get("model_profile_id") or None)
             prompt = (
-                "你是企业级 AIOps 运维执行官。基于以下执行证据，用中文输出简洁结论：\n"
-                "1. 判断故障是否已经定位；2. Kubernetes 变更是否成功；3. 下一步建议；"
-                "4. 如果失败，明确最可能的失败原因。不要输出 JSON。\n\n"
+                "You are an enterprise AIOps operations execution lead. Based on the following execution evidence, output a concise English conclusion:\n"
+                "1. Determine whether the fault has already been localized; 2. whether the Kubernetes change succeeded; 3. the next recommendation;"
+                " 4. if it failed, clearly state the most likely failure reason. Do not output JSON.\n\n"
                 f"{json.dumps(_redact_sensitive(payload), ensure_ascii=False)[:9000]}"
             )
             result = llm.invoke(prompt)
@@ -7849,7 +7850,7 @@ _CHANGE_FINGERPRINT_IGNORED_KEYS = {
 
 
 def _canonical_change_value(value, key: str = ""):
-    """保留真正影响执行结果的字段，避免模型改写说明文字后被当成新策略。"""
+    """Keep only the fields that truly affect execution results so rewritten explanatory text is not mistaken for a new strategy."""
     if isinstance(value, dict):
         return {
             str(item_key): _canonical_change_value(item_value, str(item_key))
@@ -7880,8 +7881,8 @@ def _change_fingerprint(plan: dict) -> str:
             ),
         }
     else:
-        # 纯诊断/继续取证计划没有 Kubernetes 变更，如果只用空 changes 做指纹，
-        # 所有诊断策略都会被误判为同一招，导致“证据不足”后无法进入下一轮。
+        # Pure diagnosis or continued evidence-collection plans have no Kubernetes changes.
+        # If fingerprinting uses only empty changes, all diagnostic strategies look identical and cannot advance to the next round after "insufficient evidence".
         material = {
             "kind": "diagnostic",
             "id": plan.get("id"),
@@ -7951,7 +7952,7 @@ def _ops_attempt_summary(item: dict) -> dict:
         "status": str(result.get("status") or "unknown"),
         "recovered": verification.get("recovered"),
         "outcome": _clip_text(
-            str(verification.get("message") or result.get("message") or "本轮没有形成恢复证据。"),
+            str(verification.get("message") or result.get("message") or "No recovery evidence was produced in this round."),
             600,
         ),
         "errors": errors[:4],
@@ -8011,7 +8012,7 @@ def _build_ops_continuation_context(
         "strategy": plan.get("title") or plan.get("source") or "ops-plan",
         "status": result.get("status") or "unknown",
         "recovered": (result.get("verification") or {}).get("recovered"),
-        "outcome": (result.get("verification") or {}).get("message") or result.get("message") or "本轮没有形成恢复证据。",
+        "outcome": (result.get("verification") or {}).get("message") or result.get("message") or "No recovery evidence was produced in this round.",
         "errors": [],
     }
     return {
@@ -8076,7 +8077,7 @@ def _apply_ops_continuation_context(plan: dict) -> dict:
 
 
 def _operator_blocking_execution_failure(result: dict) -> bool:
-    """只识别运维执行通道本身的阻断，不读取恢复验证中的业务错误文本。"""
+    """Only identify blocking issues in the operations execution channel itself and do not read business error text from recovery verification."""
     hard_terms = (
         "403", "forbidden", "unauthorized", "rbac", "serviceaccount cannot",
         "certificate verify failed", "ssl verify", "connection refused",
@@ -8138,7 +8139,7 @@ def _plan_can_continue_in_job(plan: dict, autonomous: bool) -> bool:
         return True
     if not autonomous:
         return True
-    # 自动运维可以把高风险动作推进到“等待人工逐步确认”，但不会绕过确认直接提交。
+    # Automated operations can advance high-risk actions to "waiting for step-by-step manual confirmation", but will not bypass confirmation and submit directly.
     return _autonomous_plan_allowed(plan) or bool(
         plan.get("requires_confirmation")
         or plan.get("requires_high_risk_confirmation")
@@ -8195,7 +8196,7 @@ async def _execute_ops_plan_once(
         async def report(elapsed: float, remaining: float):
             await emit(
                 stage,
-                f"仍在执行：{waiting_on}（已等待 {int(elapsed)} 秒）",
+                f"Still executing: {waiting_on} (waited {int(elapsed)} seconds)",
                 elapsed_seconds=round(elapsed, 1),
                 remaining_seconds=round(remaining, 1),
                 waiting_on=waiting_on,
@@ -8204,13 +8205,13 @@ async def _execute_ops_plan_once(
         return report
 
     if cancel_event and cancel_event.is_set():
-        return {"status": "cancelled", "executed": False, "message": "任务已中断，未执行新的运维动作。"}
+        return {"status": "cancelled", "executed": False, "message": "The task was interrupted and no new operations action was executed."}
     release_gate = _ops_release_gate(plan)
-    await emit("release_gate", "变更风险门禁已完成", release_gate=release_gate)
+    await emit("release_gate", "Change risk gate completed", release_gate=release_gate)
     if release_gate.get("allowed") is False:
         await emit(
             "release_blocked",
-            release_gate.get("reason") or "SRE 变更门禁已阻断本次操作。",
+            release_gate.get("reason") or "The SRE change gate blocked this operation.",
             status="blocked",
             release_gate=release_gate,
             level="warning",
@@ -8219,9 +8220,9 @@ async def _execute_ops_plan_once(
             "status": "blocked",
             "executed": False,
             "release_gate": release_gate,
-            "message": release_gate.get("reason") or "变更被错误预算门禁阻断。",
+            "message": release_gate.get("reason") or "The change was blocked by the error-budget gate.",
         }
-    await emit("collecting_evidence", "采集 current/previous logs、Events、Workload、Service、存储与节点证据")
+    await emit("collecting_evidence", "Collecting current/previous logs, Events, Workload, Service, storage, and node evidence")
     evidence_timeout = max(10, int(os.getenv("OPS_EVIDENCE_TIMEOUT_SECONDS", "70")))
     try:
         plan["_runtime_evidence"] = await run_with_heartbeat(
@@ -8230,17 +8231,17 @@ async def _execute_ops_plan_once(
             timeout_seconds=evidence_timeout,
             heartbeat_seconds=float(os.getenv("OPS_HEARTBEAT_SECONDS", "5")),
             cancel_event=cancel_event,
-            on_heartbeat=heartbeat("collecting_evidence", "Rancher/Kubernetes/MCP 证据接口"),
+            on_heartbeat=heartbeat("collecting_evidence", "Rancher/Kubernetes/MCP evidence interfaces"),
         )
     except StageTimeoutError as exc:
         plan["_runtime_evidence"] = {
             "error": str(exc),
             "timeout": True,
-            "operator_hint": "检查 Rancher API、MCP Server 网络和 RBAC；本轮会使用已有证据继续，不会永久卡住。",
+            "operator_hint": "Check the Rancher API, MCP Server networking, and RBAC. This run will continue with the evidence already available and will not hang forever.",
         }
         await emit(
             "stage_timeout",
-            f"证据采集超过 {evidence_timeout} 秒，已熔断慢调用并继续执行可用步骤。",
+            f"Evidence collection exceeded {evidence_timeout} seconds, so slow calls were cut off and execution continued with the available steps.",
             timed_out_stage="collecting_evidence",
             timeout_seconds=evidence_timeout,
             level="warning",
@@ -8263,14 +8264,14 @@ async def _execute_ops_plan_once(
     }
     await emit(
         "collecting_evidence_done",
-        "证据采集完成，可进入逐步诊断。",
+        "Evidence collection is complete and step-by-step diagnosis can begin.",
         evidence_summary=evidence_summary,
         level="warning" if deep_evidence.get("error") else "success",
     )
     preflight_replans: list[dict] = []
     preflight_conflict = False
     if plan.get("changes") and not deep_evidence.get("error"):
-        await emit("replanning", "用实时证据复核原方案，避免把症状当成根因")
+        await emit("replanning", "Revalidating the original plan with live evidence to avoid treating symptoms as root causes")
         preflight_attempted = {str(change.get("type") or "") for change in plan.get("changes") or []}
         preflight_attempted.update(str(action) for action in (plan.get("_attempted_actions") or []) if action)
         preflight_replans = await _evidence_based_replan(
@@ -8284,7 +8285,7 @@ async def _execute_ops_plan_once(
             meta = plan.get("_runtime_replan") or {}
             await emit(
                 "strategy_switch",
-                f"实时证据已否定原动作；根因转为 {meta.get('runbook_id') or '新的故障类别'}，原变更不会提交。",
+                f"Live evidence invalidated the original action; the root cause shifts to {meta.get('runbook_id') or 'a new fault category'}, and the original change will not be submitted.",
                 alternative_plan_count=len(preflight_replans),
                 level="warning",
             )
@@ -8297,12 +8298,12 @@ async def _execute_ops_plan_once(
                 "executed": False,
                 "steps": executed_steps,
                 "release_gate": release_gate,
-                "message": "任务已在诊断阶段中断，未继续提交变更。",
+                "message": "The task was interrupted during the diagnosis phase and the change was not submitted.",
             }
-        step_title = step.get("title") or step.get("name") or f"诊断步骤 {index}"
+        step_title = step.get("title") or step.get("name") or f"Diagnostic step {index}"
         await emit(
             "step_start",
-            f"开始：{step_title}",
+            f"Starting: {step_title}",
             step_index=index,
             steps_total=len(steps),
             step={"id": step.get("id"), "title": step_title, "description": step.get("description") or step.get("detail")},
@@ -8323,15 +8324,15 @@ async def _execute_ops_plan_once(
                 "title": step_title,
                 "status": "warning",
                 "logs": [
-                    f"[timeout] 诊断步骤超过 {step_timeout} 秒，已主动终止等待。",
-                    "[next] 检查对应 Rancher/MCP/Kubernetes API 的网络、权限和响应时间。",
+                    f"[timeout] The diagnostic step exceeded {step_timeout} seconds, so waiting was actively terminated.",
+                    "[next] Check the network, permissions, and response time of the corresponding Rancher/MCP/Kubernetes API.",
                 ],
                 "artifacts": {"timeout_seconds": step_timeout, "timed_out": True},
                 "finished_at": datetime.now(timezone.utc).isoformat(),
             }
             await emit(
                 "stage_timeout",
-                f"{step_title} 超过 {step_timeout} 秒，已跳过该慢探针，流程继续。",
+                f"{step_title} exceeded {step_timeout} seconds, so this slow probe was skipped and the workflow continued.",
                 timed_out_stage="diagnostic_step",
                 step_index=index,
                 timeout_seconds=step_timeout,
@@ -8342,7 +8343,7 @@ async def _execute_ops_plan_once(
         step_status = step_result.get("status") or "completed"
         await emit(
             "step_done",
-            f"完成：{step_title}",
+            f"Completed: {step_title}",
             step_index=index,
             steps_total=len(steps),
             step_status=step_status,
@@ -8362,33 +8363,33 @@ async def _execute_ops_plan_once(
             preflight_conflict = False
             await emit(
                 "operator_override",
-                "实时证据提示原方案可能不是最优，但操作员已明确确认执行；系统继续提交变更并完整留痕。",
+                "Live evidence suggests the original plan may not be optimal, but the operator explicitly confirmed execution; the system will continue submitting the change and preserve a full audit trail.",
                 runtime_replan=meta,
                 alternative_plan_count=len(preflight_replans),
                 level="warning",
             )
     if preflight_conflict:
         meta = plan.get("_runtime_replan") or {}
-        evidence_gap = str(meta.get("evidence_gap") or "实时证据与原方案冲突，需要核对新的最小变更。")
+        evidence_gap = str(meta.get("evidence_gap") or "Live evidence conflicts with the original plan, and the new minimal change must be reviewed.")
         has_candidate = bool(preflight_replans)
         verification = {
             "status": "diagnostic_completed",
             "recovered": None,
             "message": (
-                "根因已重新定位，已生成新的受控修复方案；原变更已取消。"
+                "The root cause has been re-localized, and a new controlled remediation plan has been generated; the original change was cancelled."
                 if has_candidate else
-                "根因已重新定位，但缺少创建安全变更所需的批准参数；原变更已取消。"
+                "The root cause has been re-localized, but approved parameters required to create a safe change are missing; the original change was cancelled."
             ),
-            "proof": "实时 Events、PVC/PV 状态与原动作不匹配，系统未提交已失效的变更。",
+            "proof": "Live Events and PVC/PV state do not match the original action, so the system did not submit an invalidated change.",
             "blocked_reason": evidence_gap,
             "operator_steps": (
-                ["核对下方新方案的目标、资源清单与回滚方式。", "高风险存储变更需要重新勾选确认后执行。"]
+                ["Review the target, resource list, and rollback path of the new plan below.", "High-risk storage changes must be reconfirmed before execution."]
                 if has_candidate else
                 [
                     evidence_gap,
-                    "由存储管理员提供批准的 StorageClass、NFS/CSI/LUN 模板；平台不会让 LLM 猜测生产存储路径。",
-                    "在 ConfigMap k8s-agent-config 填写 AUTO_OPS_STATIC_PV_TEMPLATE_JSON，或填写 AUTO_OPS_STATIC_PV_NFS_SERVER 与 AUTO_OPS_STATIC_PV_NFS_BASE_PATH。",
-                    "确认 k8s-agent-storage-provisioner 已绑定后重新运行本计划，系统将生成可确认的 create_pv/create_pvc 变更。",
+                    "Have a storage administrator provide an approved StorageClass or NFS/CSI/LUN template; the platform will not let the LLM guess production storage paths.",
+                    "Populate AUTO_OPS_STATIC_PV_TEMPLATE_JSON in ConfigMap k8s-agent-config, or set AUTO_OPS_STATIC_PV_NFS_SERVER and AUTO_OPS_STATIC_PV_NFS_BASE_PATH.",
+                    "After confirming that k8s-agent-storage-provisioner is bound, rerun this plan and the system will generate confirmable create_pv/create_pvc changes.",
                 ]
             ),
         }
@@ -8433,11 +8434,11 @@ async def _execute_ops_plan_once(
                     "steps": executed_steps,
                     "results": results,
                     "release_gate": release_gate,
-                    "message": f"第 {index} 项变更未获人工确认，后续动作已停止。",
+                    "message": f"Change item {index} did not receive manual confirmation, so subsequent actions were stopped.",
                 }
         await emit(
             "change_start",
-            f"提交变更：{change.get('type', 'change')} -> {change_target}",
+            f"Submitting change: {change.get('type', 'change')} -> {change_target}",
             change_index=index,
             changes_total=len(changes),
             change={
@@ -8456,21 +8457,21 @@ async def _execute_ops_plan_once(
                 timeout_seconds=change_timeout,
                 heartbeat_seconds=float(os.getenv("OPS_HEARTBEAT_SECONDS", "5")),
                 cancel_event=cancel_event,
-                on_heartbeat=heartbeat("change_waiting", f"受控变更执行器 {change_target}"),
+                on_heartbeat=heartbeat("change_waiting", f"controlled change executor {change_target}"),
             )
         except StageTimeoutError:
             change_result = {
                 "change": _redact_sensitive(change),
                 "status": "failed",
                 "result": {
-                    "error": f"Kubernetes 变更在 {change_timeout} 秒内没有返回，已停止后续自动动作。",
+                    "error": f"The Kubernetes change did not return within {change_timeout} seconds, so subsequent automated actions were stopped.",
                     "timeout": True,
-                    "operator_steps": ["读取目标 Workload 当前 generation/observedGeneration，确认 API 是否已经受理变更。"],
+                    "operator_steps": ["Read the current generation/observedGeneration of the target Workload to confirm whether the API already accepted the change."],
                 },
             }
             await emit(
                 "stage_timeout",
-                f"{change_target} 的变更调用超时，状态不确定，已熔断后续动作。",
+                f"The change call for {change_target} timed out, the state is uncertain, and subsequent actions were cut off.",
                 timed_out_stage="kubernetes_change",
                 change_index=index,
                 timeout_seconds=change_timeout,
@@ -8485,15 +8486,15 @@ async def _execute_ops_plan_once(
                     "error": safe_error,
                     "exception_type": type(exc).__name__,
                     "operator_steps": [
-                        "查看下方原始 API 回执，确认失败发生在 Rancher/Kubernetes/MCP/审计哪个环节。",
-                        "如果是 403/Forbidden，先补 Rancher Token 或 ServiceAccount 的最小 RBAC 后重新执行同一计划。",
-                        "如果是 409/Conflict，刷新目标对象 resourceVersion 后重新生成预演，避免覆盖新变更。",
+                        "Review the raw API receipt below to confirm whether the failure happened in Rancher, Kubernetes, MCP, or auditing.",
+                        "If it is 403/Forbidden, first add the minimum RBAC needed for the Rancher Token or ServiceAccount, then rerun the same plan.",
+                        "If it is 409/Conflict, refresh the target resourceVersion and regenerate the dry run to avoid overwriting newer changes.",
                     ],
                 },
             }
             await emit(
                 "change_exception",
-                f"{change_target} 的变更执行器异常退出，已停止把未知状态误报为成功。",
+                f"The change executor for {change_target} exited unexpectedly, so the system stopped misreporting the unknown state as success.",
                 change_index=index,
                 changes_total=len(changes),
                 error=safe_error,
@@ -8505,9 +8506,9 @@ async def _execute_ops_plan_once(
         await emit(
             "change_done",
             (
-                f"变更返回：{change_target} -> {change_status}"
+                f"Change returned: {change_target} -> {change_status}"
                 if change_status not in {"failed", "blocked"} else
-                f"变更未通过：{change_target} -> {change_status}"
+                f"Change not approved: {change_target} -> {change_status}"
             ),
             change_index=index,
             changes_total=len(changes),
@@ -8531,7 +8532,7 @@ async def _execute_ops_plan_once(
             "steps": executed_steps,
             "results": results,
             "release_gate": release_gate,
-            "message": "任务已中断；不会执行剩余变更。已提交动作的最终状态需要人工复核。",
+            "message": "The task was interrupted, so the remaining changes will not be executed. The final state of already-submitted actions requires manual review.",
         }
     failed = [r for r in results if r.get("status") in {"failed", "blocked"}]
     attempted_actions = {str(change.get("type") or "") for change in plan.get("changes", [])}
@@ -8542,25 +8543,25 @@ async def _execute_ops_plan_once(
             ((plan.get("planning") or {}).get("evidence_gap"))
             or (plan.get("_runtime_replan") or {}).get("evidence_gap")
             or plan.get("evidence_gap")
-            or "现有日志、Events 与对象状态没有形成可验证的单一根因。"
+            or "Existing logs, Events, and object state did not converge on a single verifiable root cause."
         )
         verification = {
             "status": "diagnostic_completed",
             "recovered": None,
-            "message": "深度诊断证据采集完成；已生成受控候选方案。" if evidence_replans else "深度诊断完成，但证据仍不足以支持安全变更。",
-            "proof": "本轮只读，不宣称故障已经恢复。",
+            "message": "Deep-diagnosis evidence collection is complete; controlled candidate plans were generated." if evidence_replans else "Deep diagnosis is complete, but the evidence is still insufficient to support a safe change.",
+            "proof": "This round was read-only and does not claim that the fault has already recovered.",
             "blocked_reason": evidence_gap,
             "operator_steps": [
-                "查看每个诊断步骤中的日志、Events、存储链和 Workload 实际配置。",
-                "补齐界面提示的存储后端、目标对象或 RBAC 权限后重新运行诊断。",
-                "若候选策略已生成，在下方核对具体变更并由操作员确认执行。",
+                "Review the logs, Events, storage chain, and actual Workload configuration in each diagnostic step.",
+                "After filling in the storage backend, target object, or RBAC permissions indicated by the UI, rerun the diagnosis.",
+                "If candidate strategies were generated, review the specific changes below and have an operator confirm execution.",
             ],
         }
         next_steps = _ops_terminal_next_steps(plan, verification, evidence_replans, verification["operator_steps"])
         verification["next_steps"] = next_steps
         await emit(
             "replanning",
-            "LLM 与 EvidenceRunbookEngine 已基于真实证据重新规划",
+            "The LLM and EvidenceRunbookEngine have replanned based on real evidence",
             alternative_plan_count=len(evidence_replans),
             level="success" if evidence_replans else "warning",
         )
@@ -8572,7 +8573,7 @@ async def _execute_ops_plan_once(
         )
         await emit(
             "summarizing",
-            "整理诊断证据、候选修复方案和下一步确认项",
+            "Organizing diagnostic evidence, candidate remediation plans, and next confirmation items",
             alternative_plan_count=len(evidence_replans),
         )
         ai_summary = await _llm_ops_summary(plan, executed_steps, []) if summarize else {
@@ -8597,15 +8598,15 @@ async def _execute_ops_plan_once(
     verify_grace = max(0, int(os.getenv("OPS_VERIFY_INITIAL_GRACE_SECONDS", "15")))
     await emit(
         "verifying",
-        f"等待 Workload rollout；先给新 Pod {verify_grace} 秒重建/拉起窗口，再验证是否真正恢复"
+        f"Waiting for Workload rollout; first allow the new Pod {verify_grace} seconds for rebuild/startup, then verify whether it truly recovered"
         if verify_grace else
-        "等待 Workload rollout 并验证 Pod 是否真正恢复",
+        "Waiting for Workload rollout and verifying whether the Pod truly recovered",
         initial_grace_seconds=verify_grace,
     )
     verification = await _verify_plan_recovery(plan, results, cancel_event)
     await emit(
         "verification_done",
-        verification.get("message") or verification.get("status") or "恢复验证完成",
+        verification.get("message") or verification.get("status") or "Recovery verification completed",
         verification=verification,
         level="success" if verification.get("recovered") is not False else "warning",
     )

@@ -1,4 +1,4 @@
-"""拓扑、巡检、告警与受控运维接口的数据模型。"""
+"""Data models for topology, inspection, alert, and controlled operations endpoints."""
 
 from pydantic import BaseModel, Field
 
@@ -23,7 +23,7 @@ class TopologyImpactRequest(BaseModel):
 
 
 class ExternalTrafficFlowRequest(BaseModel):
-    """外部/跨集群数据流查询条件。"""
+    """Query criteria for external or cross-cluster data flows."""
 
     cluster: str = "all"
     cluster_id: str = ""
@@ -67,7 +67,7 @@ class OpsStepApprovalRequest(BaseModel):
 
 
 class OpsSkillScriptPolicy(BaseModel):
-    """Skill 可选的企业批准脚本策略，不接收脚本正文或任意命令。"""
+    """Optional enterprise-approved script policy for a Skill; does not accept script bodies or arbitrary commands."""
 
     enabled: bool = False
     script_id: str = ""
@@ -78,7 +78,7 @@ class OpsSkillScriptPolicy(BaseModel):
 
 
 class OpsSkillDefinition(BaseModel):
-    """运维人员注入平台的可匹配 Skill，不允许包含任意 shell。"""
+    """A matchable Skill injected into the platform by operations staff; arbitrary shell is not allowed."""
 
     id: str = ""
     name: str
@@ -98,7 +98,7 @@ class OpsSkillDefinition(BaseModel):
 
 
 class OpsSkillMatchRequest(BaseModel):
-    """用于单独测试 AI/规则是否能把问题匹配到正确 Skill。"""
+    """Used to test whether AI or rules can match a problem to the correct Skill in isolation."""
 
     question: str = ""
     alert: dict = Field(default_factory=dict)
@@ -118,14 +118,14 @@ class InspectionRequest(BaseModel):
 
 
 class InspectionPreviewRequest(BaseModel):
-    """基于最近一次巡检 finding 重新采集实时证据并生成预演。"""
+    """Re-collect live evidence from the most recent inspection finding and generate a preview."""
 
     finding_id: str
     model_profile_id: str = ""
 
 
 class InfrastructureScanRequest(BaseModel):
-    """数据库、虚拟机、中间件等非 K8s 基础设施巡检请求。"""
+    """Inspection request for non-K8s infrastructure such as databases, virtual machines, and middleware."""
 
     resource_type: str = "all"
     resource_id: str = ""

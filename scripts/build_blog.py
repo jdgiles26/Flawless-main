@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Flawless bilingual static blog."""
+"""Build the Flawless static blog."""
 
 from __future__ import annotations
 
@@ -20,9 +20,8 @@ from markupsafe import Markup
 ROOT = Path(__file__).resolve().parents[1]
 BLOG_ROOT = ROOT / "blog"
 POSTS_ROOT = BLOG_ROOT / "posts"
-REPOSITORY_URL = "https://github.com/William-Lu-stack/Flawless"
-AUTHOR = "陆宣宇"
-AUTHOR_EN = "Xuanyu Lu"
+REPOSITORY_URL = "https://github.com/jdgiles26/Flawless-main"
+AUTHOR = "jdgiles26"
 
 
 def parse_front_matter(path: Path) -> tuple[dict, str]:
@@ -43,9 +42,8 @@ def normalize_date(value: object) -> date:
 
 
 def reading_time(markdown_text: str) -> int:
-    chinese_chars = len(re.findall(r"[\u4e00-\u9fff]", markdown_text))
     english_words = len(re.findall(r"\b[A-Za-z][A-Za-z'-]*\b", markdown_text))
-    return max(1, round(chinese_chars / 420 + english_words / 230))
+    return max(1, round(english_words / 230))
 
 
 def load_posts(base_url: str) -> list[dict]:
@@ -132,18 +130,17 @@ def build_site(output_root: Path, base_url: str) -> None:
         "@context": "https://schema.org",
         "@type": "Blog",
         "name": "Flawless Field Notes",
-        "description": "Bilingual field notes on AgenticOps, AI SRE, Kubernetes, and safe infrastructure automation.",
+        "description": "Field notes on AgenticOps, AI SRE, Kubernetes, and safe infrastructure automation.",
         "url": f"{base_url}/",
         "author": {
             "@type": "Person",
-            "name": f"{AUTHOR} ({AUTHOR_EN})",
-            "homeLocation": "Shanghai, China",
+            "name": AUTHOR,
         },
     }
     index_page = base_template.render(
-        lang="zh-CN",
+        lang="en",
         page_title="Flawless Field Notes · From alert to verified recovery",
-        description="Flawless 中英文实战手记：AgenticOps、AI SRE、Kubernetes 安全修复与可验证恢复。",
+        description="Flawless field notes: AgenticOps, AI SRE, Kubernetes safe remediation, and verified recovery.",
         canonical_url=f"{base_url}/",
         base_url=base_url,
         repository_url=REPOSITORY_URL,
@@ -165,12 +162,11 @@ def build_site(output_root: Path, base_url: str) -> None:
             "image": [post["cover_url"]],
             "datePublished": post["date_iso"],
             "dateModified": post["date_iso"],
-            "inLanguage": ["zh-CN", "en"],
+            "inLanguage": "en",
             "mainEntityOfPage": post["url"],
             "author": {
                 "@type": "Person",
-                "name": f"{AUTHOR} ({AUTHOR_EN})",
-                "homeLocation": "Shanghai, China",
+                "name": AUTHOR,
             },
             "publisher": {
                 "@type": "Organization",
@@ -181,7 +177,7 @@ def build_site(output_root: Path, base_url: str) -> None:
         }
         post_content = post_template.render(post=post, repository_url=REPOSITORY_URL)
         post_page = base_template.render(
-            lang="zh-CN",
+            lang="en",
             page_title=f"{post['title']} · Flawless",
             description=post["description"],
             canonical_url=post["url"],
@@ -249,8 +245,8 @@ Sitemap: {base_url}/sitemap.xml
 <channel>
   <title>Flawless Field Notes</title>
   <link>{base_url}/</link>
-  <description>Bilingual field notes on AgenticOps and AI SRE.</description>
-  <language>zh-CN</language>
+  <description>Field notes on AgenticOps and AI SRE.</description>
+  <language>en</language>
 {chr(10).join(feed_items)}
 </channel>
 </rss>
@@ -261,10 +257,9 @@ Sitemap: {base_url}/sitemap.xml
         "# Flawless",
         "",
         "> An AI-native SRE control plane for Kubernetes and cloud infrastructure.",
-        "> 面向 Kubernetes 与云基础设施的 AI 原生 SRE 控制平面。",
         "",
         "Flawless connects alerts, evidence, topology, human approval, controlled remediation, and recovery verification.",
-        "The project is written in Shanghai by 陆宣宇 (Xuanyu Lu).",
+        f"The project is maintained by {AUTHOR}.",
         "",
         f"- Repository: {REPOSITORY_URL}",
         f"- Blog: {base_url}/",
@@ -281,7 +276,7 @@ Sitemap: {base_url}/sitemap.xml
     index_data = {
         "project": "Flawless",
         "repository": REPOSITORY_URL,
-        "author": {"name": AUTHOR, "name_en": AUTHOR_EN, "location": "Shanghai, China"},
+        "author": {"name": AUTHOR},
         "articles": [
             {
                 "title": post["title"],
@@ -306,7 +301,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=ROOT / "public")
     parser.add_argument(
         "--base-url",
-        default="https://william-lu-stack.github.io/Flawless",
+        default="https://jdgiles26.github.io/Flawless-main",
     )
     args = parser.parse_args()
     build_site(args.output.resolve(), args.base_url.rstrip("/"))

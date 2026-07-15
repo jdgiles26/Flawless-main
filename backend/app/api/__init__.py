@@ -1,1 +1,1 @@
-"""HTTP API 路由层：只负责协议适配、参数接收和响应编排。"""
+"""HTTP API routing layer: responsible only for protocol adaptation, parameter intake, and response orchestration."""

@@ -1,6 +1,6 @@
 """
-MCP HTTP Server — 将 k8s_mcp_server 的 tool 暴露为 HTTP 接口
-本地开发可用，K8s 内作为 sidecar 或独立 pod 运行。
+MCP HTTP Server — exposes k8s_mcp_server's tools as an HTTP interface
+Usable for local development; runs as a sidecar or standalone pod inside K8s.
 """
 import os
 import secrets
@@ -64,7 +64,7 @@ async def call_tool(req: ToolCallRequest, request: Request):
         list_nodes,
         check_access,
         list_pod_metrics,
-        # 新增聚合工具
+        # newly added aggregate tools
         get_cluster_summary,
         list_all_pods,
         list_all_deployments,

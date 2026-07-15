@@ -1,27 +1,31 @@
 # ============================================================
 # Advanced Operations ClusterRoleBindings
 #
-# 作用：
-# - 让 k8s-agent-sa 在整个集群范围内执行受控修复、节点隔离、静态 PV 创建和发布治理。
-# - 适合“全局自动化值班模式”：系统生成计划，操作员确认后执行。
+# Purpose:
+# - Let k8s-agent-sa perform controlled remediation, node containment, static PV creation,
+#   and release governance across the entire cluster.
+# - Suited for a "global automated on-call mode": the system generates a plan and executes
+#   after operator confirmation.
 #
-# 安全边界：
-# - 这里没有绑定 cluster-admin。
-# - 实际能执行的动作仍受后端 ACTION_CATALOG、风险门禁、人工确认、
-#   OPS_MUTATION_ENABLED、AUTONOMOUS_OPS_ENABLED 和审计链路约束。
-# - 建议生产环境先设置 AUTONOMOUS_OPS_ENABLED='false'，让每次变更都由人确认。
+# Security boundary:
+# - cluster-admin is not bound here.
+# - The actions that can actually run are still constrained by the backend ACTION_CATALOG,
+#   risk gates, human confirmation, OPS_MUTATION_ENABLED, AUTONOMOUS_OPS_ENABLED, and the
+#   audit trail.
+# - In production, it's recommended to set AUTONOMOUS_OPS_ENABLED='false' first, so every
+#   change requires human confirmation.
 #
-# 启用：
+# Enable:
 #   kubectl apply -f manifests/rbac.yaml
 #   kubectl apply -f manifests/advanced-ops-clusterrolebindings.yaml
 #
-# 回滚：
+# Rollback:
 #   kubectl delete -f manifests/advanced-ops-clusterrolebindings.yaml
 # ============================================================
 
 ---
-# 核心修复能力：Workload patch/restart/scale、Pod recreate/evict、HPA、PVC、
-# ServiceAccount imagePullSecret、ConfigMap 恢复。
+# Core remediation capabilities: Workload patch/restart/scale, Pod recreate/evict, HPA, PVC,
+# ServiceAccount imagePullSecret, ConfigMap recovery.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -36,7 +40,8 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
-# 节点隔离能力：允许在确认后 cordon/uncordon 发生压力或异常的节点。
+# Node containment capability: allows cordon/uncordon of nodes under pressure or exhibiting
+# anomalies after confirmation.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -51,8 +56,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
-# 静态存储供给能力：允许在人工确认后创建静态 PV，并处理 PVC 创建/修补。
-# 应配合 AUTO_OPS_STATIC_PV_TEMPLATE_JSON 或 NFS 后端参数使用。
+# Static storage provisioning capability: allows creating a static PV after human confirmation,
+# and handles PVC creation/patching.
+# Should be used together with AUTO_OPS_STATIC_PV_TEMPLATE_JSON or the NFS backend parameters.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -67,8 +73,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
-# 发布治理能力：允许平台作为发布入口，创建或修补 Deployment/StatefulSet/DaemonSet、
-# Service 和 PDB。若只希望部分 namespace 可发布，请改用 RoleBinding 示例文件。
+# Release governance capability: allows the platform to act as a release entry point,
+# creating or patching Deployment/StatefulSet/DaemonSet, Service, and PDB. If you only want
+# some namespaces to be releasable, use the RoleBinding example file instead.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

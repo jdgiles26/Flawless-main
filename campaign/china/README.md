@@ -1,46 +1,46 @@
-# Flawless 中国开发者社区首发包
+# Flawless China Developer Community Launch Kit
 
-目标不是机械转载，而是让不同社区用自己熟悉的方式理解同一个产品命题：
+The goal is not mechanical reposting, but helping different communities understand the same product thesis in the way that feels most natural to them:
 
-> Flawless 不是给监控面板加一个聊天框，而是把告警、证据、拓扑、审批、受控修复和恢复验证连接成一个可审计的 AI SRE 控制平面。
+> Flawless isn't a chat box bolted onto a monitoring dashboard — it connects alerts, evidence, topology, approval, controlled remediation, and recovery verification into one auditable AI SRE control plane.
 
-## 首发顺序
+## Launch order
 
-| 优先级 | 平台 | 内容形态 | 建议栏目/标签 | 文件 |
+| Priority | Platform | Content format | Suggested section/tags | File |
 |---|---|---|---|---|
-| P0 | 掘金 | 原创技术长文 | AI、Kubernetes、DevOps、开源项目 | `juejin-csdn-oschina.md` |
-| P0 | CSDN | 原创技术长文 | 云原生、AIOps、Kubernetes、SRE | `juejin-csdn-oschina.md` |
-| P0 | 知乎 | 问题型文章或回答 | Kubernetes、SRE、AIOps、人工智能 | `zhihu.md` |
-| P1 | 开源中国 | 项目发布与技术长文 | 云原生、运维、AI | `juejin-csdn-oschina.md` |
-| P1 | SegmentFault 思否 | 工程设计文章 | Kubernetes、SRE、AI、DevOps | `segmentfault.md` |
-| P1 | V2EX | 分享创造帖 | 分享创造、程序员 | `v2ex.md` |
-| P1 | 即刻/微博/朋友圈 | 短帖与二次传播 | 见文案 | `social-short.md` |
+| P0 | Juejin | Original long-form technical article | AI, Kubernetes, DevOps, open source projects | `juejin-csdn-oschina.md` |
+| P0 | CSDN | Original long-form technical article | Cloud native, AIOps, Kubernetes, SRE | `juejin-csdn-oschina.md` |
+| P0 | Zhihu | Question-style article or answer | Kubernetes, SRE, AIOps, AI | `zhihu.md` |
+| P1 | OSChina | Project launch and long-form technical article | Cloud native, operations, AI | `juejin-csdn-oschina.md` |
+| P1 | SegmentFault | Engineering design article | Kubernetes, SRE, AI, DevOps | `segmentfault.md` |
+| P1 | V2EX | "Share & Create" post | Share & Create, programmers | `v2ex.md` |
+| P1 | Jike/Weibo/WeChat Moments | Short posts and reshares | See copy | `social-short.md` |
 
-所有版本都应链接到 GitHub Pages 的 canonical 文章和 GitHub 仓库。平台没有稳定官方发布 API 时，使用平台自带编辑器发布，不绕过验证码、反自动化或内容审核。
+Every version should link back to the canonical article on GitHub Pages and to the GitHub repository. On platforms without a stable official publishing API, use the platform's own editor to publish, without bypassing CAPTCHAs, anti-automation measures, or content review.
 
-## 七天首发节奏
+## Seven-day launch cadence
 
-| 日期 | 动作 | 目标 |
+| Day | Action | Goal |
 |---|---|---|
-| Day 1 | 掘金首发工程闭环长文；CSDN 发布本地运行与架构版；知乎发布问题型文章 | 建立第一波搜索入口与讨论 |
-| Day 2 | 回复前三个平台的技术评论，整理高频问题 | 用真实互动补足可信度 |
-| Day 3 | 开源中国发布项目版；SegmentFault 发布控制平面设计版 | 进入更垂直的开发者社区 |
-| Day 4 | V2EX 发布“分享创造”，主动征集反例与安全边界 | 获得直接、尖锐的工程反馈 |
-| Day 5 | 即刻、微博、朋友圈发布短帖和项目主视觉 | 扩大技术圈层之外的触达 |
-| Day 6 | 把前三天最好的问题整理为 GitHub Issue/FAQ | 把外部讨论沉淀回仓库 |
-| Day 7 | 发布一篇“首周反馈与下一步”更新 | 形成第二次传播，而不是一次性广告 |
+| Day 1 | Publish the engineering-loop long-form article on Juejin; publish the local run and architecture version on CSDN; publish a question-style article on Zhihu | Establish the first wave of search entry points and discussion |
+| Day 2 | Reply to technical comments on the first three platforms and collect frequently asked questions | Build credibility through genuine interaction |
+| Day 3 | Publish the project version on OSChina; publish the control-plane design version on SegmentFault | Reach more vertical developer communities |
+| Day 4 | Publish a "Share & Create" post on V2EX, actively soliciting counterexamples and safety-boundary feedback | Get direct, sharp engineering feedback |
+| Day 5 | Publish short posts and the project's key visual on Jike, Weibo, and WeChat Moments | Extend reach beyond the technical circle |
+| Day 6 | Turn the best questions from the first three days into GitHub Issues/FAQ | Bring external discussion back into the repository |
+| Day 7 | Publish a "first week feedback and next steps" update | Create a second wave of sharing instead of a one-off promotion |
 
-同一天不要向多个社区投放完全相同的标题和开头。可以强势表达产品判断，但不使用“国内首个”“全球领先”“生产验证”等无法证明的表述，也不组织虚假点赞、评论或 Star。
+Don't post the exact same title and opening to multiple communities on the same day. It's fine to state product claims confidently, but avoid unverifiable phrases like "first in China" or "world leading" or "production-proven," and never organize fake likes, comments, or stars.
 
-## 发布资产
+## Launch assets
 
-- 项目：`https://github.com/William-Lu-stack/Flawless`
-- 中文博客：`https://william-lu-stack.github.io/Flawless/`
-- 主视觉：`blog/assets/images/luxyai-agenticops-loop.png`
-- 作者署名：上海，陆宣宇（Xuanyu Lu）
-- 许可证表述：源代码公开，PolyForm Noncommercial；不要写成 OSI 认可的开源许可证。
-- 数据表述：可写“截至 2026-07-13 已获得 400+ GitHub Stars”；不要虚构客户、生产部署数、性能提升或融资背书。
+- Project: `https://github.com/jdgiles26/Flawless-main`
+- Blog: `https://jdgiles26.github.io/Flawless-main/`
+- Key visual: `blog/assets/images/luxyai-agenticops-loop.png`
+- Author byline: jdgiles26
+- License wording: public source, PolyForm Noncommercial; do not describe it as an OSI-approved open-source license.
+- Data wording: it's fine to say "400+ GitHub Stars as of 2026-07-13"; do not fabricate customers, production deployment counts, performance improvements, or funding endorsements.
 
-## 发布后
+## After publishing
 
-把每个平台的公开 URL 记录到 `published-links.md`，再从个人主页、GitHub Discussion 和后续文章互相链接。搜索引擎和 AI 服务是否抓取由各平台决定，这套分发只能提高发现概率，不能保证收录或引用。
+Record the public URL for each platform in `published-links.md`, and cross-link from your personal profile, GitHub Discussions, and follow-up articles. Whether search engines and AI services crawl the content is up to each platform; this distribution effort can only improve discoverability, not guarantee indexing or citation.

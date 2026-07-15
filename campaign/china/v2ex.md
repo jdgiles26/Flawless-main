@@ -1,39 +1,38 @@
 ---
 campaign: v2ex-launch
-author: 陆宣宇
-location: 上海
+author: jdgiles26
 status: ready-for-review
-canonical: https://github.com/William-Lu-stack/Flawless
+canonical: https://github.com/jdgiles26/Flawless-main
 ---
 
-# 标题
+# Title
 
-**[分享创造] 做了一个 AI SRE 控制平面 Flawless，想听听真实值班工程师的批评**
+**[Share & Create] Built an AI SRE control plane called Flawless, would love real on-call engineers to tear it apart**
 
-# 正文
+# Body
 
-大家好，我是陆宣宇，在上海。
+Hi everyone, I'm jdgiles26.
 
-最近把自己对 AI 运维的一套想法做成了可以本地运行的源代码公开项目 **Flawless**。它不是在监控面板旁加一个聊天框，而是尝试把这条链路连起来：
+I recently turned my thinking on AI operations into a public-source project you can run locally, called **Flawless**. It's not a chat box bolted onto a monitoring dashboard — it tries to connect the whole chain:
 
-`告警 → 证据 → 拓扑 → 诊断 → 变更预演 → 人工审批 → 受控执行 → 恢复验证`
+`alert → evidence → topology → diagnosis → change preview → human approval → controlled execution → recovery verification`
 
-我最在意的三个点：
+The three things I care about most:
 
-1. 诊断必须能指回事件、日志、指标和资源状态，不能只给一段听起来合理的话。
-2. 模型不能直接拥有任意 Shell；RBAC、动作白名单、风险分级和审批都在模型之外。
-3. 命令成功不算修好，必须回到原始故障表现验证恢复。
+1. Diagnosis must be traceable back to events, logs, metrics, and resource state — not just a paragraph that sounds plausible.
+2. The model can't directly hold an arbitrary shell; RBAC, an action allowlist, risk tiering, and approval all live outside the model.
+3. A successful command doesn't count as fixed — the system must return to the original symptom to verify recovery.
 
-目前仓库里有本地启动、Docker、Helm、SRE Chat、巡检队列、拓扑影响、受控修复和可观测链路。配置 OpenAI-compatible 模型端点后可以直接跑。项目使用 PolyForm Noncommercial 许可证，适合学习、检查和非商业使用。
+The repository currently includes local startup, Docker, Helm, SRE chat, an inspection queue, topology impact analysis, controlled remediation, and an observability path. Once you configure an OpenAI-compatible model endpoint, you can run it directly. The project uses the PolyForm Noncommercial license, suitable for learning, inspection, and noncommercial use.
 
-GitHub：<https://github.com/William-Lu-stack/Flawless>
+GitHub: <https://github.com/jdgiles26/Flawless-main>
 
-中英文技术文章：<https://william-lu-stack.github.io/Flawless/>
+Technical articles: <https://jdgiles26.github.io/Flawless-main/>
 
-项目目前 400+ Stars，但我更需要做过真实 On-call 的朋友挑问题：
+The project currently has 400+ Stars, but what I need more is friends who've done real on-call work to challenge it:
 
-- 哪类动作你无论如何都不会交给 Agent？
-- 哪些证据缺失时必须停止？
-- 你会如何定义“恢复验证通过”？
+- What kind of action would you never, under any circumstances, hand to an agent?
+- What missing evidence should force a stop?
+- How would you define "recovery verification passed"?
 
-欢迎直接回复或开 Issue，尖锐一点没关系。
+Feel free to reply directly or open an Issue — being sharp is totally fine.

@@ -1,4 +1,4 @@
-"""SRE 对话接口的数据模型。"""
+"""Data models for SRE conversation endpoints."""
 
 from pydantic import BaseModel, Field
 

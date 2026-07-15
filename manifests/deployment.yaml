@@ -28,10 +28,10 @@ data:
   MODEL_PROFILES_JSON: '[{"id":"primary","provider":"openai-compatible","model":"qwen2.5:7b","base_url":"http://ollama.default.svc.cluster.local:11434/v1","auth_type":"api_key","role":"primary","weight":100,"max_tokens":4096,"verify_ssl":true}]'
   EMBEDDING_GATEWAY_BASE: http://ollama.default.svc.cluster.local:11434/v1
   EMBEDDING_MODEL: nomic-embed-text
-  # 云/基础设施适配器只放非敏感声明；AK/SK/Token 必须放 Secret。
+  # Cloud/infrastructure adapters only hold non-sensitive declarations; AK/SK/Token must go in a Secret.
   CLOUD_ADAPTERS_JSON: '[{"id":"generic-storage","provider":"csi-storage","display_name":"Generic CSI Storage","enabled":false,"capabilities":["storage","csi","pv-pvc","capacity","latency","topology"],"auth_mode":"secret-ref","regions":["example-region"],"inventory_scope":"storage-pool/cluster","safety_boundary":"read-only discovery + PVC/PV change approval"},{"id":"virtualization-platform","provider":"virtualization","display_name":"Virtualization Platform","enabled":false,"capabilities":["hci","virtualization","network","storage","security","topology"],"auth_mode":"secret-ref","regions":["example-dc"],"inventory_scope":"tenant/resource-pool","safety_boundary":"tenant token + high-risk approval"}]'
-  # Kubernetes 之外的全栈资源接入。这里只放资源描述和只读探测地址，敏感凭据必须放 Secret 或外部执行器。
-  # 示例：[{"id":"prod-mysql-01","type":"database","engine":"mysql","name":"生产订单 MySQL","host":"mysql.example","port":3306,"business_service":"order","criticality":"high","metrics":{"connections_percent":91}}]
+  # Full-stack resource access beyond Kubernetes. Only hold resource descriptions and read-only probe addresses here; sensitive credentials must go in a Secret or external executor.
+  # Example: [{"id":"prod-mysql-01","type":"database","engine":"mysql","name":"Production Orders MySQL","host":"mysql.example","port":3306,"business_service":"order","criticality":"high","metrics":{"connections_percent":91}}]
   INFRASTRUCTURE_RESOURCES_JSON: '[]'
   DATABASE_TARGETS_JSON: '[]'
   VM_TARGETS_JSON: '[]'
@@ -39,7 +39,7 @@ data:
   STORAGE_TARGETS_JSON: '[]'
   INFRASTRUCTURE_VERIFY_SSL: 'true'
   INFRASTRUCTURE_LLM_PLANNER_ENABLED: 'true'
-  # DB/VM/存储/云平台真实变更必须交给企业受控执行器，平台只提交结构化计划并保留审批审计。
+  # Real changes to DB/VM/storage/cloud platforms must be handed off to an enterprise-controlled executor; the platform only submits a structured plan and retains the approval audit trail.
   INFRASTRUCTURE_ACTION_WEBHOOK_URL: ''
   CSI_STORAGE_ENDPOINT: ''
   VIRTUALIZATION_PLATFORM_ENDPOINT: ''
@@ -47,13 +47,13 @@ data:
   LANGFUSE_HOST: ''
   CMDB_URL: http://k8s-agent-cmdb.k8s-agent.svc.cluster.local:8300
   PROMETHEUS_URL: http://k8s-agent-prometheus.k8s-agent.svc.cluster.local:9090
-  # 可接组织已有 Grafana 可观测栈；留空时界面明确显示“未配置”，不会生成模拟数据。
+  # Can connect to your organization's existing Grafana observability stack; when left blank the UI clearly shows "not configured" and never generates simulated data.
   LOKI_URL: http://k8s-agent-loki.k8s-agent.svc.cluster.local:3100
   TEMPO_URL: http://k8s-agent-tempo.k8s-agent.svc.cluster.local:3200
   GRAFANA_URL: http://k8s-agent-grafana.k8s-agent.svc.cluster.local:3000
-  # 外部数据流：不配置时使用 K8s/CMDB 静态推断；配置后接入 Hubble/Kiali/Beyla/自研流量服务的真实网络流。
-  # 主应用不运行特权抓包进程；如集群没有现成 eBPF 服务，可部署 manifests/ebpf-beyla.yaml。
-  # CNI_PLUGIN_MODE 可选 auto/flannel/canal/calico/cilium；flannel/canal/calico 均不要求本应用容器 privileged。
+  # External data flow: uses K8s/CMDB static inference when not configured; once configured, connects to real network flows from Hubble/Kiali/Beyla/an in-house flow service.
+  # The main application never runs a privileged packet-capture process; if the cluster has no existing eBPF service, you can deploy manifests/ebpf-beyla.yaml.
+  # CNI_PLUGIN_MODE options: auto/flannel/canal/calico/cilium; flannel/canal/calico never require this application's containers to run privileged.
   CNI_PLUGIN_MODE: auto
   NETWORK_PLUGIN_MODE: auto
   EBPF_FLOW_PROVIDER: auto
@@ -63,21 +63,21 @@ data:
   EBPF_FLOW_VERIFY_SSL: 'true'
   EBPF_TOPOLOGY_FUSION_ENABLED: 'true'
   EBPF_TOPOLOGY_WINDOW: 30m
-  # 从 0 部署 eBPF 时，Beyla 会把 network_flow 输出到日志；Alloy 收集到 Loki 后由后端解析成真实数据流。
+  # When deploying eBPF from scratch, Beyla writes network_flow output to logs; once Alloy collects it into Loki, the backend parses it into real data flows.
   BEYLA_LOKI_FLOW_ENABLED: 'true'
   BEYLA_LOKI_NAMESPACE: luxyai-ebpf
   BEYLA_LOKI_POD_SELECTOR: luxyai-beyla.*
   BEYLA_LOKI_FLOW_LIMIT: '500'
   BEYLA_FLOW_QUERY_WINDOW: 5m
-  # flannel 本身不原生输出 flow API；这里接企业 eBPF Collector、DeepFlow/Pixie/Tetragon 等脱敏后的 HTTP API。
+  # flannel does not natively expose a flow API; connect here to an enterprise eBPF Collector or the desensitized HTTP API of DeepFlow/Pixie/Tetragon, etc.
   FLANNEL_EBPF_FLOW_URL: ''
   FLANNEL_EBPF_FLOW_TOKEN: ''
   FLANNEL_EBPF_FLOW_VERIFY_SSL: 'true'
-  # canal 通常是 flannel 数据面 + Calico policy；可接 canal 专用 Collector 或 Calico Flow/Goldmane。
+  # canal is typically the flannel data plane + Calico policy; can connect to a canal-specific Collector or Calico Flow/Goldmane.
   CANAL_EBPF_FLOW_URL: ''
   CANAL_EBPF_FLOW_TOKEN: ''
   CANAL_EBPF_FLOW_VERIFY_SSL: 'true'
-  # calico 可接 Calico Enterprise/Cloud Flow Logs、Whisker/Goldmane API 或 Calico eBPF dataplane 的企业导出 API。
+  # calico can connect to Calico Enterprise/Cloud Flow Logs, the Whisker/Goldmane API, or the enterprise export API of the Calico eBPF dataplane.
   CALICO_FLOW_URL: ''
   CALICO_GOLDMANE_FLOW_URL: ''
   CALICO_FLOW_TOKEN: ''
@@ -100,17 +100,17 @@ data:
   RANCHER_VERIFY_SSL: 'true'
   RANCHER_CLUSTER_IDS: all
   CORS_ALLOW_ORIGINS: ''
-  # 当前通过私有网络 NodePort 访问，不要求浏览器登录；生产接入组织 OIDC 后再改为 true。
+  # Currently accessed via a private-network NodePort and does not require browser login; switch this to true once production integrates your organization's OIDC.
   CONSOLE_AUTH_REQUIRED: 'false'
   CONSOLE_TRUSTED_IDENTITY_HEADER: x-auth-request-user
-  # 管理员配置模式默认关闭。开启后只有 Secret 中的 Basic Auth 管理员可以写入模型、知识库和 Skill。
+  # Admin configuration mode is disabled by default. Once enabled, only the Basic Auth admin defined in the Secret can write to models, the knowledge base, and Skills.
   CONSOLE_ADMIN_MODE: 'false'
   CONSOLE_ADMIN_USERS: admin
   CONSOLE_ADMIN_TRUSTED_IDENTITY: 'false'
   DISABLE_OPENAPI_DOCS: 'true'
   SECURITY_HEADERS_ENABLED: 'true'
   MAX_REQUEST_BODY_BYTES: '2097152'
-  # CMDB 拓扑范围与修复白名单必须分离；拓扑默认读取全部 namespace，变更仍受 ALLOWED_NAMESPACES 限制。
+  # CMDB topology scope and the remediation allowlist must be kept separate; topology reads all namespaces by default, but changes remain restricted by ALLOWED_NAMESPACES.
   CMDB_ALLOWED_NAMESPACES: all
   MAX_PATCH_REPLICAS: '20'
   DEFAULT_IMAGE_PULL_SECRET: ''
@@ -119,26 +119,26 @@ data:
   AUTO_OPS_MAX_MEMORY_GI: '8'
   AUTO_OPS_DEFAULT_PVC_SIZE: '10Gi'
   AUTO_OPS_DEFAULT_PVC_ACCESS_MODE: ReadWriteOnce
-  # 自动化运维创建缺失 PVC 时默认使用组织 NAS StorageClass；高风险创建仍需人工确认。
+  # When automated operations create a missing PVC, it defaults to your organization's NAS StorageClass; high-risk creation still requires human confirmation.
   AUTO_OPS_DEFAULT_STORAGE_CLASS: standard
-  # PVC Pending 且确需静态供卷时，由存储管理员填写已批准的 NFS 后端。
+  # When a PVC is Pending and static provisioning is genuinely required, the storage administrator fills in the approved NFS backend.
   AUTO_OPS_STATIC_PV_TEMPLATE_JSON: '{}'
   AUTO_OPS_STATIC_PV_NFS_SERVER: ''
   AUTO_OPS_STATIC_PV_NFS_BASE_PATH: ''
   AUTO_OPS_STATIC_PV_RECLAIM_POLICY: Retain
-  # 缺失 ConfigMap 只能从这里的批准模板恢复，严禁让模型自行编造配置值。
-  # 示例：{"prod/app-config":{"data":{"APP_MODE":"prod"}}}
+  # A missing ConfigMap can only be restored from the approved templates here; the model must never be allowed to fabricate configuration values on its own.
+  # Example: {"prod/app-config":{"data":{"APP_MODE":"prod"}}}
   AUTO_OPS_CONFIGMAP_TEMPLATES_JSON: '{}'
-  # Skill 只能引用这里登记的企业批准脚本 ID，不保存脚本正文。
-  # 每个 Skill 最终保存为独立 Agent Skills 标准目录，并由 frontend.yaml 的 PVC 持久化。
+  # A Skill can only reference an enterprise-approved script ID registered here; it never stores the script body.
+  # Each Skill is ultimately saved as an independent standard Agent Skills directory, persisted by the PVC in frontend.yaml.
   OPS_SKILL_ROOT: /var/lib/luxyai/ops-skills
-  # 仅用于自动迁移旧版本单文件注册表；迁移完成后以 OPS_SKILL_ROOT 为事实来源。
+  # Used only for automatically migrating the legacy single-file registry; once migration completes, OPS_SKILL_ROOT becomes the source of truth.
   OPS_SKILL_STORE_PATH: /var/lib/luxyai/ops-skills.json
-  # 示例：[{"id":"inspect-pvc-permission","name":"PVC 目录权限检查","description":"只读检查挂载目录属主和权限","risk":"medium","runner":"enterprise-script-runner","allowed_targets":["Pod","PVC"],"required_evidence":["previous_logs","storage_chain"]}]
+  # Example: [{"id":"inspect-pvc-permission","name":"PVC directory permission check","description":"Read-only check of the mount directory owner and permissions","risk":"medium","runner":"enterprise-script-runner","allowed_targets":["Pod","PVC"],"required_evidence":["previous_logs","storage_chain"]}]
   OPS_APPROVED_SCRIPTS_JSON: '[]'
   OUTBOUND_VERIFY_SSL: 'true'
-  # 内部模型/Embedding 网关当前使用容器不信任的企业证书，等价于原 curl -k。
-  # 后续挂载组织 CA bundle 后应恢复为 true。
+  # The internal model/embedding gateway currently uses an enterprise certificate the container does not trust, equivalent to plain curl -k.
+  # This should be restored to true once your organization's CA bundle is mounted.
   LLM_VERIFY_SSL: 'false'
   OAUTH_VERIFY_SSL: 'true'
   LOCAL_CLUSTER_NAME: local-cluster
@@ -171,7 +171,7 @@ data:
   WRITE_RATE_LIMIT_PER_MINUTE: '120'
   CACHE_TTL_RANCHER_INVENTORY: '15'
   INSPECTION_MAX_EVENT_FETCHES_PER_CLUSTER: '40'
-  # 巡检先做 Skill 语义匹配，再用一次受约束模型批量复核；失败时自动退回语义匹配。
+  # Inspection first performs Skill semantic matching, then does a single constrained-model batch review; on failure it automatically falls back to semantic matching.
   INSPECTION_SKILL_ROUTER_ENABLED: 'true'
   INSPECTION_SKILL_ROUTER_TIMEOUT_SECONDS: '18'
   LLM_CONNECT_TIMEOUT_SECONDS: '5'

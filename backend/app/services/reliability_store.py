@@ -1,4 +1,4 @@
-"""SLO 目标与发布审计记录的轻量持久化仓库。"""
+"""Lightweight persistence repository for SLO targets and release audit records."""
 
 from __future__ import annotations
 

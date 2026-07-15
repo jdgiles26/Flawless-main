@@ -1,1 +1,1 @@
-"""后端应用服务层：承载可测试、可复用的业务用例。"""
+"""Backend application service layer: hosts testable, reusable business use cases."""

@@ -1,4 +1,4 @@
-"""系统入口、健康检查与平台自愈接口。"""
+"""Endpoints for system entry, health checks, and platform self-healing."""
 
 from ._registry import build_feature_router
 
@@ -19,4 +19,4 @@ def build_router(runtime):
         ("POST", "/api/platform/self-heal/run", "platform_self_heal_run"),
         ("GET", "/api/cloud/adapters", "cloud_adapters"),
         ("GET", "/api/effectiveness", "ai_effectiveness"),
-    ], tag="系统状态")
+    ], tag="System Status")

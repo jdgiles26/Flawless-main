@@ -180,7 +180,7 @@ def _wanted_rancher_clusters() -> set[str] | None:
     raw = os.getenv("RANCHER_CLUSTER_IDS", "all")
     items = {item.strip() for item in raw.split(",") if item.strip()}
     lowered = {item.lower() for item in items}
-    if not items or {"all", "*", "所有"} & lowered:
+    if not items or {"all", "*"} & lowered:
         return None
     return items
 
@@ -786,11 +786,11 @@ async def topology():
     }
     if diagnostics["errors"] or cluster_errors:
         status = "degraded"
-        message = "CMDB 部分 Kubernetes API 读取失败，请查看 diagnostics.errors。"
+        message = "CMDB failed to read some Kubernetes API data; see diagnostics.errors."
         diagnostics["errors"]["clusters"] = cluster_errors
     if not all_nodes and not diagnostics["errors"]:
         status = "empty"
-        message = "CMDB 已连接 Kubernetes API，但当前权限范围内没有可建模的 Workload/Service/Ingress。"
+        message = "CMDB is connected to the Kubernetes API, but no modelable Workload/Service/Ingress resources exist within the current permission scope."
 
     return {
         "status": status,

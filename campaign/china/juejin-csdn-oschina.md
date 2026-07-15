@@ -1,103 +1,102 @@
 ---
 campaign: china-developer-launch
-author: 陆宣宇
-location: 上海
+author: jdgiles26
 status: ready-for-review
-canonical: https://william-lu-stack.github.io/Flawless/posts/from-alert-to-verified-recovery/
-repository: https://github.com/William-Lu-stack/Flawless
+canonical: https://jdgiles26.github.io/Flawless-main/posts/from-alert-to-verified-recovery/
+repository: https://github.com/jdgiles26/Flawless-main
 ---
 
-# 平台标题
+# Platform titles
 
-- 掘金：**我在上海做了一个 AI SRE 控制平面：它不只会聊天，还要证明系统真的恢复了**
-- CSDN：**AI SRE 不是聊天框：Flawless 如何把 Kubernetes 告警推进到可验证恢复**
-- 开源中国：**Flawless 发布：面向 Kubernetes 的 AgenticOps 控制平面，已获 400+ GitHub Stars**
+- Juejin: **I built an AI SRE control plane: it doesn't just chat, it proves the system actually recovered**
+- CSDN: **AI SRE is not a chat box: how Flawless takes Kubernetes alerts all the way to verified recovery**
+- OSChina: **Flawless launches: an AgenticOps control plane for Kubernetes, already at 400+ GitHub Stars**
 
-# 正文
+# Body
 
-如果 AI 只是把 `kubectl describe` 翻译成中文，它还不配进入生产集群。
+If AI can only translate `kubectl describe` output into a summary, it doesn't yet deserve a place in a production cluster.
 
-真正困难的从来不是“回答一个运维问题”，而是把一次故障安全地走完：告警出现后收集哪些证据，如何判断根因，哪些操作可以执行，谁来批准，操作完成后又凭什么证明业务真的恢复了。
+The hard part has never been "answering an operations question" — it's safely walking through an entire incident: what evidence to collect once an alert fires, how to determine the root cause, which actions are allowed to run, who approves them, and what proves the business actually recovered afterward.
 
-我在上海做的 **Flawless**，就是想把这条链路做成产品。
+**Flawless** is my attempt to turn that entire chain into a product.
 
-它不是给 Grafana 旁边贴一个聊天框，而是一个面向 Kubernetes 和云基础设施的 **AI 原生 SRE 控制平面**：
+It isn't a chat box bolted onto Grafana — it's an **AI-native SRE control plane** for Kubernetes and cloud infrastructure:
 
-`发现异常 → 收集证据 → 诊断根因 → 评估影响 → 生成方案 → 人工审批 → 受控执行 → 验证恢复 → 沉淀经验`
+`detect anomaly → collect evidence → diagnose root cause → assess impact → generate plan → human approval → controlled execution → verify recovery → accumulate experience`
 
-截至 2026 年 7 月 13 日，Flawless 已经获得 **400+ GitHub Stars**。比数字更重要的是，越来越多工程师开始认同一个判断：AI 运维的下一步，不是让模型拿到更大的权限，而是让它在更严格的边界里完成更有价值的工作。
+As of July 13, 2026, Flawless has already reached **400+ GitHub Stars**. More important than the number is a judgment that more and more engineers are coming to agree with: the next step for AI operations isn't giving the model bigger permissions — it's letting it do more valuable work within stricter boundaries.
 
-## 1. 为什么“会聊天”远远不够
+## 1. Why "being able to chat" is nowhere near enough
 
-一次真实故障不会只存在于一段日志里。
+A real incident never lives inside a single log line.
 
-Pod 的 CrashLoopBackOff 可能来自配置、存储、镜像、调度、网络或上游依赖；一次看似简单的扩缩容，可能改变节点压力、下游连接数和错误预算。对话可以快速表达问题，却不能替代证据、拓扑、策略和审计。
+A Pod's CrashLoopBackOff might stem from configuration, storage, images, scheduling, networking, or an upstream dependency; a seemingly simple scaling change can shift node pressure, downstream connection counts, and error budgets. Conversation can express a problem quickly, but it cannot replace evidence, topology, policy, and audit.
 
-Flawless 会把对话转化为结构化的运维状态：
+Flawless turns conversation into structured operational state:
 
-- 每条证据保留来源和时间范围；
-- 每个诊断区分事实、推断与缺失信息；
-- 每项操作标记目标、风险和预期影响；
-- 每次审批绑定到实际被审查的变更；
-- 每次执行都回到原始故障表现做恢复验证。
+- Every piece of evidence retains its source and time window;
+- Every diagnosis separates observed facts, inferences, and missing information;
+- Every action is tagged with its target, risk, and expected impact;
+- Every approval is bound to the exact change that was actually reviewed;
+- Every execution returns to the original symptom to verify recovery.
 
-这让 Agent 不再像一个“说得很像专家”的黑盒，而更像一位把调查过程完整摊开的值班工程师。
+This keeps the agent from being a black box that merely "sounds like an expert," and makes it more like an on-call engineer who lays out the entire investigation in the open.
 
-## 2. 把 Agent 的权限关进控制平面
+## 2. Lock the agent's permissions inside the control plane
 
-我不相信“给模型 cluster-admin，然后在 Prompt 里提醒它小心”这种方案。
+I don't believe in the approach of "give the model cluster-admin, then remind it in the prompt to be careful."
 
-Flawless 的执行边界在模型之外：RBAC、动作白名单、Dry Run、风险分级、人工审批、审计记录和恢复验证都属于平台能力。模型可以提出建议、选择经过允许的工具、填写参数，但不能在运行时改写安全规则。
+Flawless's execution boundary lives outside the model: RBAC, an action allowlist, dry-run, risk tiering, human approval, audit records, and recovery verification are all platform capabilities. The model can propose actions, select from approved tools, and fill in parameters, but it cannot rewrite the safety rules at runtime.
 
-自治能力应该是一架梯子：
+Autonomy should be a ladder:
 
-1. 先解释证据；
-2. 再推荐调查步骤；
-3. 然后起草修复方案；
-4. 执行经过批准且边界明确的操作；
-5. 最后才让被反复验证的低风险操作自动运行。
+1. Explain the evidence first;
+2. Then recommend investigation steps;
+3. Then draft a remediation plan;
+4. Execute an approved, clearly bounded action;
+5. Only then let a repeatedly verified, low-risk action run automatically.
 
-AI 不是因为说话像专家就获得行动权，而是靠一次次可审计、可验证的结果赢得行动权。
+AI doesn't earn the right to act because it sounds like an expert — it earns that right through a series of auditable, verifiable results.
 
-## 3. 命令成功，不等于系统恢复
+## 3. A successful command is not the same as a recovered system
 
-这是 Flawless 最想坚持的产品原则。
+This is the product principle Flawless cares about most.
 
-Pod 重启成功，不等于业务恢复；命令返回 0，不等于业务恢复；监控变绿，也可能只是流量已经消失。执行之后，系统必须重新检查最初的故障：Endpoint 是否健康、真实请求是否成功、延迟是否回到正常范围、新副本是否持续稳定、关联依赖有没有退化。
+A pod restarting successfully doesn't mean the business recovered; a command returning 0 doesn't mean the business recovered; a dashboard turning green might just mean traffic has stopped arriving. After execution, the system must re-check the original failure: are endpoints healthy, are real requests succeeding, has latency returned to normal, are the new replicas stably healthy rather than momentarily ready, and has any related dependency degraded.
 
-如果验证失败，Agent 不应该编一个“已修复”的故事，而应该停止、展示证据，并提出回滚或把控制权交还给工程师。
+If verification fails, the agent should not invent a story where "it's fixed." It should stop, present the evidence, and either propose a rollback or hand control back to the engineer.
 
-## 4. 现在能看到什么
+## 4. What you can see today
 
-当前公开版本包含：
+The current public release includes:
 
-- SRE Chat 与巡检队列；
-- 证据驱动的诊断与修复计划；
-- 2D/3D 拓扑和爆炸半径分析；
-- 人工审批、受控执行和恢复验证；
-- Kubernetes、Rancher、数据库、虚拟机、存储和中间件适配；
-- Prometheus、Loki、Tempo、Grafana 和可选 Langfuse 可观测链路；
-- 可持久化的修复谱系与模型效果记录。
+- SRE chat and an inspection queue;
+- Evidence-driven diagnosis and remediation plans;
+- 2D/3D topology and blast-radius analysis;
+- Human approval, controlled execution, and recovery verification;
+- Kubernetes, Rancher, database, VM, storage, and middleware adapters;
+- Prometheus, Loki, Tempo, Grafana, and an optional Langfuse observability path;
+- Persistent remediation lineage and model-effectiveness records.
 
-仓库提供本地运行、Docker 和 Helm 路径。配置一个 OpenAI-compatible 模型端点后，就可以从真实可运行的软件开始检查，而不是只看一张概念图。
+The repository provides local, Docker, and Helm run paths. Once you configure an OpenAI-compatible model endpoint, you can start inspecting real, runnable software instead of just looking at a concept diagram.
 
-## 5. 我也把边界说清楚
+## 5. I want to be equally clear about the boundaries
 
-Flawless 仍在快速演进，它不是一个应该被盲目授予生产权限的“全自动运维机器人”。真实环境必须按组织策略收敛 RBAC、凭证、网络、工具和审批范围。
+Flawless is still evolving quickly. It is not a "fully automated ops robot" that should be blindly granted production permissions. Real environments must constrain RBAC, credentials, network access, tools, and approval scope according to your organization's policy.
 
-项目以 **PolyForm Noncommercial** 许可证公开源代码与文档，支持学习、检查、实验和非商业使用，同时保留商业权利。它是源代码公开项目，但我不会把它包装成不存在的 OSI 开源授权。
+The project publishes its source code and documentation under the **PolyForm Noncommercial** license, supporting learning, inspection, experimentation, and noncommercial use while reserving commercial rights. It is a public-source project, but I won't dress it up as an OSI-approved open-source license it isn't.
 
-## 最后
+## Finally
 
-我想做的不是一个更会说话的 AI，而是一个在故障现场更值得信任的系统：它展示证据、尊重边界、把行动交给人审查，并一直工作到恢复得到证明。
+What I'm trying to build isn't an AI that talks better — it's a system that's more trustworthy at the scene of an incident: one that shows its evidence, respects boundaries, hands actions off for human review, and keeps working until recovery is proven.
 
-如果你做过 Kubernetes、SRE、平台工程或 AIOps，欢迎直接来挑刺。最有价值的反馈不是“看起来不错”，而是一个可以复现的失败场景、一条不够安全的边界，或者一个恢复验证没有覆盖到的问题。
+If you've worked with Kubernetes, SRE, platform engineering, or AIOps, I'd genuinely welcome you poking holes in this. The most valuable feedback isn't "looks good" — it's a reproducible failure scenario, a boundary that isn't safe enough, or a recovery check that doesn't cover a real case.
 
-- GitHub：<https://github.com/William-Lu-stack/Flawless>
-- 中英文实战手记：<https://william-lu-stack.github.io/Flawless/>
+- GitHub: <https://github.com/jdgiles26/Flawless-main>
+- Field notes: <https://jdgiles26.github.io/Flawless-main/>
 
-如果这个方向也击中了你，给一个 Star、Watch 后续迭代，或者带着真实场景开一个 Issue。让我们一起把 AgenticOps 从流行词，做成工程师敢在凌晨三点使用的运维能力。
+If this direction resonates with you, drop a Star, watch for future iterations, or open an Issue with a real scenario. Let's turn AgenticOps from a buzzword into an operations capability engineers would actually trust at 3 a.m.
 
-作者：**陆宣宇，上海**
+Author: **jdgiles26**
 
-建议标签：`#AIOps` `#Kubernetes` `#SRE` `#AgenticOps` `#云原生`
+Suggested tags: `#AIOps` `#Kubernetes` `#SRE` `#AgenticOps` `#CloudNative`

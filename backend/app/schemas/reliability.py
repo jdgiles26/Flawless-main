@@ -1,4 +1,4 @@
-"""SLO、错误预算和发布治理接口的数据契约。"""
+"""Data contracts for SLO, error budget, and release governance endpoints."""
 
 from typing import Any
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class ObjectiveRequest(BaseModel):
-    """创建或更新服务可用性目标。"""
+    """Create or update a service availability objective."""
 
     id: str = ""
     service: str = Field(min_length=1, max_length=160)
@@ -22,7 +22,7 @@ class ObjectiveRequest(BaseModel):
 
 
 class ReleaseRequest(BaseModel):
-    """提交生产发布风险判定所需的完整变更信息。"""
+    """Submit the complete change information required for a production release risk evaluation."""
 
     service: str = Field(min_length=1, max_length=160)
     cluster: str = Field(default="local", max_length=160)
@@ -45,7 +45,7 @@ class ReleaseRequest(BaseModel):
 
 
 class ApprovalRequest(BaseModel):
-    """确认或拒绝已经完成风险判定的发布。"""
+    """Approve or reject a release that has already completed risk evaluation."""
 
     confirm: bool = False
     comment: str = Field(default="", max_length=1000)

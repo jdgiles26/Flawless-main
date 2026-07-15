@@ -1,4 +1,4 @@
-"""Rancher 多集群、CMDB 拓扑和 Prometheus 指标接口。"""
+"""Endpoints for Rancher multi-cluster, CMDB topology, and Prometheus metrics."""
 
 from ._registry import build_feature_router
 
@@ -10,4 +10,4 @@ def build_router(runtime):
         ("GET", "/api/resources", "unified_resources"),
         ("GET", "/api/cmdb/topology", "cmdb_topology"),
         ("GET", "/api/prometheus/summary", "prometheus_summary"),
-    ], tag="集群资源与指标")
+    ], tag="Cluster Resources and Metrics")

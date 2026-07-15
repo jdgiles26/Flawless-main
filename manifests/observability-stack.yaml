@@ -1,16 +1,18 @@
 # ============================================================
 # Local CMDB + Prometheus Stack for k8s-agent
 #
-# 部署顺序:
+# Deployment order:
 #   kubectl apply -f manifests/rbac.yaml
 #   kubectl apply -f manifests/deployment.yaml
 #   kubectl apply -f manifests/observability-stack.yaml
 #   kubectl apply -f manifests/frontend.yaml
 #
-# 说明:
-# - local-cmdb 使用本项目业务镜像启动，自动扫描 Kubernetes 资源并输出应用拓扑。
-# - prometheus/kube-state-metrics 默认使用已验证可解析的国内镜像地址。
-# - 如果你的集群只能拉组织 Harbor，把下面 image 替换成同步后的私有网络镜像即可。
+# Notes:
+# - local-cmdb starts from this project's own business image, automatically scanning
+#   Kubernetes resources and producing the application topology.
+# - prometheus/kube-state-metrics default to verified, resolvable public mirror addresses.
+# - If your cluster can only pull from your organization's Harbor, just replace the image
+#   below with the synced private-network image.
 # ============================================================
 
 ---

@@ -1,5 +1,6 @@
-"""API 请求与响应模型。
+"""API request and response models.
 
-模型按功能拆分，路由与服务共用同一份契约，禁止在处理函数内部临时解析不受控字典。
+Models are split by capability, and routes and services share the same contract.
+Handlers must not parse uncontrolled dictionaries ad hoc inside request handling code.
 """
 

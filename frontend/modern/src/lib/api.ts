@@ -96,7 +96,7 @@ export async function apiGet<T>(url: string): Promise<T> {
     try {
       response = await fetch(url, { headers: adminAuthHeaders({ Accept: "application/json" }), signal: controller.signal });
     } catch (error: any) {
-      if (error?.name === "AbortError") throw new Error("请求超时，服务没有在限定时间内返回");
+      if (error?.name === "AbortError") throw new Error("Request timed out because the service did not respond within the allowed time.");
       throw error;
     } finally {
       window.clearTimeout(timeout);
@@ -160,7 +160,7 @@ export async function apiPost<T>(url: string, body: unknown): Promise<T> {
       signal: controller.signal,
     });
   } catch (error: any) {
-    if (error?.name === "AbortError") throw new Error(`请求超过 ${timeoutMs / 1000} 秒未返回，已停止等待；后台任务可在执行记录中继续查询`);
+    if (error?.name === "AbortError") throw new Error(`The request did not return within ${timeoutMs / 1000} seconds, so waiting has stopped. You can continue checking the background task in the execution history.`);
     throw error;
   } finally {
     window.clearTimeout(timeout);
@@ -190,7 +190,7 @@ function formatApiErrorDetail(detail: unknown): string {
       const path = Array.isArray(item?.loc) ? item.loc.filter((part: string) => part !== "body").join(".") : "";
       const msg = item?.msg || item?.message || String(item);
       return path ? `${path}: ${msg}` : msg;
-    }).join("；");
+    }).join("; ");
   }
   if (typeof detail === "object") {
     const value = detail as { message?: string; msg?: string; errors?: unknown; do_this?: unknown };
@@ -199,7 +199,7 @@ function formatApiErrorDetail(detail: unknown): string {
     else if (value.errors) lines.push(String(value.errors));
     if (Array.isArray(value.do_this)) lines.push(...value.do_this.map(String));
     else if (value.do_this) lines.push(String(value.do_this));
-    return lines.filter(Boolean).join("；") || JSON.stringify(value);
+    return lines.filter(Boolean).join("; ") || JSON.stringify(value);
   }
   return String(detail);
 }

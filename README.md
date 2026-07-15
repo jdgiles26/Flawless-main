@@ -11,7 +11,7 @@
 
 **Flawless** is an AI-native SRE control plane for Kubernetes and cloud infrastructure. It connects alerts, evidence, topology, human approval, controlled remediation, and recovery verification in one auditable AgenticOps loop.
 
-It's not just another operations chat box that only gives advice.。Flawless This connects "problem discovery, evidence collection, simulation generation, manual authorization, change execution, recovery verification, and experience accumulation" into an auditable closed loop.
+It's not just another operations chat box that only gives advice. Flawless connects "problem discovery, evidence collection, simulation generation, manual authorization, change execution, recovery verification, and experience accumulation" into an auditable closed loop.
 
 
 
@@ -48,14 +48,14 @@ model comparisons and recovery records survive Pod restarts.
 - **Guarded action**: keep RBAC, policy, dry-run, human approval, and audit outside the model boundary.
 - **Verified recovery**: test the original symptom after execution instead of treating a successful command as success.
 
-## Field Notes / 实战手记
+## Field Notes
 
 Only published notes are listed below; links point to versioned files in this repository:
 
-- [From Alert to Verified Recovery (blog/posts/2026-07-13-from-alert-to-verified-recovery.md)
-- [Should AI Be Allowed to Fix Kubernetes? / Can AI fix Kubernetes?？](blog/posts/2026-07-13-ai-should-earn-the-right-to-act.md)
-- [The Next SRE Control Plane Is More Than a Chat Box / Next-generation SRE control plane (blog/posts/2026-07-13-not-another-chatbox.md)
-- [Building AgenticOps from Shanghai /buildingAgenticOps](blog/posts/2026-07-13-building-agenticops-in-shanghai.md)
+- [From Alert to Verified Recovery](blog/posts/2026-07-13-from-alert-to-verified-recovery.md)
+- [Should AI Be Allowed to Fix Kubernetes?](blog/posts/2026-07-13-ai-should-earn-the-right-to-act.md)
+- [The Next SRE Control Plane Is More Than a Chat Box](blog/posts/2026-07-13-not-another-chatbox.md)
+- [Building a Public-Source AgenticOps Project](blog/posts/2026-07-13-building-agenticops-in-shanghai.md)
 
 ## Why This Exists
 
@@ -118,8 +118,8 @@ You need either:
 ### One-Click Deployment
 
 ```bash
-git clone https://github.com/jdgiles26/Flawless.git
-cd Flawless
+git clone https://github.com/jdgiles26/Flawless-main.git
+cd Flawless-main
 ./scripts/quickstart.sh
 ```
 
@@ -491,7 +491,7 @@ The platform is designed around least privilege:
 ## Repository Layout
 
 ```text
-Flawless/
+Flawless-main/
 ├── agents/                  # SRE workflow agents and execution engines
 ├── backend/app/             # Control plane API, schemas, services, domain logic
 ├── mcp_servers/             # Kubernetes MCP tools
@@ -524,7 +524,7 @@ pip-audit -r requirements.lock --no-deps --disable-pip
 ## GitHub
 
 The public engineering baseline lives at
-[`jdgiles26/Flawless`](https://github.com/jdgiles26/Flawless). Custom algorithm
+[`jdgiles26/Flawless-main`](https://github.com/jdgiles26/Flawless-main). Custom algorithm
 extensions, credentials, production topology, and company data are loaded at
 runtime and are intentionally excluded from the public repository.
 
@@ -550,7 +550,7 @@ Flawless is designed to grow from a Kubernetes SRE console into an AgenticOps op
 This project is released under the standardized
 [PolyForm Noncommercial License 1.0.0](LICENSE).
 
-You may use, study, modify, and redistribute the source code for non-commercial purposes. Commercial use, hosted commercial services, resale, enterprise product bundling, paid support services, and removal of author attribution require prior written authorization from **陆宣宇 (Xuanyu Lu)**.
+You may use, study, modify, and redistribute the source code for non-commercial purposes. Commercial use, hosted commercial services, resale, enterprise product bundling, paid support services, and removal of author attribution require prior written authorization from **jdgiles26**.
 
 This is a standardized source-available non-commercial license, not an
 OSI-approved open-source license. Commercial authorization requests can be sent

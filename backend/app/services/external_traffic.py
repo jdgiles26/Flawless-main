@@ -645,8 +645,8 @@ def _scan_cmdb_flows(flows: dict[str, dict], cmdb_topology: dict, scope: dict, k
     def in_scope(node: dict) -> bool:
         cluster = str(node.get("cluster") or node.get("cluster_id") or "")
         namespace = str(node.get("namespace") or "")
-        cluster_ok = selected_cluster in {"", "all", "*", "所有"} or selected_cluster in {cluster, str(node.get("cluster_id") or "")}
-        namespace_ok = selected_namespace in {"", "all", "*", "所有"} or not namespace or namespace == selected_namespace
+        cluster_ok = selected_cluster in {"", "all", "*"} or selected_cluster in {cluster, str(node.get("cluster_id") or "")}
+        namespace_ok = selected_namespace in {"", "all", "*"} or not namespace or namespace == selected_namespace
         workload_ok = not selected_workload or _endpoint_matches_workload(node, selected_workload)
         return cluster_ok and namespace_ok and workload_ok
 
@@ -719,9 +719,9 @@ def _scan_observed_flows(flows: dict[str, dict], observed_flows: list[dict], sco
         destination = item.get("destination") if isinstance(item.get("destination"), dict) else {}
         src_cluster = str(source.get("cluster") or item.get("source_cluster") or item.get("cluster") or "")
         src_namespace = str(source.get("namespace") or item.get("source_namespace") or item.get("namespace") or "")
-        if selected_cluster not in {"", "all", "*", "所有"} and selected_cluster not in {src_cluster, str(source.get("cluster_id") or "")}:
+        if selected_cluster not in {"", "all", "*"} and selected_cluster not in {src_cluster, str(source.get("cluster_id") or "")}:
             continue
-        if selected_namespace not in {"", "all", "*", "所有"} and src_namespace and src_namespace != selected_namespace:
+        if selected_namespace not in {"", "all", "*"} and src_namespace and src_namespace != selected_namespace:
             continue
         dest_addr = str(destination.get("address") or destination.get("name") or item.get("destination") or item.get("destination_ip") or "")
         if not dest_addr:
@@ -902,5 +902,5 @@ def build_external_traffic_payload(
         "flows": flows,
         "graph": _build_graph(flows),
         "data_sources": sources,
-        "explain": "只展示集群内对象与集群外或跨集群对象之间的数据流；observed 为真实观测，inferred 为基于 K8s/CMDB 配置的推断。",
+        "explain": "Only shows data flows between in-cluster objects and out-of-cluster or cross-cluster objects; observed means directly observed traffic, inferred means traffic inferred from K8s/CMDB configuration.",
     }

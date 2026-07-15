@@ -1,11 +1,11 @@
 """
-SRE Graph — 核心编排引擎 (本地化版)
+SRE Graph — Core Orchestration Engine (Localized Edition)
 
-变更：
-  - 使用本地 LLM (Ollama/vLLM/LocalAI) 做 AI 诊断，替代规则匹配
-  - 使用 LangFuse 自托管做全链路追踪
-  - 通过 MCP client 调用 k8s-mcp-server（不再用 fake 数据）
-  - 证书校验由 OUTBOUND_VERIFY_SSL 控制，生产建议开启并配置企业 CA
+Changes:
+  - Uses a local LLM (Ollama/vLLM/LocalAI) for AI diagnosis instead of rule matching
+  - Uses self-hosted LangFuse for end-to-end tracing
+  - Calls k8s-mcp-server through the MCP client (no longer uses fake data)
+  - Certificate verification is controlled by OUTBOUND_VERIFY_SSL; in production, enable it and configure the corporate CA
 """
 import os
 import json
@@ -38,18 +38,18 @@ from agents.remediation_engine import ACTION_CATALOG, build_remediation_plan, ex
 load_dotenv()
 
 # ============================================================
-# 内部服务地址
+# Internal service endpoints
 # ============================================================
 HEALING_AGENT_URL = os.getenv("HEALING_AGENT_URL", "http://localhost:8101/a2a/tasks")
 INCIDENT_AGENT_URL = os.getenv("INCIDENT_AGENT_URL", "http://localhost:8102/a2a/tasks")
 POSTMORTEM_AGENT_URL = os.getenv("POSTMORTEM_AGENT_URL", "http://localhost:8103/a2a/tasks")
 
-# MCP Server 地址（本地可以是 stdio，K8s 内可以是 SSE 端点）
-# 这里 HTTP 模式方便 K8s Service 调用
+# MCP Server endpoint (can be stdio locally or an SSE endpoint inside Kubernetes)
+# HTTP mode is convenient here for Kubernetes Service calls
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8105/mcp")
 
 # ============================================================
-# 私有网络 http 客户端（关闭证书验证，适配自签证书环境）
+# Private-network HTTP client (disables certificate verification for self-signed environments)
 # ============================================================
 def _http_client(timeout: int = 30) -> httpx.AsyncClient:
     verify = os.getenv("OUTBOUND_VERIFY_SSL", "true").lower() in {"1", "true", "yes", "on"}
@@ -220,37 +220,37 @@ def _policy_action(alert: dict[str, Any], diagnosis: dict[str, Any]) -> tuple[st
     ).lower()
     corpus = " ".join([alert_name, summary, root_cause, signal_text])
 
-    if any(k in corpus for k in ["oomkilled", "out of memory", "内存不足", "内存溢出"]):
+    if any(k in corpus for k in ["oomkilled", "out of memory", "\u5185\u5b58\u4e0d\u8db3", "\u5185\u5b58\u6ea2\u51fa"]):
         return "patch_workload", "policy: OOM evidence prefers resource patch over restart"
 
-    if any(k in corpus for k in ["probe failed", "liveness", "readiness", "startup probe", "探针"]):
+    if any(k in corpus for k in ["probe failed", "liveness", "readiness", "startup probe", "\u63a2\u9488"]):
         return "patch_workload", "policy: probe evidence prefers workload probe tuning"
 
-    if any(k in corpus for k in ["permission denied", "failedmount", "mountvolume", "read-only file system", "权限不足", "挂载失败"]):
+    if any(k in corpus for k in ["permission denied", "failedmount", "mountvolume", "read-only file system", "\u6743\u9650\u4e0d\u8db3", "\u6302\u8f7d\u5931\u8d25"]):
         return "patch_workload", "policy: storage/config evidence prefers workload securityContext patch"
 
     if any(k in corpus for k in ["imagepullbackoff", "errimagepull", "pull access denied", "manifest unknown"]):
         return "observe", "policy: image pull failures need registry/tag/secret evidence before mutation"
 
-    if any(k in corpus for k in ["crashloop", "crash looping", "容器反复崩溃", "反复重启"]):
+    if any(k in corpus for k in ["crashloop", "crash looping", "\u5bb9\u5668\u53cd\u590d\u5d29\u6e83", "\u53cd\u590d\u91cd\u542f"]):
         return "observe", "policy: generic crashloop requires evidence-specific plan before mutation"
 
-    if any(k in corpus for k in ["highcpu", "cpu usage", "cpu 使用率", "高 cpu", "高cpu"]):
+    if any(k in corpus for k in ["highcpu", "cpu usage", "cpu \u4f7f\u7528\u7387", "\u9ad8 cpu", "\u9ad8cpu"]):
         return "scale_out", "policy: high cpu capacity alert"
 
-    if any(k in corpus for k in ["pending", "无法调度", "insufficient", "node affinity", "taint"]):
+    if any(k in corpus for k in ["pending", "\u65e0\u6cd5\u8c03\u5ea6", "insufficient", "node affinity", "taint"]):
         return "observe", "policy: scheduling issue requires investigation"
 
     return "observe", "policy: no safe deterministic remediation"
 
 
 # ============================================================
-# MCP Tool 调用（替代原来的 fake 函数）
+# MCP tool invocation (replaces the old fake functions)
 # ============================================================
 async def mcp_call_tool(tool_name: str, arguments: dict) -> dict:
     """
-    通过 HTTP 调用本地 MCP Server 的 tool。
-    如果 MCP Server 不可用，回退到直接调用 K8s API。
+    Call a local MCP Server tool over HTTP.
+    If the MCP Server is unavailable, fall back to direct Kubernetes API calls.
     """
     try:
         headers = {}
@@ -266,7 +266,7 @@ async def mcp_call_tool(tool_name: str, arguments: dict) -> dict:
             resp.raise_for_status()
             return resp.json()
     except Exception as e:
-        # Fallback: 直接 import k8s_mcp_server 的 function（同进程调用）
+        # Fallback: directly import k8s_mcp_server functions (same-process call)
         from mcp_servers.k8s_mcp_server import (
             list_pods,
             get_pod_events,
@@ -310,7 +310,7 @@ async def collect_context(state: SREState) -> SREState:
     deployment = alert.get("deployment") or alert.get("workload_name") or ""
     requested_pod = alert.get("pod") or ""
 
-    # Step 1: 获取 Pods
+    # Step 1: get Pods
     span = start_span(
         trace,
         "tool.mcp.list_pods",
@@ -396,7 +396,7 @@ async def collect_context(state: SREState) -> SREState:
 
 
 async def diagnose(state: SREState) -> SREState:
-    """使用本地 LLM 做智能诊断，替代之前硬编码的规则匹配"""
+    """Use a local LLM for intelligent diagnosis instead of the previous hard-coded rule matching."""
     alert = state["alert"]
     context = state["k8s_context"]
     trace, observability = _ensure_trace(state, "diagnose")
@@ -444,52 +444,52 @@ async def diagnose(state: SREState) -> SREState:
         "node": (context.get("diagnostics") or {}).get("node", {}),
     })
     operator_skills = _redact_sensitive(state.get("operator_skills") or [])
-    prompt = f"""你是一个资深 AIOps / SRE 诊断专家。请分析以下 Kubernetes 告警和集群上下文，给出可执行、简洁、能让初级运维照着完成的生产诊断结论。
+    prompt = f"""You are a senior AIOps / SRE diagnostics expert. Analyze the following Kubernetes alert and cluster context, then return an actionable, concise production diagnosis that a junior operator can execute step by step.
 
-## 告警信息
+## Alert details
 {safe_alert}
 
-## 集群上下文
+## Cluster context
 Pods: {json.dumps(safe_pods, ensure_ascii=False)}
 Events: {json.dumps(safe_events, ensure_ascii=False)}
 Deep evidence: {json.dumps(safe_diagnostics, ensure_ascii=False)[:14000]}
 
-## 按需加载的运维 Skills
-以下内容来自匹配到的标准 Agent Skill。把它作为专家 Runbook 使用，但不得绕过真实证据、动作白名单、RBAC 或人工确认：
+## Dynamically loaded operations skills
+The following content comes from the matched standard Agent Skill. Use it as an expert runbook, but do not bypass real evidence, the action allowlist, RBAC, or required human approval:
 {json.dumps(operator_skills, ensure_ascii=False)[:12000]}
 
-## 任务
-请以 JSON 格式返回诊断结果，包含以下字段：
-- root_cause: 根因分析（中文）
-- impact: 影响范围
-- confidence: 置信度 (0-1)
-- risk_level: 风险等级 (low/medium/high/critical)
-- blast_radius: 影响面（namespace/service/workload/user-facing 维度）
-- signals: 关键证据数组，每项包含 source 和 finding
-- immediate_actions: 本次故障专属的专家步骤对象数组，每项包含 title、description、probe、expected_evidence、decision_rule、on_match、on_miss。probe 只能从 current_logs/previous_logs/events/workload_spec/pod_metrics/node_conditions/service_endpoints/dns/network_policy/dependency_topology/storage_chain/csi_status/pod_security_context/image_pull_secrets/registry_connectivity/scheduler_constraints/quota/pvc_binding/hpa/recent_changes/pdb_state/certificate_chain/webhook_status/config_ref_exists 中选择
-- prevention: 后续预防建议数组
-- suggested_action: 建议操作，只能是 execute_plan/investigate；不要再使用 observe 作为运维结论
-- proposed_changes: 候选动作数组，每项包含 type、目标字段、reason 和必要参数。type 只能从 create_workload/patch_workload/restart/scale_out/recreate_pod/patch_hpa/expand_pvc/create_pvc/create_pv/patch_workload_volume/cordon_node/evict_pod/uncordon_node/rollback_workload/patch_service/patch_service_account/create_configmap/patch_pdb 中选择。任何动作都必须有直接证据；高风险动作只作为需审批候选，存储路径、Secret 内容和配置值不得猜测。
-- need_human_approval: 是否需要人工审批 (true/false)
+## Task
+Return the diagnosis as JSON with these fields:
+- root_cause: root-cause analysis
+- impact: impact scope
+- confidence: confidence (0-1)
+- risk_level: risk level (low/medium/high/critical)
+- blast_radius: blast radius across the namespace/service/workload/user-facing dimensions
+- signals: array of key evidence items, each containing source and finding
+- immediate_actions: array of expert step objects tailored to this incident, each containing title, description, probe, expected_evidence, decision_rule, on_match, and on_miss. probe must be selected only from current_logs/previous_logs/events/workload_spec/pod_metrics/node_conditions/service_endpoints/dns/network_policy/dependency_topology/storage_chain/csi_status/pod_security_context/image_pull_secrets/registry_connectivity/scheduler_constraints/quota/pvc_binding/hpa/recent_changes/pdb_state/certificate_chain/webhook_status/config_ref_exists
+- prevention: array of follow-up prevention recommendations
+- suggested_action: recommended action, which must be either execute_plan or investigate; do not use observe as the final operations conclusion
+- proposed_changes: array of candidate actions, each containing type, target field, reason, and required parameters. type must be selected only from create_workload/patch_workload/restart/scale_out/recreate_pod/patch_hpa/expand_pvc/create_pvc/create_pv/patch_workload_volume/cordon_node/evict_pod/uncordon_node/rollback_workload/patch_service/patch_service_account/create_configmap/patch_pdb. Every action must have direct evidence; high-risk actions should only be proposed as approval-required candidates, and storage paths, Secret contents, and configuration values must never be guessed.
+- need_human_approval: whether human approval is required (true/false)
 
-决策原则：
-1. 不要把 CrashLoop 默认等同于 restart。优先根据证据选择 OOM 资源修复、探针修复、配置/存储权限修复、镜像凭据修复或调度修复。
-2. ImagePullBackOff 在没有明确默认 imagePullSecret 时不要建议重启；应该输出检查 tag、registry、secret、节点网络的步骤。
-3. 不得生成 shell/kubectl 字符串。网络策略、Secret 内容、新建 PVC、节点扩容、镜像版本替换等动作只能作为人工建议；结构化动作仍需后端白名单和风险门禁。
-4. 如果用户问题与 Kubernetes/SRE 无关，root_cause 写“非运维问题”，suggested_action=investigate，immediate_actions 给出正常回答要点，不要生成变更。
-5. immediate_actions 必须根据当前对象的真实证据动态生成，不得照抄固定流程。每一步写清“查什么、为何查、什么结果支持/排除哪个根因、下一步怎么走”；覆盖范围确认、并行取证、至少两个根因分支、变更门禁、最小变更、SLI/SLO 恢复验证和失败后的不同策略，通常为 6-10 项。
-6. 必须区分症状与根因。没有 previous logs、Events 或真实配置证据时，不得把 restart 当作默认修复。
-7. 对复杂问题应覆盖 rollout 回归、PDB 死锁、Service selector/Endpoint、Quota/LimitRange、DNS/CNI、CSI/PVC、证书/Webhook、节点压力和依赖故障等分支。
-8. 命中运维 Skill 时，遵循其中的证据顺序和恢复判据；Skill 与实时证据冲突时以实时证据为准。
-9. 如果日志不存在、Pod 已删除或 container 尚未产生日志，先用 Events/状态/Workload 模板判断是否有 PVC、镜像、ConfigMap、配额或调度阻断；没有模板级阻断时，可以提出 recreate_pod 作为诊断性重建，重建后必须重新采集 current/previous logs。
+Decision principles:
+1. Do not default CrashLoop to restart. Prefer evidence-driven choices such as OOM resource fixes, probe fixes, configuration/storage permission fixes, image credential fixes, or scheduling fixes.
+2. For ImagePullBackOff, do not suggest a restart unless a default imagePullSecret is explicitly confirmed; instead provide steps to check the tag, registry, secret, and node network.
+3. Do not generate shell or kubectl command strings. Actions such as network policy changes, Secret content changes, new PVC creation, node expansion, and image version replacement may only be presented as human recommendations; structured actions still require backend allowlists and risk gates.
+4. If the user's question is unrelated to Kubernetes or SRE, set root_cause to "non-operations issue", set suggested_action=investigate, and use immediate_actions for a normal answer outline without proposing changes.
+5. immediate_actions must be generated dynamically from the real evidence for the current object and must not copy a fixed procedure. Each step should clearly state what to check, why to check it, what result supports or rules out which root cause, and what to do next; cover scope confirmation, parallel evidence collection, at least two root-cause branches, change gates, the minimum safe change, SLI/SLO recovery validation, and alternative strategies if validation fails. Normally provide 6-10 steps.
+6. Symptoms and root causes must be distinguished. Without previous logs, Events, or real configuration evidence, restart must not be treated as the default fix.
+7. For complex issues, cover branches such as rollout regression, PDB deadlock, Service selector/Endpoint issues, Quota/LimitRange, DNS/CNI, CSI/PVC, certificates/Webhooks, node pressure, and dependency failures.
+8. When an operations Skill applies, follow its evidence order and recovery criteria; if the Skill conflicts with live evidence, live evidence takes precedence.
+9. If logs do not exist, the Pod has been deleted, or the container has not produced logs yet, first use Events, status, and the Workload template to determine whether PVC, image, ConfigMap, quota, or scheduling blockers exist. If there is no template-level blocker, you may propose recreate_pod as a diagnostic rebuild, but you must collect current and previous logs again after the rebuild.
 
-只返回 JSON，不要任何其他内容。"""
+Return JSON only and no additional text."""
 
     try:
         response = llm.invoke(prompt)
         diagnosis = _extract_json_object(response.content)
 
-        # 安全获取 token 用量
+        # Safely retrieve token usage
         try:
             um = getattr(response, "usage_metadata", {}) or {}
             tm = getattr(response, "response_metadata", {}).get("token_usage", {})
@@ -565,7 +565,7 @@ Deep evidence: {json.dumps(safe_diagnostics, ensure_ascii=False)[:14000]}
         "events": context.get("events", {}).get("events", [])[:10],
     }
     diagnosis.setdefault("risk_level", "medium")
-    diagnosis.setdefault("blast_radius", diagnosis.get("impact", "待评估"))
+    diagnosis.setdefault("blast_radius", diagnosis.get("impact", "Pending assessment"))
     diagnosis.setdefault("signals", [])
     diagnosis.setdefault("immediate_actions", [])
     diagnosis.setdefault("prevention", [])
@@ -574,15 +574,15 @@ Deep evidence: {json.dumps(safe_diagnostics, ensure_ascii=False)[:14000]}
     remediation_plan = build_remediation_plan(alert, diagnosis, context)
     top_hypothesis = (remediation_plan.get("hypotheses") or [{}])[0]
     root_text = str(diagnosis.get("root_cause") or "").lower()
-    if top_hypothesis and any(term in root_text for term in ("未知", "unknown", "证据不足", "人工介入")):
+    if top_hypothesis and any(term in root_text for term in ("\u672a\u77e5", "unknown", "\u8bc1\u636e\u4e0d\u8db3", "\u4eba\u5de5\u4ecb\u5165", "insufficient evidence", "manual intervention")):
         confidence = float(top_hypothesis.get("confidence") or 0.0)
         if confidence >= 0.62:
             matched = top_hypothesis.get("matched_evidence") or []
             evidence_sources = ", ".join(sorted({str(item.get("source") or "") for item in matched if item.get("source")})[:4])
             diagnosis["root_cause"] = (
-                f"{top_hypothesis.get('title') or top_hypothesis.get('id')}。"
-                f"证据来源：{evidence_sources or 'runtime evidence'}；"
-                f"置信度 {confidence:.2f}。"
+                f"{top_hypothesis.get('title') or top_hypothesis.get('id')}. "
+                f"Evidence sources: {evidence_sources or 'runtime evidence'}; "
+                f"confidence {confidence:.2f}."
             )
     engine_changes = remediation_plan.get("changes") or []
     llm_changes = []
@@ -622,7 +622,7 @@ Deep evidence: {json.dumps(safe_diagnostics, ensure_ascii=False)[:14000]}
 
 
 def _fallback_diagnosis(alert: dict, context: dict) -> dict:
-    """规则匹配降级方案 — LLM 不可用时的保底逻辑"""
+    """Rule-matching fallback used when the LLM is unavailable."""
     alert_name = alert.get("alert_name", "")
     pods = context.get("pods", {}).get("pods", [])
     evidence_text = json.dumps(_redact_sensitive({
@@ -646,78 +646,78 @@ def _fallback_diagnosis(alert: dict, context: dict) -> dict:
 
     if any(term in evidence_text for term in ("permission denied", "can't create directory", "cannot create directory", "read-only file system")):
         return {
-            "root_cause": "容器日志显示写入目录权限不足，优先怀疑挂载卷属主/属组、运行用户或底层存储目录权限不匹配。",
-            "impact": "目标 Pod 无法完成启动或业务初始化，Workload 可用副本可能不足。",
+            "root_cause": "Container logs show insufficient permissions for the write path. The most likely causes are a mismatch in mounted volume ownership/group, runtime user settings, or the permissions of the underlying storage directory.",
+            "impact": "The target Pod cannot complete startup or service initialization, and the Workload may not have enough available replicas.",
             "confidence": 0.86,
             "risk_level": "high",
-            "blast_radius": "目标 Workload 及依赖其提供服务的上游调用会受影响。",
-            "signals": [{"source": "logs", "finding": "命中 permission denied / mkdir 目录创建失败"}],
+            "blast_radius": "The target Workload and any upstream callers that depend on its service may be affected.",
+            "signals": [{"source": "logs", "finding": "Matched permission denied / mkdir directory creation failure"}],
             "immediate_actions": [
-                {"title": "读取 previous logs", "description": "确认失败发生在启动初始化阶段还是业务运行阶段。", "probe": "previous_logs"},
-                {"title": "核对运行用户和挂载点", "description": "检查 runAsUser/runAsGroup、volumeMount 和 PVC/PV。", "probe": "pod_security_context"},
-                {"title": "生成最小变更候选", "description": "优先考虑 fsGroup/fsGroupChangePolicy；若底层存储不支持属组修复，则转存储侧目录权限处理。", "probe": "storage_chain"},
+                {"title": "Read previous logs", "description": "Confirm whether the failure occurs during startup initialization or during application runtime.", "probe": "previous_logs"},
+                {"title": "Verify the runtime user and mount points", "description": "Inspect runAsUser/runAsGroup, volumeMounts, and PVC/PV configuration.", "probe": "pod_security_context"},
+                {"title": "Generate the minimum-change candidate", "description": "Prioritize fsGroup/fsGroupChangePolicy. If the underlying storage does not support group-based remediation, switch to storage-side directory permission handling.", "probe": "storage_chain"},
             ],
-            "prevention": ["发布前校验镜像运行用户与存储目录权限", "核心有状态服务沉淀 storage permission Skill"],
+            "prevention": ["Validate image runtime users and storage directory permissions before release", "Create a storage-permission Skill for critical stateful services"],
             "suggested_action": "execute_plan",
             "need_human_approval": True,
         }
 
     if has_crash or alert_name == "KubePodCrashLooping":
         return {
-            "root_cause": "容器反复崩溃，可能原因：OOM、启动失败、配置错误",
-            "impact": "服务不可用或部分可用",
+            "root_cause": "The container is repeatedly crashing. Likely causes include OOM, startup failure, or configuration errors.",
+            "impact": "The service is unavailable or only partially available.",
             "confidence": 0.85,
             "risk_level": "high",
-            "blast_radius": "目标 Deployment 的部分或全部副本可能不可用，若无冗余会影响用户请求",
-            "signals": [{"source": "pod_status", "finding": "检测到 CrashLoopBackOff/Error/ImagePullBackOff 或对应告警"}],
+            "blast_radius": "Some or all replicas of the target Deployment may be unavailable; without redundancy, user requests may be impacted.",
+            "signals": [{"source": "pod_status", "finding": "Detected CrashLoopBackOff/Error/ImagePullBackOff or the corresponding alert"}],
             "immediate_actions": [
-                "采集证据：查看 Pod Events、current/previous logs、退出码、最近变更",
-                "分支判断：OOM 走资源修复，探针失败走 startupProbe/readiness 修复，挂载/权限失败走 fsGroup 或存储侧权限修复，镜像失败走 registry/secret 修复",
-                "变更门禁：确认影响范围、副本冗余、回滚路径和人工审批",
-                "执行验证：变更后观察新 Pod Ready、restart_count、Events 和业务探活",
+                "Collect evidence: review Pod Events, current/previous logs, exit codes, and recent changes.",
+                "Branch on the evidence: use resource remediation for OOM, startupProbe/readiness remediation for probe failures, fsGroup or storage-side permission remediation for mount/permission failures, and registry/secret remediation for image pull failures.",
+                "Apply change gates: confirm the impact scope, replica redundancy, rollback path, and whether human approval is required.",
+                "Validate execution: after the change, observe the new Pod readiness, restart_count, Events, and service health checks.",
             ],
-            "prevention": ["补充启动探针和资源限制告警", "为核心服务配置多副本和 PDB", "沉淀 CrashLoop runbook"],
+            "prevention": ["Add startup probe and resource limit alerts", "Configure multiple replicas and a PDB for critical services", "Document a CrashLoop runbook"],
             "suggested_action": "investigate",
             "need_human_approval": True,
         }
 
     if alert_name == "HighCPUUsage":
         return {
-            "root_cause": "Deployment CPU 使用率持续超过阈值",
-            "impact": "延迟上升，请求处理变慢",
+            "root_cause": "Deployment CPU usage has remained above the threshold.",
+            "impact": "Latency is increasing and request processing is slowing down.",
             "confidence": 0.82,
             "risk_level": "medium",
-            "blast_radius": "目标服务吞吐下降，可能扩散到上游调用链",
-            "signals": [{"source": "alert", "finding": "CPU 使用率持续超过阈值"}],
-            "immediate_actions": ["确认 HPA 状态", "检查是否存在异常流量", "临时扩容副本"],
-            "prevention": ["补充 HPA 策略", "建立容量基线", "为突发流量配置限流和降级"],
+            "blast_radius": "Throughput for the target service is reduced and the impact may propagate to upstream call chains.",
+            "signals": [{"source": "alert", "finding": "CPU usage has remained above the threshold"}],
+            "immediate_actions": ["Confirm HPA status", "Check for abnormal traffic", "Temporarily scale out replicas"],
+            "prevention": ["Improve the HPA strategy", "Establish a capacity baseline", "Configure rate limiting and graceful degradation for traffic spikes"],
             "suggested_action": "scale_out",
             "need_human_approval": True,
         }
 
     if alert_name == "KubePodPending":
         return {
-            "root_cause": "Pod 无法调度，可能因资源不足或节点亲和性不匹配",
-            "impact": "新副本无法启动",
+            "root_cause": "The Pod cannot be scheduled, likely because of insufficient resources or mismatched node affinity.",
+            "impact": "New replicas cannot start.",
             "confidence": 0.88,
             "risk_level": "medium",
-            "blast_radius": "发布或扩容流程受阻，现有副本不足时会影响服务容量",
-            "signals": [{"source": "scheduler", "finding": "Pod 长时间处于 Pending"}],
-            "immediate_actions": ["查看调度事件", "检查节点资源和 taint/toleration", "检查 PVC 或镜像拉取状态"],
-            "prevention": ["增加资源水位告警", "完善节点池容量策略", "发布前做资源配额校验"],
+            "blast_radius": "Release or scale-out workflows are blocked, and service capacity may be affected if existing replicas are insufficient.",
+            "signals": [{"source": "scheduler", "finding": "The Pod has remained in Pending for an extended period"}],
+            "immediate_actions": ["Review scheduling events", "Check node resources and taint/toleration settings", "Check PVC status or image pull status"],
+            "prevention": ["Add resource saturation alerts", "Improve node pool capacity strategy", "Validate resource quotas before release"],
             "suggested_action": "investigate",
             "need_human_approval": False,
         }
 
     return {
-        "root_cause": "未知异常，需人工介入",
-        "impact": "待评估",
+        "root_cause": "Unknown issue; manual intervention is required.",
+        "impact": "Pending assessment",
         "confidence": 0.3,
         "risk_level": "medium",
-        "blast_radius": "未知，需要结合上下文继续排查",
+        "blast_radius": "Unknown; continue investigating with additional context.",
         "signals": [],
-        "immediate_actions": ["查看 Pod Events", "查看应用日志", "确认近期变更"],
-        "prevention": ["补齐告警标签", "补充服务拓扑和 runbook"],
+        "immediate_actions": ["Review Pod Events", "Review application logs", "Confirm recent changes"],
+        "prevention": ["Complete the alert labels", "Add service topology documentation and a runbook"],
         "suggested_action": "investigate",
         "need_human_approval": True,
     }
@@ -798,7 +798,7 @@ async def call_healing_agent(state: SREState) -> SREState:
     if decision["action"] == "investigate":
         remediation = {
             "executed": False,
-            "message": "已生成可执行的深度诊断计划；完成取证后将重新评分根因并生成受控变更。",
+            "message": "An executable deep-diagnosis plan has been generated; after evidence collection is complete, the root cause will be rescored and controlled changes will be proposed.",
             "reason": decision.get("reason"),
             "decision_source": decision.get("source"),
             "diagnostic_actions": decision.get("diagnostic_actions", []),
@@ -975,7 +975,7 @@ async def summarize(state: SREState) -> SREState:
 
     def _lines(items, limit: int = 5) -> str:
         if not items:
-            return "- 暂无明确证据"
+            return "- No clear evidence yet"
         rows = []
         for item in items[:limit]:
             if isinstance(item, dict):
@@ -996,28 +996,28 @@ async def summarize(state: SREState) -> SREState:
     incident_id = incident.get("incident_id") if isinstance(incident, dict) else ""
 
     final_answer = f"""
-## 结论
-{diagnosis.get("root_cause") or "还没有足够证据定位根因。"}
+## Conclusion
+{diagnosis.get("root_cause") or "There is not yet enough evidence to identify the root cause."}
 
-## 影响
-- 范围：{diagnosis.get("impact") or diagnosis.get("blast_radius") or "待确认"}
-- 风险：{diagnosis.get("risk_level") or "medium"}
-- 置信度：{diagnosis.get("confidence", "n/a")}
+## Impact
+- Scope: {diagnosis.get("impact") or diagnosis.get("blast_radius") or "Pending confirmation"}
+- Risk: {diagnosis.get("risk_level") or "medium"}
+- Confidence: {diagnosis.get("confidence", "n/a")}
 
-## 证据轨迹
+## Evidence trail
 {_lines(diagnosis.get("signals") or [])}
 
-## 下一步
+## Next steps
 {_lines(diagnosis.get("immediate_actions") or [])}
 
-## 执行状态
-- 建议动作：{action}
-- 当前模式：{"诊断/待确认" if dry_run else "允许执行"}
-- 人工确认：{"需要" if approval else "不需要"}
-- Healing Agent：{"已执行" if executed else "未执行"}{f"；{remediation_msg}" if remediation_msg else ""}
-{f"- 事件编号：{incident_id}" if incident_id else ""}
+## Execution status
+- Recommended action: {action}
+- Current mode: {"Diagnosis / awaiting confirmation" if dry_run else "Execution allowed"}
+- Human approval: {"Required" if approval else "Not required"}
+- Healing Agent: {"Executed" if executed else "Not executed"}{f"; {remediation_msg}" if remediation_msg else ""}
+{f"- Incident ID: {incident_id}" if incident_id else ""}
 
-## 预防建议
+## Prevention recommendations
 {_lines(diagnosis.get("prevention") or [], 4)}
 """
     observability.update({
