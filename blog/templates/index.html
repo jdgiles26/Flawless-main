@@ -1,0 +1,49 @@
+<section class="hero" style="--hero-image: url('{{ hero_image }}')">
+  <div class="hero-copy">
+    <p class="eyebrow">PUBLIC SOURCE · AGENTICOPS · SHANGHAI</p>
+    <h1>Flawless</h1>
+    <p class="hero-line">From alert to verified recovery.</p>
+    <p class="hero-line zh">从告警到恢复验证。</p>
+    <p class="hero-summary">Evidence-driven diagnosis, human-approved remediation, and auditable recovery for Kubernetes and cloud infrastructure.</p>
+    <div class="hero-actions">
+      <a class="primary-action" href="{{ repository_url }}">View on GitHub</a>
+      <a class="secondary-action" href="#stories">Read the stories</a>
+    </div>
+  </div>
+</section>
+
+<section class="story-band" id="stories">
+  <div class="section-heading">
+    <p class="eyebrow">FIELD NOTES / 实战手记</p>
+    <h2>Building infrastructure that can explain, repair, and verify itself.</h2>
+    <p>关于 AI SRE、安全修复与下一代运维控制平面的中英文思考。</p>
+  </div>
+  <div class="story-grid">
+    {% for post in posts %}
+    <article class="story-card">
+      <a class="story-image" href="{{ post.url }}">
+        <img src="{{ post.cover_url }}" alt="" loading="lazy">
+      </a>
+      <div class="story-body">
+        <p class="story-meta">{{ post.date_display }} · {{ post.reading_time }} min read</p>
+        <h3><a href="{{ post.url }}">{{ post.title }}</a></h3>
+        <p class="story-title-en">{{ post.title_en }}</p>
+        <p>{{ post.description }}</p>
+        <a class="read-link" href="{{ post.url }}">Read / 阅读 <span aria-hidden="true">→</span></a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="principles-band">
+  <div>
+    <p class="eyebrow">THE LUXYAI POSITION</p>
+    <h2>AI should earn the right to act.</h2>
+  </div>
+  <div class="principles-list">
+    <p><b>Evidence first.</b> Diagnosis must point back to observable facts.</p>
+    <p><b>Humans keep authority.</b> High-risk changes remain explicit and reviewable.</p>
+    <p><b>Recovery must be proven.</b> A successful command is not the same as a healthy system.</p>
+  </div>
+</section>

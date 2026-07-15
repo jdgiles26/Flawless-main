@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }}</title>
+    <meta name="description" content="{{ description }}">
+    <meta name="author" content="陆宣宇 (Xuanyu Lu), Shanghai">
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="alternate" type="application/rss+xml" title="Flawless Field Notes" href="{{ base_url }}/feed.xml">
+    <meta property="og:type" content="{{ og_type }}">
+    <meta property="og:site_name" content="Flawless Field Notes">
+    <meta property="og:title" content="{{ page_title }}">
+    <meta property="og:description" content="{{ description }}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:image" content="{{ og_image }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ page_title }}">
+    <meta name="twitter:description" content="{{ description }}">
+    <meta name="twitter:image" content="{{ og_image }}">
+    <script type="application/ld+json">{{ json_ld | safe }}</script>
+    <link rel="stylesheet" href="{{ base_url }}/assets/site.css">
+  </head>
+  <body class="{{ body_class }}">
+    <header class="site-header">
+      <a class="brand" href="{{ base_url }}/" aria-label="Flawless Field Notes home">
+        <span class="brand-mark" aria-hidden="true">L</span>
+        <span>Flawless <b>Field Notes</b></span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="{{ base_url }}/">Stories</a>
+        <a href="{{ repository_url }}">GitHub</a>
+        <a href="{{ base_url }}/feed.xml">RSS</a>
+      </nav>
+    </header>
+    <main>{{ content | safe }}</main>
+    <footer class="site-footer">
+      <p>Written in Shanghai by 陆宣宇 (Xuanyu Lu).</p>
+      <p><a href="{{ repository_url }}">Flawless on GitHub</a> · <a href="{{ base_url }}/llms.txt">llms.txt</a></p>
+    </footer>
+  </body>
+</html>

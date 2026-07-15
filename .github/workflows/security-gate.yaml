@@ -1,0 +1,71 @@
+name: security-gate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Python dependency audit
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r requirements.lock --no-deps --disable-pip
+      - name: Compile and parse manifests
+        run: |
+          python -m pip install pyyaml
+          python -m compileall -q backend agents mcp_servers cmdb cloud a2a openwebui
+          python - <<'PY'
+          import glob, yaml
+          for path in glob.glob("manifests/*.yaml"):
+              list(yaml.safe_load_all(open(path, encoding="utf-8")))
+              print("validated", path)
+          PY
+      - name: Build backend and frontend images
+        run: |
+          docker build --target backend-runtime -t flawless:${{ github.sha }} .
+          docker build --target frontend-runtime -t flawless-web:${{ github.sha }} .
+      - name: Report all backend image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: flawless:${{ github.sha }}
+          format: table
+          exit-code: "0"
+          severity: CRITICAL,HIGH
+      - name: Block fixable backend image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: flawless:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - name: Report all frontend image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: flawless-web:${{ github.sha }}
+          format: table
+          exit-code: "0"
+          severity: CRITICAL,HIGH
+      - name: Block fixable frontend image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: flawless-web:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - uses: anchore/sbom-action@v0
+        with:
+          image: flawless:${{ github.sha }}
+          artifact-name: flawless-${{ github.sha }}.spdx.json
