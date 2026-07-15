@@ -8,17 +8,16 @@
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-red)](#license)
 
 **Your infrastructure can explain itself, heal safely, and prove it recovered.**<br>
-**让基础设施自己解释故障、安全完成修复，并证明它真的恢复了。**
 
 **Flawless** is an AI-native SRE control plane for Kubernetes and cloud infrastructure. It connects alerts, evidence, topology, human approval, controlled remediation, and recovery verification in one auditable AgenticOps loop.
 
-它不是另一个只会给建议的运维聊天框。Flawless 将“发现问题、收集证据、生成预演、人工授权、执行变更、恢复验证、经验沉淀”连接成一个可审计闭环。
+It's not just another operations chat box that only gives advice.。Flawless This connects "problem discovery, evidence collection, simulation generation, manual authorization, change execution, recovery verification, and experience accumulation" into an auditable closed loop.
 
 Created in Shanghai by **陆宣宇 (Xuanyu Lu)**.
 
 ![Flawless connects alerts, evidence, approval, remediation, and verified recovery](blog/assets/images/luxyai-agenticops-loop.png)
 
-## Product Preview / 产品实景
+## Product Preview \
 
 These are real console captures from the running platform, not conceptual mockups.
 
@@ -53,10 +52,10 @@ model comparisons and recovery records survive Pod restarts.
 
 Only published notes are listed below; links point to versioned files in this repository:
 
-- [From Alert to Verified Recovery / 从告警到可验证恢复](blog/posts/2026-07-13-from-alert-to-verified-recovery.md)
-- [Should AI Be Allowed to Fix Kubernetes? / AI 可以修 Kubernetes 吗？](blog/posts/2026-07-13-ai-should-earn-the-right-to-act.md)
-- [The Next SRE Control Plane Is More Than a Chat Box / 下一代 SRE 控制平面](blog/posts/2026-07-13-not-another-chatbox.md)
-- [Building AgenticOps from Shanghai / 在上海构建 AgenticOps](blog/posts/2026-07-13-building-agenticops-in-shanghai.md)
+- [From Alert to Verified Recovery (blog/posts/2026-07-13-from-alert-to-verified-recovery.md)
+- [Should AI Be Allowed to Fix Kubernetes? / Can AI fix Kubernetes?？](blog/posts/2026-07-13-ai-should-earn-the-right-to-act.md)
+- [The Next SRE Control Plane Is More Than a Chat Box / Next-generation SRE control plane (blog/posts/2026-07-13-not-another-chatbox.md)
+- [Building AgenticOps from Shanghai /buildingAgenticOps](blog/posts/2026-07-13-building-agenticops-in-shanghai.md)
 
 ## Why This Exists
 
@@ -119,7 +118,7 @@ You need either:
 ### One-Click Deployment
 
 ```bash
-git clone https://github.com/William-Lu-stack/Flawless.git
+git clone https://github.com/jdgiles26/Flawless.git
 cd Flawless
 ./scripts/quickstart.sh
 ```
@@ -220,7 +219,7 @@ docker run --rm \
 Push to GHCR or an internal registry:
 
 ```bash
-IMAGE=ghcr.io/william-lu-stack/flawless:latest ./scripts/build-push.sh
+IMAGE=ghcr.io/jdgiles26/flawless:latest ./scripts/build-push.sh
 ```
 
 For air-gapped or China mainland networks, the `Dockerfile` and `scripts/build-push.sh` already expose mirror build args:
@@ -525,7 +524,7 @@ pip-audit -r requirements.lock --no-deps --disable-pip
 ## GitHub
 
 The public engineering baseline lives at
-[`William-Lu-stack/Flawless`](https://github.com/William-Lu-stack/Flawless). Custom algorithm
+[`jdgiles26/Flawless`](https://github.com/jdgiles26/Flawless). Custom algorithm
 extensions, credentials, production topology, and company data are loaded at
 runtime and are intentionally excluded from the public repository.
 
