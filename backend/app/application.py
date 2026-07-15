@@ -7673,27 +7673,27 @@ async def _evidence_based_replan(
             from agents.llm_client import get_llm
             llm = get_llm(temperature=0.05, max_tokens=1200, profile_id=plan.get("model_profile_id") or None)
             prompt = (
-                "你是 Kubernetes 故障修复规划器。根据真实执行证据，从给定动作目录中选择至多两个结构化动作。"
-                "不得输出 shell、kubectl、脚本或目录外动作。证据不足时 changes=[]。高风险动作可以提出但必须标 risk=high。"
-                "上一轮方案已经执行且恢复验证失败；不得只改写理由后重复相同动作、目标和参数。只有参数发生实质变化且新证据明确支持时，"
-                "才允许继续使用同一动作类型，否则必须换根因假设、换动作，或明确进入管理员人工处理。"
-                "不要为了显得积极而重启；必须解释证据如何支持根因。很多故障普通日志没有内容，必须优先使用 Events、"
-                "container waiting/terminated reason、lastState、Workload 模板、PVC/PV、镜像平台、节点标签和最近发布证据。只返回 JSON："
-                "如果 logs/current 或 logs/previous 不存在、Pod 已删除或 container 尚未产生日志，且 Events/YAML 没有证明 PVC、镜像、"
-                "ConfigMap、配额或调度约束等模板级阻断，可以提出 recreate_pod 作为诊断性重建，然后重新采集日志；"
-                "如果已命中模板级阻断，禁止用重启掩盖根因。"
-                "对于 Permission denied/目录不可写：先根据 runAsUser/runAsGroup 选择 fsGroup；若已尝试 fsGroup 仍失败，"
-                "可提出 patch_workload_runtime_security，用受控 initContainer 做 mkdir/chown/chmod；若证据显示 NFS/Generic CSI "
-                "或 PodSecurity 阻断，则 changes=[] 并给出管理员处理步骤。"
+                "You are a Kubernetes fault-remediation planner. Based on real execution evidence, choose at most two structured actions from the provided action catalog."
+                "Do not output shell, kubectl, scripts, or actions outside the catalog. Use changes=[] when evidence is insufficient. High-risk actions may be proposed, but must be marked with risk=high."
+                "The previous plan has already been executed and recovery verification failed; do not repeat the same action, target, and parameters by merely rewriting the reason. Only when the parameters change materially and new evidence clearly supports it,"
+                " may you continue using the same action type. Otherwise, you must change the root-cause hypothesis, change the action, or explicitly move into administrator manual handling."
+                "Do not restart just to look proactive; you must explain how the evidence supports the root cause. Many faults have little in normal logs, so you must prioritize Events,"
+                " container waiting/terminated reasons, lastState, the Workload template, PVC/PV, image platform, node labels, and recent release evidence. Return JSON only:"
+                " if logs/current or logs/previous do not exist, the Pod has been deleted, or the container has not yet produced logs, and Events/YAML do not prove a template-level blocker such as PVC, image,"
+                " ConfigMap, quotas, or scheduling constraints, you may propose recreate_pod as a diagnostic rebuild and then recollect logs;"
+                " if a template-level blocker is already identified, restarting to hide the root cause is forbidden."
+                " For Permission denied or unwritable directories: first choose fsGroup based on runAsUser/runAsGroup; if fsGroup has already been tried and still fails,"
+                " you may propose patch_workload_runtime_security using a controlled initContainer for mkdir/chown/chmod; if the evidence shows NFS/Generic CSI"
+                " or PodSecurity blocking, then set changes=[] and provide administrator handling steps."
                 "{root_cause,confidence,selected_runbook,reason,changes:[{type,namespace,workload_type,workload_name,pod_name,"
                 "hpa_name,pvc_name,storage,node_name,service_account,configmap_name,replicas,manifest,patch,reason}]}。\n"
-                f"动作目录={json.dumps(action_catalog_payload(), ensure_ascii=False)}\n"
-                f"已尝试动作={sorted(attempted_actions or set())}\n"
-                f"已失败策略指纹={sorted(blocked_change_fingerprints)}\n"
-                f"同一故障链历史={json.dumps(_redact_sensitive(plan.get('_prior_attempts') or []), ensure_ascii=False)[:6000]}\n"
-                f"上一轮失败与验证结果={json.dumps(_redact_sensitive(failed_context), ensure_ascii=False)[:7000]}\n"
-                f"目标与原计划={json.dumps(_redact_sensitive({k: v for k, v in plan.items() if not k.startswith('_')}), ensure_ascii=False)[:7000]}\n"
-                f"真实证据={json.dumps(_redact_sensitive(deep), ensure_ascii=False)[:15000]}"
+                f"Action catalog={json.dumps(action_catalog_payload(), ensure_ascii=False)}\n"
+                f"Attempted actions={sorted(attempted_actions or set())}\n"
+                f"Failed strategy fingerprints={sorted(blocked_change_fingerprints)}\n"
+                f"History for the same fault chain={json.dumps(_redact_sensitive(plan.get('_prior_attempts') or []), ensure_ascii=False)[:6000]}\n"
+                f"Previous failure and verification results={json.dumps(_redact_sensitive(failed_context), ensure_ascii=False)[:7000]}\n"
+                f"Target and original plan={json.dumps(_redact_sensitive({k: v for k, v in plan.items() if not k.startswith('_')}), ensure_ascii=False)[:7000]}\n"
+                f"Real evidence={json.dumps(_redact_sensitive(deep), ensure_ascii=False)[:15000]}"
             )
             response = llm.invoke(prompt)
             return _extract_json_object(getattr(response, "content", str(response)))
@@ -7741,7 +7741,7 @@ async def _evidence_based_replan(
     namespace, workload_type, workload_name = _workload_identity_from_plan(plan)
     return [{
         "id": f"evidence-replan-{uuid.uuid4().hex[:8]}",
-        "title": f"证据重规划：{engine_plan.get('runbook_id', 'expert-runbook')}",
+        "title": f"Evidence replan: {engine_plan.get('runbook_id', 'expert-runbook')}",
         "namespace": namespace,
         "target": f"{workload_type}/{workload_name}" if workload_name else plan.get("target", namespace),
         "pod_name": _target_pod_from_plan(plan),
@@ -7749,7 +7749,7 @@ async def _evidence_based_replan(
         "cluster_id": plan.get("cluster_id"),
         "source": plan.get("source"),
         "evidence": plan.get("evidence") or {},
-        "summary": planner_meta.get("reason") or engine_plan.get("reason") or "根据新证据生成差异化修复策略。",
+        "summary": planner_meta.get("reason") or engine_plan.get("reason") or "Generate a differentiated remediation strategy based on the new evidence.",
         "steps": engine_plan.get("steps") or [],
         "changes": normalized[:2],
         "requires_confirmation": True,
@@ -7808,19 +7808,19 @@ async def _llm_ops_summary(plan: dict, steps: list[dict], results: list[dict]) -
     def _fallback() -> str:
         if failed:
             reason = "; ".join(str((r.get("result") or {}).get("error", "unknown")) for r in failed)
-            return f"AI 降级总结：运维流程已完成诊断步骤，但 Kubernetes 变更失败。失败原因：{reason}。建议先核对 RBAC、目标 workload 名称、namespace 白名单和 MCP 服务可达性。"
+            return f"AI fallback summary: the operations workflow completed the diagnostic steps, but the Kubernetes change failed. Failure reason: {reason}. First verify RBAC, the target workload name, the namespace allowlist, and MCP service reachability."
         if results:
-            return "AI 降级总结：诊断步骤已执行，Kubernetes 变更返回成功。建议继续观察 Pod Ready、重启次数和事件是否恢复。"
-        return "AI 降级总结：已完成诊断步骤，本次计划没有需要执行的 Kubernetes 变更。"
+            return "AI fallback summary: the diagnostic steps were executed and the Kubernetes change returned success. Continue observing whether Pod Ready, restart count, and events recover."
+        return "AI fallback summary: the diagnostic steps are complete, and this plan has no Kubernetes changes to execute."
 
     try:
         def _call_llm() -> str:
             from agents.llm_client import get_llm
             llm = get_llm(temperature=0.05, max_tokens=900, profile_id=plan.get("model_profile_id") or None)
             prompt = (
-                "你是企业级 AIOps 运维执行官。基于以下执行证据，用中文输出简洁结论：\n"
-                "1. 判断故障是否已经定位；2. Kubernetes 变更是否成功；3. 下一步建议；"
-                "4. 如果失败，明确最可能的失败原因。不要输出 JSON。\n\n"
+                "You are an enterprise AIOps operations execution lead. Based on the following execution evidence, output a concise English conclusion:\n"
+                "1. Determine whether the fault has already been localized; 2. whether the Kubernetes change succeeded; 3. the next recommendation;"
+                " 4. if it failed, clearly state the most likely failure reason. Do not output JSON.\n\n"
                 f"{json.dumps(_redact_sensitive(payload), ensure_ascii=False)[:9000]}"
             )
             result = llm.invoke(prompt)
@@ -7850,7 +7850,7 @@ _CHANGE_FINGERPRINT_IGNORED_KEYS = {
 
 
 def _canonical_change_value(value, key: str = ""):
-    """保留真正影响执行结果的字段，避免模型改写说明文字后被当成新策略。"""
+    """Keep only the fields that truly affect execution results so rewritten explanatory text is not mistaken for a new strategy."""
     if isinstance(value, dict):
         return {
             str(item_key): _canonical_change_value(item_value, str(item_key))
@@ -7881,8 +7881,8 @@ def _change_fingerprint(plan: dict) -> str:
             ),
         }
     else:
-        # 纯诊断/继续取证计划没有 Kubernetes 变更，如果只用空 changes 做指纹，
-        # 所有诊断策略都会被误判为同一招，导致“证据不足”后无法进入下一轮。
+        # Pure diagnosis or continued evidence-collection plans have no Kubernetes changes.
+        # If fingerprinting uses only empty changes, all diagnostic strategies look identical and cannot advance to the next round after "insufficient evidence".
         material = {
             "kind": "diagnostic",
             "id": plan.get("id"),
@@ -7952,7 +7952,7 @@ def _ops_attempt_summary(item: dict) -> dict:
         "status": str(result.get("status") or "unknown"),
         "recovered": verification.get("recovered"),
         "outcome": _clip_text(
-            str(verification.get("message") or result.get("message") or "本轮没有形成恢复证据。"),
+            str(verification.get("message") or result.get("message") or "No recovery evidence was produced in this round."),
             600,
         ),
         "errors": errors[:4],
@@ -8012,7 +8012,7 @@ def _build_ops_continuation_context(
         "strategy": plan.get("title") or plan.get("source") or "ops-plan",
         "status": result.get("status") or "unknown",
         "recovered": (result.get("verification") or {}).get("recovered"),
-        "outcome": (result.get("verification") or {}).get("message") or result.get("message") or "本轮没有形成恢复证据。",
+        "outcome": (result.get("verification") or {}).get("message") or result.get("message") or "No recovery evidence was produced in this round.",
         "errors": [],
     }
     return {
@@ -8077,7 +8077,7 @@ def _apply_ops_continuation_context(plan: dict) -> dict:
 
 
 def _operator_blocking_execution_failure(result: dict) -> bool:
-    """只识别运维执行通道本身的阻断，不读取恢复验证中的业务错误文本。"""
+    """Only identify blocking issues in the operations execution channel itself and do not read business error text from recovery verification."""
     hard_terms = (
         "403", "forbidden", "unauthorized", "rbac", "serviceaccount cannot",
         "certificate verify failed", "ssl verify", "connection refused",
@@ -8139,7 +8139,7 @@ def _plan_can_continue_in_job(plan: dict, autonomous: bool) -> bool:
         return True
     if not autonomous:
         return True
-    # 自动运维可以把高风险动作推进到“等待人工逐步确认”，但不会绕过确认直接提交。
+    # Automated operations can advance high-risk actions to "waiting for step-by-step manual confirmation", but will not bypass confirmation and submit directly.
     return _autonomous_plan_allowed(plan) or bool(
         plan.get("requires_confirmation")
         or plan.get("requires_high_risk_confirmation")
@@ -8196,7 +8196,7 @@ async def _execute_ops_plan_once(
         async def report(elapsed: float, remaining: float):
             await emit(
                 stage,
-                f"仍在执行：{waiting_on}（已等待 {int(elapsed)} 秒）",
+                f"Still executing: {waiting_on} (waited {int(elapsed)} seconds)",
                 elapsed_seconds=round(elapsed, 1),
                 remaining_seconds=round(remaining, 1),
                 waiting_on=waiting_on,
@@ -8205,13 +8205,13 @@ async def _execute_ops_plan_once(
         return report
 
     if cancel_event and cancel_event.is_set():
-        return {"status": "cancelled", "executed": False, "message": "任务已中断，未执行新的运维动作。"}
+        return {"status": "cancelled", "executed": False, "message": "The task was interrupted and no new operations action was executed."}
     release_gate = _ops_release_gate(plan)
-    await emit("release_gate", "变更风险门禁已完成", release_gate=release_gate)
+    await emit("release_gate", "Change risk gate completed", release_gate=release_gate)
     if release_gate.get("allowed") is False:
         await emit(
             "release_blocked",
-            release_gate.get("reason") or "SRE 变更门禁已阻断本次操作。",
+            release_gate.get("reason") or "The SRE change gate blocked this operation.",
             status="blocked",
             release_gate=release_gate,
             level="warning",
@@ -8220,9 +8220,9 @@ async def _execute_ops_plan_once(
             "status": "blocked",
             "executed": False,
             "release_gate": release_gate,
-            "message": release_gate.get("reason") or "变更被错误预算门禁阻断。",
+            "message": release_gate.get("reason") or "The change was blocked by the error-budget gate.",
         }
-    await emit("collecting_evidence", "采集 current/previous logs、Events、Workload、Service、存储与节点证据")
+    await emit("collecting_evidence", "Collecting current/previous logs, Events, Workload, Service, storage, and node evidence")
     evidence_timeout = max(10, int(os.getenv("OPS_EVIDENCE_TIMEOUT_SECONDS", "70")))
     try:
         plan["_runtime_evidence"] = await run_with_heartbeat(
@@ -8231,17 +8231,17 @@ async def _execute_ops_plan_once(
             timeout_seconds=evidence_timeout,
             heartbeat_seconds=float(os.getenv("OPS_HEARTBEAT_SECONDS", "5")),
             cancel_event=cancel_event,
-            on_heartbeat=heartbeat("collecting_evidence", "Rancher/Kubernetes/MCP 证据接口"),
+            on_heartbeat=heartbeat("collecting_evidence", "Rancher/Kubernetes/MCP evidence interfaces"),
         )
     except StageTimeoutError as exc:
         plan["_runtime_evidence"] = {
             "error": str(exc),
             "timeout": True,
-            "operator_hint": "检查 Rancher API、MCP Server 网络和 RBAC；本轮会使用已有证据继续，不会永久卡住。",
+            "operator_hint": "Check the Rancher API, MCP Server networking, and RBAC. This run will continue with the evidence already available and will not hang forever.",
         }
         await emit(
             "stage_timeout",
-            f"证据采集超过 {evidence_timeout} 秒，已熔断慢调用并继续执行可用步骤。",
+            f"Evidence collection exceeded {evidence_timeout} seconds, so slow calls were cut off and execution continued with the available steps.",
             timed_out_stage="collecting_evidence",
             timeout_seconds=evidence_timeout,
             level="warning",
@@ -8264,14 +8264,14 @@ async def _execute_ops_plan_once(
     }
     await emit(
         "collecting_evidence_done",
-        "证据采集完成，可进入逐步诊断。",
+        "Evidence collection is complete and step-by-step diagnosis can begin.",
         evidence_summary=evidence_summary,
         level="warning" if deep_evidence.get("error") else "success",
     )
     preflight_replans: list[dict] = []
     preflight_conflict = False
     if plan.get("changes") and not deep_evidence.get("error"):
-        await emit("replanning", "用实时证据复核原方案，避免把症状当成根因")
+        await emit("replanning", "Revalidating the original plan with live evidence to avoid treating symptoms as root causes")
         preflight_attempted = {str(change.get("type") or "") for change in plan.get("changes") or []}
         preflight_attempted.update(str(action) for action in (plan.get("_attempted_actions") or []) if action)
         preflight_replans = await _evidence_based_replan(
@@ -8285,7 +8285,7 @@ async def _execute_ops_plan_once(
             meta = plan.get("_runtime_replan") or {}
             await emit(
                 "strategy_switch",
-                f"实时证据已否定原动作；根因转为 {meta.get('runbook_id') or '新的故障类别'}，原变更不会提交。",
+                f"Live evidence invalidated the original action; the root cause shifts to {meta.get('runbook_id') or 'a new fault category'}, and the original change will not be submitted.",
                 alternative_plan_count=len(preflight_replans),
                 level="warning",
             )
@@ -8298,12 +8298,12 @@ async def _execute_ops_plan_once(
                 "executed": False,
                 "steps": executed_steps,
                 "release_gate": release_gate,
-                "message": "任务已在诊断阶段中断，未继续提交变更。",
+                "message": "The task was interrupted during the diagnosis phase and the change was not submitted.",
             }
-        step_title = step.get("title") or step.get("name") or f"诊断步骤 {index}"
+        step_title = step.get("title") or step.get("name") or f"Diagnostic step {index}"
         await emit(
             "step_start",
-            f"开始：{step_title}",
+            f"Starting: {step_title}",
             step_index=index,
             steps_total=len(steps),
             step={"id": step.get("id"), "title": step_title, "description": step.get("description") or step.get("detail")},
@@ -8324,15 +8324,15 @@ async def _execute_ops_plan_once(
                 "title": step_title,
                 "status": "warning",
                 "logs": [
-                    f"[timeout] 诊断步骤超过 {step_timeout} 秒，已主动终止等待。",
-                    "[next] 检查对应 Rancher/MCP/Kubernetes API 的网络、权限和响应时间。",
+                    f"[timeout] The diagnostic step exceeded {step_timeout} seconds, so waiting was actively terminated.",
+                    "[next] Check the network, permissions, and response time of the corresponding Rancher/MCP/Kubernetes API.",
                 ],
                 "artifacts": {"timeout_seconds": step_timeout, "timed_out": True},
                 "finished_at": datetime.now(timezone.utc).isoformat(),
             }
             await emit(
                 "stage_timeout",
-                f"{step_title} 超过 {step_timeout} 秒，已跳过该慢探针，流程继续。",
+                f"{step_title} exceeded {step_timeout} seconds, so this slow probe was skipped and the workflow continued.",
                 timed_out_stage="diagnostic_step",
                 step_index=index,
                 timeout_seconds=step_timeout,
@@ -8343,7 +8343,7 @@ async def _execute_ops_plan_once(
         step_status = step_result.get("status") or "completed"
         await emit(
             "step_done",
-            f"完成：{step_title}",
+            f"Completed: {step_title}",
             step_index=index,
             steps_total=len(steps),
             step_status=step_status,
@@ -8363,33 +8363,33 @@ async def _execute_ops_plan_once(
             preflight_conflict = False
             await emit(
                 "operator_override",
-                "实时证据提示原方案可能不是最优，但操作员已明确确认执行；系统继续提交变更并完整留痕。",
+                "Live evidence suggests the original plan may not be optimal, but the operator explicitly confirmed execution; the system will continue submitting the change and preserve a full audit trail.",
                 runtime_replan=meta,
                 alternative_plan_count=len(preflight_replans),
                 level="warning",
             )
     if preflight_conflict:
         meta = plan.get("_runtime_replan") or {}
-        evidence_gap = str(meta.get("evidence_gap") or "实时证据与原方案冲突，需要核对新的最小变更。")
+        evidence_gap = str(meta.get("evidence_gap") or "Live evidence conflicts with the original plan, and the new minimal change must be reviewed.")
         has_candidate = bool(preflight_replans)
         verification = {
             "status": "diagnostic_completed",
             "recovered": None,
             "message": (
-                "根因已重新定位，已生成新的受控修复方案；原变更已取消。"
+                "The root cause has been re-localized, and a new controlled remediation plan has been generated; the original change was cancelled."
                 if has_candidate else
-                "根因已重新定位，但缺少创建安全变更所需的批准参数；原变更已取消。"
+                "The root cause has been re-localized, but approved parameters required to create a safe change are missing; the original change was cancelled."
             ),
-            "proof": "实时 Events、PVC/PV 状态与原动作不匹配，系统未提交已失效的变更。",
+            "proof": "Live Events and PVC/PV state do not match the original action, so the system did not submit an invalidated change.",
             "blocked_reason": evidence_gap,
             "operator_steps": (
-                ["核对下方新方案的目标、资源清单与回滚方式。", "高风险存储变更需要重新勾选确认后执行。"]
+                ["Review the target, resource list, and rollback path of the new plan below.", "High-risk storage changes must be reconfirmed before execution."]
                 if has_candidate else
                 [
                     evidence_gap,
-                    "由存储管理员提供批准的 StorageClass、NFS/CSI/LUN 模板；平台不会让 LLM 猜测生产存储路径。",
-                    "在 ConfigMap k8s-agent-config 填写 AUTO_OPS_STATIC_PV_TEMPLATE_JSON，或填写 AUTO_OPS_STATIC_PV_NFS_SERVER 与 AUTO_OPS_STATIC_PV_NFS_BASE_PATH。",
-                    "确认 k8s-agent-storage-provisioner 已绑定后重新运行本计划，系统将生成可确认的 create_pv/create_pvc 变更。",
+                    "Have a storage administrator provide an approved StorageClass or NFS/CSI/LUN template; the platform will not let the LLM guess production storage paths.",
+                    "Populate AUTO_OPS_STATIC_PV_TEMPLATE_JSON in ConfigMap k8s-agent-config, or set AUTO_OPS_STATIC_PV_NFS_SERVER and AUTO_OPS_STATIC_PV_NFS_BASE_PATH.",
+                    "After confirming that k8s-agent-storage-provisioner is bound, rerun this plan and the system will generate confirmable create_pv/create_pvc changes.",
                 ]
             ),
         }
@@ -8434,11 +8434,11 @@ async def _execute_ops_plan_once(
                     "steps": executed_steps,
                     "results": results,
                     "release_gate": release_gate,
-                    "message": f"第 {index} 项变更未获人工确认，后续动作已停止。",
+                    "message": f"Change item {index} did not receive manual confirmation, so subsequent actions were stopped.",
                 }
         await emit(
             "change_start",
-            f"提交变更：{change.get('type', 'change')} -> {change_target}",
+            f"Submitting change: {change.get('type', 'change')} -> {change_target}",
             change_index=index,
             changes_total=len(changes),
             change={
@@ -8457,21 +8457,21 @@ async def _execute_ops_plan_once(
                 timeout_seconds=change_timeout,
                 heartbeat_seconds=float(os.getenv("OPS_HEARTBEAT_SECONDS", "5")),
                 cancel_event=cancel_event,
-                on_heartbeat=heartbeat("change_waiting", f"受控变更执行器 {change_target}"),
+                on_heartbeat=heartbeat("change_waiting", f"controlled change executor {change_target}"),
             )
         except StageTimeoutError:
             change_result = {
                 "change": _redact_sensitive(change),
                 "status": "failed",
                 "result": {
-                    "error": f"Kubernetes 变更在 {change_timeout} 秒内没有返回，已停止后续自动动作。",
+                    "error": f"The Kubernetes change did not return within {change_timeout} seconds, so subsequent automated actions were stopped.",
                     "timeout": True,
-                    "operator_steps": ["读取目标 Workload 当前 generation/observedGeneration，确认 API 是否已经受理变更。"],
+                    "operator_steps": ["Read the current generation/observedGeneration of the target Workload to confirm whether the API already accepted the change."],
                 },
             }
             await emit(
                 "stage_timeout",
-                f"{change_target} 的变更调用超时，状态不确定，已熔断后续动作。",
+                f"The change call for {change_target} timed out, the state is uncertain, and subsequent actions were cut off.",
                 timed_out_stage="kubernetes_change",
                 change_index=index,
                 timeout_seconds=change_timeout,
@@ -8486,15 +8486,15 @@ async def _execute_ops_plan_once(
                     "error": safe_error,
                     "exception_type": type(exc).__name__,
                     "operator_steps": [
-                        "查看下方原始 API 回执，确认失败发生在 Rancher/Kubernetes/MCP/审计哪个环节。",
-                        "如果是 403/Forbidden，先补 Rancher Token 或 ServiceAccount 的最小 RBAC 后重新执行同一计划。",
-                        "如果是 409/Conflict，刷新目标对象 resourceVersion 后重新生成预演，避免覆盖新变更。",
+                        "Review the raw API receipt below to confirm whether the failure happened in Rancher, Kubernetes, MCP, or auditing.",
+                        "If it is 403/Forbidden, first add the minimum RBAC needed for the Rancher Token or ServiceAccount, then rerun the same plan.",
+                        "If it is 409/Conflict, refresh the target resourceVersion and regenerate the dry run to avoid overwriting newer changes.",
                     ],
                 },
             }
             await emit(
                 "change_exception",
-                f"{change_target} 的变更执行器异常退出，已停止把未知状态误报为成功。",
+                f"The change executor for {change_target} exited unexpectedly, so the system stopped misreporting the unknown state as success.",
                 change_index=index,
                 changes_total=len(changes),
                 error=safe_error,
@@ -8506,9 +8506,9 @@ async def _execute_ops_plan_once(
         await emit(
             "change_done",
             (
-                f"变更返回：{change_target} -> {change_status}"
+                f"Change returned: {change_target} -> {change_status}"
                 if change_status not in {"failed", "blocked"} else
-                f"变更未通过：{change_target} -> {change_status}"
+                f"Change not approved: {change_target} -> {change_status}"
             ),
             change_index=index,
             changes_total=len(changes),
@@ -8532,7 +8532,7 @@ async def _execute_ops_plan_once(
             "steps": executed_steps,
             "results": results,
             "release_gate": release_gate,
-            "message": "任务已中断；不会执行剩余变更。已提交动作的最终状态需要人工复核。",
+            "message": "The task was interrupted, so the remaining changes will not be executed. The final state of already-submitted actions requires manual review.",
         }
     failed = [r for r in results if r.get("status") in {"failed", "blocked"}]
     attempted_actions = {str(change.get("type") or "") for change in plan.get("changes", [])}
@@ -8543,25 +8543,25 @@ async def _execute_ops_plan_once(
             ((plan.get("planning") or {}).get("evidence_gap"))
             or (plan.get("_runtime_replan") or {}).get("evidence_gap")
             or plan.get("evidence_gap")
-            or "现有日志、Events 与对象状态没有形成可验证的单一根因。"
+            or "Existing logs, Events, and object state did not converge on a single verifiable root cause."
         )
         verification = {
             "status": "diagnostic_completed",
             "recovered": None,
-            "message": "深度诊断证据采集完成；已生成受控候选方案。" if evidence_replans else "深度诊断完成，但证据仍不足以支持安全变更。",
-            "proof": "本轮只读，不宣称故障已经恢复。",
+            "message": "Deep-diagnosis evidence collection is complete; controlled candidate plans were generated." if evidence_replans else "Deep diagnosis is complete, but the evidence is still insufficient to support a safe change.",
+            "proof": "This round was read-only and does not claim that the fault has already recovered.",
             "blocked_reason": evidence_gap,
             "operator_steps": [
-                "查看每个诊断步骤中的日志、Events、存储链和 Workload 实际配置。",
-                "补齐界面提示的存储后端、目标对象或 RBAC 权限后重新运行诊断。",
-                "若候选策略已生成，在下方核对具体变更并由操作员确认执行。",
+                "Review the logs, Events, storage chain, and actual Workload configuration in each diagnostic step.",
+                "After filling in the storage backend, target object, or RBAC permissions indicated by the UI, rerun the diagnosis.",
+                "If candidate strategies were generated, review the specific changes below and have an operator confirm execution.",
             ],
         }
         next_steps = _ops_terminal_next_steps(plan, verification, evidence_replans, verification["operator_steps"])
         verification["next_steps"] = next_steps
         await emit(
             "replanning",
-            "LLM 与 EvidenceRunbookEngine 已基于真实证据重新规划",
+            "The LLM and EvidenceRunbookEngine have replanned based on real evidence",
             alternative_plan_count=len(evidence_replans),
             level="success" if evidence_replans else "warning",
         )
@@ -8573,7 +8573,7 @@ async def _execute_ops_plan_once(
         )
         await emit(
             "summarizing",
-            "整理诊断证据、候选修复方案和下一步确认项",
+            "Organizing diagnostic evidence, candidate remediation plans, and next confirmation items",
             alternative_plan_count=len(evidence_replans),
         )
         ai_summary = await _llm_ops_summary(plan, executed_steps, []) if summarize else {
@@ -8598,15 +8598,15 @@ async def _execute_ops_plan_once(
     verify_grace = max(0, int(os.getenv("OPS_VERIFY_INITIAL_GRACE_SECONDS", "15")))
     await emit(
         "verifying",
-        f"等待 Workload rollout；先给新 Pod {verify_grace} 秒重建/拉起窗口，再验证是否真正恢复"
+        f"Waiting for Workload rollout; first allow the new Pod {verify_grace} seconds for rebuild/startup, then verify whether it truly recovered"
         if verify_grace else
-        "等待 Workload rollout 并验证 Pod 是否真正恢复",
+        "Waiting for Workload rollout and verifying whether the Pod truly recovered",
         initial_grace_seconds=verify_grace,
     )
     verification = await _verify_plan_recovery(plan, results, cancel_event)
     await emit(
         "verification_done",
-        verification.get("message") or verification.get("status") or "恢复验证完成",
+        verification.get("message") or verification.get("status") or "Recovery verification completed",
         verification=verification,
         level="success" if verification.get("recovered") is not False else "warning",
     )
