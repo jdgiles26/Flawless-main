@@ -13,7 +13,7 @@
 
 It's not just another operations chat box that only gives advice.。Flawless This connects "problem discovery, evidence collection, simulation generation, manual authorization, change execution, recovery verification, and experience accumulation" into an auditable closed loop.
 
-Created in Shanghai by **陆宣宇 (Xuanyu Lu)**.
+
 
 ![Flawless connects alerts, evidence, approval, remediation, and verified recovery](blog/assets/images/luxyai-agenticops-loop.png)
 
